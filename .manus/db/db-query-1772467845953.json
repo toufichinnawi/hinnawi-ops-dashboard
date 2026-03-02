@@ -1,0 +1,31 @@
+{
+  "query": "SELECT id, storeName, merchantId, isActive, lastSyncAt FROM clover_connections;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, storeName, merchantId, isActive, lastSyncAt FROM clover_connections;",
+  "rows": [
+    {
+      "id": "1",
+      "storeName": "President Kennedy",
+      "merchantId": "JVGT8FGCVR9F1",
+      "isActive": "1",
+      "lastSyncAt": "2026-03-02 16:09:15"
+    },
+    {
+      "id": "2",
+      "storeName": "Mackay",
+      "merchantId": "CQP5TD9M5R691",
+      "isActive": "1",
+      "lastSyncAt": "2026-03-02 16:09:14"
+    },
+    {
+      "id": "3",
+      "storeName": "Tunnel",
+      "merchantId": "KKA9JDAYW9ZY1",
+      "isActive": "1",
+      "lastSyncAt": "2026-03-02 16:09:14"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstoreName\tmerchantId\tisActive\tlastSyncAt\n1\tPresident Kennedy\tJVGT8FGCVR9F1\t1\t2026-03-02 16:09:15\n2\tMackay\tCQP5TD9M5R691\t1\t2026-03-02 16:09:14\n3\tTunnel\tKKA9JDAYW9ZY1\t1\t2026-03-02 16:09:14\n",
+  "stderr": "",
+  "execution_time_ms": 71
+}

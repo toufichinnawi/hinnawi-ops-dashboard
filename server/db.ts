@@ -17,11 +17,16 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
+      console.log("[Database] Initializing connection...");
       _db = drizzle(process.env.DATABASE_URL);
+      console.log("[Database] Connection initialized successfully");
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.error("[Database] Failed to connect:", error);
       _db = null;
     }
+  }
+  if (!_db) {
+    console.error("[Database] DB is null. DATABASE_URL set:", !!process.env.DATABASE_URL);
   }
   return _db;
 }
@@ -206,8 +211,18 @@ export async function updateScheduledSummaryRun(id: number, success: boolean): P
 
 export async function listCloverConnections(): Promise<CloverConnection[]> {
   const db = await getDb();
-  if (!db) return [];
-  return db.select().from(cloverConnections).orderBy(desc(cloverConnections.createdAt));
+  if (!db) {
+    console.error("[Clover] listCloverConnections: DB not available");
+    throw new Error("Database not available");
+  }
+  try {
+    const result = await db.select().from(cloverConnections).orderBy(desc(cloverConnections.createdAt));
+    console.log(`[Clover] listCloverConnections: found ${result.length} connections`);
+    return result;
+  } catch (error) {
+    console.error("[Clover] listCloverConnections error:", error);
+    throw error;
+  }
 }
 
 export async function getCloverConnectionById(id: number): Promise<CloverConnection | undefined> {

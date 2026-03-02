@@ -362,17 +362,24 @@ export const appRouter = router({
 
     // List all connected stores
     connections: protectedProcedure.query(async () => {
-      const connections = await listCloverConnections();
-      // Don't expose access tokens to the frontend
-      return connections.map(c => ({
-        id: c.id,
-        storeName: c.storeName,
-        merchantId: c.merchantId,
-        isActive: c.isActive,
-        lastSyncAt: c.lastSyncAt,
-        lastSyncSuccess: c.lastSyncSuccess,
-        createdAt: c.createdAt,
-      }));
+      try {
+        console.log("[Clover Route] Fetching connections...");
+        const connections = await listCloverConnections();
+        console.log(`[Clover Route] Got ${connections.length} connections`);
+        // Don't expose access tokens to the frontend
+        return connections.map(c => ({
+          id: c.id,
+          storeName: c.storeName,
+          merchantId: c.merchantId,
+          isActive: c.isActive,
+          lastSyncAt: c.lastSyncAt,
+          lastSyncSuccess: c.lastSyncSuccess,
+          createdAt: c.createdAt,
+        }));
+      } catch (error) {
+        console.error("[Clover Route] connections error:", error);
+        throw error;
+      }
     }),
 
     // Disconnect a store
@@ -475,41 +482,60 @@ export const appRouter = router({
             const daysBack = input?.daysBack ?? 7;
             const { startTime, endTime } = getDateRange(daysBack);
 
+            console.log(`[Clover SyncAll] Starting sync for ${conn.storeName} (${conn.merchantId}), ${daysBack} days back`);
             const payments = await fetchPayments(conn.merchantId, conn.accessToken, startTime, endTime);
+            console.log(`[Clover SyncAll] Fetched ${payments.length} payments for ${conn.storeName}`);
             const dailySales = aggregatePaymentsByDay(payments);
+            console.log(`[Clover SyncAll] Aggregated into ${dailySales.length} daily records for ${conn.storeName}`);
 
             for (const day of dailySales) {
-              await upsertCloverDailySales({
-                connectionId: conn.id,
-                merchantId: conn.merchantId,
-                date: day.date,
-                totalSales: day.totalSales,
-                totalTips: day.totalTips,
-                totalTax: day.totalTax,
-                orderCount: day.orderCount,
-                refundAmount: day.refundAmount,
-                netSales: day.netSales,
-              });
+              try {
+                await upsertCloverDailySales({
+                  connectionId: conn.id,
+                  merchantId: conn.merchantId,
+                  date: day.date,
+                  totalSales: day.totalSales,
+                  totalTips: day.totalTips,
+                  totalTax: day.totalTax,
+                  orderCount: day.orderCount,
+                  refundAmount: day.refundAmount,
+                  netSales: day.netSales,
+                });
+              } catch (upsertErr: any) {
+                console.error(`[Clover SyncAll] Failed to upsert sales for ${conn.storeName} ${day.date}:`, upsertErr.message);
+                throw upsertErr;
+              }
             }
+            console.log(`[Clover SyncAll] Saved ${dailySales.length} sales records for ${conn.storeName}`);
 
             const shifts = await fetchShifts(conn.merchantId, conn.accessToken, startTime, endTime);
+            console.log(`[Clover SyncAll] Fetched ${shifts.length} shifts for ${conn.storeName}`);
             for (const shift of shifts) {
               const hours = shift.outTime ? (shift.outTime - shift.inTime) / (1000 * 60 * 60) : null;
-              await upsertCloverShift({
-                connectionId: conn.id,
-                merchantId: conn.merchantId,
-                employeeId: shift.employee.id,
-                employeeName: shift.employee.name || "Unknown",
-                shiftId: shift.id,
-                inTime: new Date(shift.inTime),
-                outTime: shift.outTime ? new Date(shift.outTime) : null,
-                hoursWorked: hours,
-              });
+              try {
+                await upsertCloverShift({
+                  connectionId: conn.id,
+                  merchantId: conn.merchantId,
+                  employeeId: shift.employee.id,
+                  employeeName: shift.employee.name || "Unknown",
+                  shiftId: shift.id,
+                  inTime: new Date(shift.inTime),
+                  outTime: shift.outTime ? new Date(shift.outTime) : null,
+                  hoursWorked: hours,
+                });
+              } catch (upsertErr: any) {
+                console.error(`[Clover SyncAll] Failed to upsert shift ${shift.id} for ${conn.storeName}:`, upsertErr.message);
+                throw upsertErr;
+              }
             }
+            console.log(`[Clover SyncAll] Saved ${shifts.length} shifts for ${conn.storeName}`);
 
             await updateCloverConnection(conn.id, { lastSyncAt: new Date(), lastSyncSuccess: true });
+            console.log(`[Clover SyncAll] ✓ Sync complete for ${conn.storeName}`);
             results.push({ storeName: conn.storeName, success: true });
           } catch (error: any) {
+            console.error(`[Clover SyncAll] ✗ FAILED for ${conn.storeName}: ${error.message}`);
+            console.error(`[Clover SyncAll] Full error:`, error);
             await updateCloverConnection(conn.id, { lastSyncAt: new Date(), lastSyncSuccess: false });
             results.push({ storeName: conn.storeName, success: false, error: error.message });
           }

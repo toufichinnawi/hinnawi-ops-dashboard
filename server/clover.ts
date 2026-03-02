@@ -230,7 +230,7 @@ export async function fetchShifts(
       accessToken,
       "/shifts",
       {
-        filter: [`inTime>=${startTime}`, `inTime<=${endTime}`],
+        filter: [`in_time>=${startTime}`, `in_time<=${endTime}`],
         limit: "500",
         offset: String(offset),
         expand: "employee",

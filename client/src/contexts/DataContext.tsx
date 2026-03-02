@@ -1,7 +1,8 @@
-// DataContext: Global state for uploaded MYR data with localStorage persistence
-// Falls back to demo data when no uploads exist
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+// DataContext: Global state for uploaded MYR data + Clover API data
+// Priority: Clover API data > CSV uploads > demo data
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import type { ParseResult } from "@/lib/csv-parser";
+import { trpc } from "@/lib/trpc";
 import {
   overviewKPIs as demoKPIs,
   weeklySales as demoWeeklySales,
@@ -36,6 +37,7 @@ interface DataContextValue {
   clearAllUploads: () => void;
   lastUpdated: string | null;
   hasLiveData: boolean;
+  hasCloverData: boolean;
 
   // Computed dashboard data (merges live + demo fallback)
   kpis: KPI[];
@@ -64,7 +66,182 @@ function saveToStorage(data: UploadedData) {
   } catch {}
 }
 
-// Merge uploaded net reports into KPI data
+// ─── Clover Data Helpers ──────────────────────────────────────────
+
+// Map Clover merchant IDs to our store IDs
+const merchantToStoreId: Record<string, string> = {
+  JVGT8FGCVR9F1: "pk",       // President Kennedy
+  CQP5TD9M5R691: "mk",       // Mackay
+  KKA9JDAYW9ZY1: "tunnel",   // Tunnel (Cathcart)
+};
+
+interface CloverSalesRow {
+  id: number;
+  connectionId: number;
+  merchantId: string;
+  date: string;
+  totalSales: number;
+  totalTips: number;
+  totalTax: number;
+  orderCount: number;
+  refundAmount: number;
+  netSales: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+function computeCloverKPIs(salesData: CloverSalesRow[]): KPI[] | null {
+  if (!salesData || salesData.length === 0) return null;
+
+  // Get the last 7 days of data
+  const sortedDates = Array.from(new Set(salesData.map(s => s.date))).sort().reverse();
+  const recentDates = sortedDates.slice(0, 7);
+  const olderDates = sortedDates.slice(7, 14);
+
+  const recentSales = salesData.filter(s => recentDates.includes(s.date));
+  const olderSales = salesData.filter(s => olderDates.includes(s.date));
+
+  const totalRevenue = recentSales.reduce((s, r) => s + r.totalSales, 0);
+  const totalOrders = recentSales.reduce((s, r) => s + r.orderCount, 0);
+  const totalTips = recentSales.reduce((s, r) => s + r.totalTips, 0);
+
+  const prevRevenue = olderSales.reduce((s, r) => s + r.totalSales, 0);
+  const prevOrders = olderSales.reduce((s, r) => s + r.orderCount, 0);
+
+  const revenueTrend = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
+  const ordersTrend = prevOrders > 0 ? ((totalOrders - prevOrders) / prevOrders) * 100 : 0;
+
+  // Count unique stores with data
+  const storeCount = new Set(recentSales.map(s => s.merchantId)).size;
+
+  return [
+    {
+      title: "Total Revenue",
+      value: Math.round(totalRevenue),
+      format: "currency",
+      trend: parseFloat(revenueTrend.toFixed(1)),
+      trendLabel: "vs prior period",
+      subtitle: `${storeCount} store${storeCount !== 1 ? "s" : ""} — last 7 days`,
+    },
+    {
+      title: "Total Tips",
+      value: Math.round(totalTips),
+      format: "currency",
+      trend: 0,
+      trendLabel: "from Clover POS",
+      subtitle: totalRevenue > 0 ? `${((totalTips / totalRevenue) * 100).toFixed(1)}% of revenue` : "",
+    },
+    {
+      title: "Avg Ticket",
+      value: totalOrders > 0 ? parseFloat((totalRevenue / totalOrders).toFixed(2)) : 0,
+      format: "currency",
+      trend: 0,
+      trendLabel: "from Clover POS",
+      subtitle: `${totalOrders.toLocaleString()} orders`,
+    },
+    {
+      title: "Total Orders",
+      value: totalOrders,
+      format: "number",
+      trend: parseFloat(ordersTrend.toFixed(1)),
+      trendLabel: "vs prior period",
+      subtitle: `Avg $${totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) : "0"} per order`,
+    },
+  ];
+}
+
+function computeCloverWeeklySales(salesData: CloverSalesRow[]): WeeklySales[] | null {
+  if (!salesData || salesData.length === 0) return null;
+
+  // Group by date, with each store as a column
+  const dateMap = new Map<string, { pk: number; mk: number; ontario: number; tunnel: number }>();
+
+  for (const row of salesData) {
+    const storeId = merchantToStoreId[row.merchantId] || "pk";
+    const existing = dateMap.get(row.date) ?? { pk: 0, mk: 0, ontario: 0, tunnel: 0 };
+    existing[storeId as keyof typeof existing] = row.totalSales;
+    dateMap.set(row.date, existing);
+  }
+
+  return Array.from(dateMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, data]) => {
+      // Format date nicely
+      const d = new Date(date + "T12:00:00");
+      const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      return { week: label, ...data };
+    });
+}
+
+function computeCloverDailyTraffic(salesData: CloverSalesRow[]): DailyTraffic[] | null {
+  if (!salesData || salesData.length === 0) return null;
+
+  // Group by day of week
+  const dayMap = new Map<string, { pk: number[]; mk: number[]; ontario: number[]; tunnel: number[] }>();
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  for (const row of salesData) {
+    const storeId = merchantToStoreId[row.merchantId] || "pk";
+    const d = new Date(row.date + "T12:00:00");
+    const dayName = dayNames[d.getDay()];
+    const existing = dayMap.get(dayName) ?? { pk: [], mk: [], ontario: [], tunnel: [] };
+    (existing[storeId as keyof typeof existing] as number[]).push(row.orderCount);
+    dayMap.set(dayName, existing);
+  }
+
+  // Return in Mon-Sun order with averages
+  const orderedDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  return orderedDays
+    .filter(day => dayMap.has(day))
+    .map(day => {
+      const data = dayMap.get(day)!;
+      const avg = (arr: number[]) => arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+      return {
+        day,
+        pk: avg(data.pk),
+        mk: avg(data.mk),
+        ontario: avg(data.ontario),
+        tunnel: avg(data.tunnel),
+      };
+    });
+}
+
+function computeCloverLabourData(salesData: CloverSalesRow[]): LabourEntry[] | null {
+  if (!salesData || salesData.length === 0) return null;
+
+  // Get last 7 days of data per store
+  const sortedDates = Array.from(new Set(salesData.map(s => s.date))).sort().reverse();
+  const recentDates = sortedDates.slice(0, 7);
+  const recentSales = salesData.filter(s => recentDates.includes(s.date));
+
+  // Group by store
+  const storeRevenue = new Map<string, number>();
+  for (const row of recentSales) {
+    const storeId = merchantToStoreId[row.merchantId] || "pk";
+    storeRevenue.set(storeId, (storeRevenue.get(storeId) || 0) + row.totalSales);
+  }
+
+  return stores.map((store) => {
+    const revenue = storeRevenue.get(store.id) || 0;
+    // We don't have labour data from Clover (shifts returned 0), so use demo labour %
+    const demoEntry = demoLabourData.find(d => d.store === store.id);
+    const labourPercent = demoEntry?.labourPercent ?? 28;
+    const labourCost = revenue * (labourPercent / 100);
+
+    return {
+      store: store.id,
+      revenue: Math.round(revenue),
+      labourCost: Math.round(labourCost),
+      labourPercent,
+      target: 30,
+      employees: demoEntry?.employees ?? 0,
+      hoursWorked: demoEntry?.hoursWorked ?? 0,
+    };
+  });
+}
+
+// ─── CSV Data Helpers ──────────────────────────────────────────
+
 function computeKPIs(uploads: ParseResult[]): KPI[] | null {
   const netReports = uploads.filter((u) => u.type === "net" && u.net);
   const labourReports = uploads.filter((u) => u.type === "labour" && u.labour);
@@ -112,12 +289,10 @@ function computeKPIs(uploads: ParseResult[]): KPI[] | null {
   ];
 }
 
-// Merge uploaded net reports into weekly sales format
 function computeWeeklySales(uploads: ParseResult[]): WeeklySales[] | null {
   const netReports = uploads.filter((u) => u.type === "net" && u.net && u.net.dailyBreakdown.length > 0);
   if (netReports.length === 0) return null;
 
-  // Group daily data by date across stores
   const dateMap = new Map<string, { pk: number; mk: number; ontario: number; tunnel: number }>();
 
   for (const upload of netReports) {
@@ -138,7 +313,6 @@ function computeWeeklySales(uploads: ParseResult[]): WeeklySales[] | null {
     .map(([date, data]) => ({ week: date, ...data }));
 }
 
-// Merge uploaded labour reports into labour data format
 function computeLabourData(uploads: ParseResult[]): LabourEntry[] | null {
   const labourReports = uploads.filter((u) => u.type === "labour" && u.labour);
   const netReports = uploads.filter((u) => u.type === "net" && u.net);
@@ -174,8 +348,16 @@ function computeLabourData(uploads: ParseResult[]): LabourEntry[] | null {
   });
 }
 
+// ─── Provider ──────────────────────────────────────────────────
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<UploadedData>(loadFromStorage);
+
+  // Fetch Clover data from API
+  const { data: cloverSalesData } = trpc.clover.salesData.useQuery(undefined, {
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    retry: 1,
+  });
 
   useEffect(() => {
     saveToStorage(data);
@@ -199,12 +381,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setData({ uploads: [], lastUpdated: null });
   }, []);
 
-  const hasLiveData = data.uploads.length > 0;
+  const hasCSVData = data.uploads.length > 0;
+  const hasCloverData = (cloverSalesData?.length ?? 0) > 0;
+  const hasLiveData = hasCloverData || hasCSVData;
 
-  // Compute merged data
-  const kpis = computeKPIs(data.uploads) ?? demoKPIs;
-  const weeklySales = computeWeeklySales(data.uploads) ?? demoWeeklySales;
-  const labourData = computeLabourData(data.uploads) ?? demoLabourData;
+  // Compute merged data — Clover data takes priority over CSV, CSV over demo
+  const kpis = useMemo(() => {
+    if (hasCloverData) return computeCloverKPIs(cloverSalesData as CloverSalesRow[]) ?? demoKPIs;
+    return computeKPIs(data.uploads) ?? demoKPIs;
+  }, [hasCloverData, cloverSalesData, data.uploads]);
+
+  const weeklySales = useMemo(() => {
+    if (hasCloverData) return computeCloverWeeklySales(cloverSalesData as CloverSalesRow[]) ?? demoWeeklySales;
+    return computeWeeklySales(data.uploads) ?? demoWeeklySales;
+  }, [hasCloverData, cloverSalesData, data.uploads]);
+
+  const labourData = useMemo(() => {
+    if (hasCloverData) return computeCloverLabourData(cloverSalesData as CloverSalesRow[]) ?? demoLabourData;
+    return computeLabourData(data.uploads) ?? demoLabourData;
+  }, [hasCloverData, cloverSalesData, data.uploads]);
+
+  const weeklyTraffic = useMemo(() => {
+    if (hasCloverData) return computeCloverDailyTraffic(cloverSalesData as CloverSalesRow[]) ?? demoTraffic;
+    return demoTraffic;
+  }, [hasCloverData, cloverSalesData]);
 
   const value: DataContextValue = {
     uploads: data.uploads,
@@ -213,11 +413,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     clearAllUploads,
     lastUpdated: data.lastUpdated,
     hasLiveData,
+    hasCloverData,
     kpis,
     weeklySales,
     labourData,
     labourTrend: demoLabourTrend,
-    weeklyTraffic: demoTraffic,
+    weeklyTraffic,
     hourlySales: demoHourlySales,
     reportSubmissions: demoReports,
     alerts: demoAlerts,

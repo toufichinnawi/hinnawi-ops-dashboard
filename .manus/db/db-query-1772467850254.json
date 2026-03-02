@@ -1,0 +1,49 @@
+{
+  "query": "SELECT * FROM clover_connections;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT * FROM clover_connections;",
+  "rows": [
+    {
+      "id": "1",
+      "storeName": "President Kennedy",
+      "merchantId": "JVGT8FGCVR9F1",
+      "accessToken": "d9a08099-28c0-e4b6-5f68-5f1241486433",
+      "refreshToken": "NULL",
+      "tokenExpiresAt": "NULL",
+      "isActive": "1",
+      "lastSyncAt": "2026-03-02 16:09:15",
+      "lastSyncSuccess": "0",
+      "createdAt": "2026-03-02 15:50:26",
+      "updatedAt": "2026-03-02 16:09:14"
+    },
+    {
+      "id": "2",
+      "storeName": "Mackay",
+      "merchantId": "CQP5TD9M5R691",
+      "accessToken": "66bcb7d7-1636-f639-716f-40b08e63a96d",
+      "refreshToken": "NULL",
+      "tokenExpiresAt": "NULL",
+      "isActive": "1",
+      "lastSyncAt": "2026-03-02 16:09:14",
+      "lastSyncSuccess": "0",
+      "createdAt": "2026-03-02 15:55:36",
+      "updatedAt": "2026-03-02 16:09:14"
+    },
+    {
+      "id": "3",
+      "storeName": "Tunnel",
+      "merchantId": "KKA9JDAYW9ZY1",
+      "accessToken": "1974c159-d21b-5018-923b-3e6dd96e851a",
+      "refreshToken": "NULL",
+      "tokenExpiresAt": "NULL",
+      "isActive": "1",
+      "lastSyncAt": "2026-03-02 16:09:14",
+      "lastSyncSuccess": "0",
+      "createdAt": "2026-03-02 15:58:01",
+      "updatedAt": "2026-03-02 16:09:13"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstoreName\tmerchantId\taccessToken\trefreshToken\ttokenExpiresAt\tisActive\tlastSyncAt\tlastSyncSuccess\tcreatedAt\tupdatedAt\n1\tPresident Kennedy\tJVGT8FGCVR9F1\td9a08099-28c0-e4b6-5f68-5f1241486433\tNULL\tNULL\t1\t2026-03-02 16:09:15\t0\t2026-03-02 15:50:26\t2026-03-02 16:09:14\n2\tMackay\tCQP5TD9M5R691\t66bcb7d7-1636-f639-716f-40b08e63a96d\tNULL\tNULL\t1\t2026-03-02 16:09:14\t0\t2026-03-02 15:55:36\t2026-03-02 16:09:14\n3\tTunnel\tKKA9JDAYW9ZY1\t1974c159-d21b-5018-923b-3e6dd96e851a\tNULL\tNULL\t1\t2026-03-02 16:09:14\t0\t2026-03-02 15:58:01\t2026-03-02 16:09:13\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

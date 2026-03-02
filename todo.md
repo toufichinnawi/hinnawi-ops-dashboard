@@ -79,9 +79,21 @@
 - [x] 22 vitest tests passing (clover + teams + auth)
 
 ---
-
 # Bug Fix: Clover 401 Unauthorized
 
-- [ ] Fix Clover API base URL for Canadian merchants
-- [ ] Add region selection to connect form (US/Canada/EU)
-- [ ] Test connection with correct regional endpoint
+- [x] Fix Clover API base URL for Canadian merchants
+- [x] Add region selection to connect form (US/Canada/EU)
+- [x] Test connection with correct regional endpoint
+
+---
+
+# Bug Fix: Clover Sync All Still Failing After Publish
+
+- [x] Debug exact error from Clover API during sync (filter field `inTime` → `in_time`)
+- [x] Fix the root cause (Clover shifts API uses snake_case filter fields)
+- [x] Verify sync works with real data (3 stores syncing successfully)
+- [x] Wire Clover sales data into DataContext (priority: Clover > CSV > Demo)
+- [x] Update Overview page KPIs with real Clover data
+- [x] Update Sales by Store chart with real Clover data
+- [x] Update Weekly Order Pattern with real Clover data
+- [x] Add "Clover POS Live" badge and connected banner

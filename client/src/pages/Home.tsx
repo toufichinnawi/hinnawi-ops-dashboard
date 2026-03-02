@@ -58,7 +58,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Home() {
-  const { kpis, weeklySales, weeklyTraffic, reportSubmissions, alerts, hasLiveData } = useData();
+  const { kpis, weeklySales, weeklyTraffic, reportSubmissions, alerts, hasLiveData, hasCloverData } = useData();
 
   const todayReports = reportSubmissions.filter((r) => r.type === "Daily Report");
   const status = {
@@ -88,10 +88,16 @@ export default function Home() {
               <p className="text-[#D4A853] text-xs font-medium uppercase tracking-[0.2em]">
                 Operations Dashboard
               </p>
-              {hasLiveData && (
+              {hasCloverData && (
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-medium">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Live Data
+                  Clover POS Live
+                </span>
+              )}
+              {!hasCloverData && hasLiveData && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-medium">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  CSV Data
                 </span>
               )}
               {!hasLiveData && (
@@ -110,8 +116,23 @@ export default function Home() {
         </motion.div>
 
         {/* Data Source Banner */}
+        {hasCloverData && (
+          <Link href="/clover">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/15 transition-colors"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <p className="text-sm text-foreground">
+                <span className="font-medium">Clover POS connected.</span>{" "}
+                <span className="text-muted-foreground">Showing live sales data from your stores →</span>
+              </p>
+            </motion.div>
+          </Link>
+        )}
         {!hasLiveData && (
-          <Link href="/data">
+          <Link href="/clover">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -120,7 +141,7 @@ export default function Home() {
               <Database className="w-4 h-4 text-[#D4A853]" />
               <p className="text-sm text-foreground">
                 <span className="font-medium">Currently showing demo data.</span>{" "}
-                <span className="text-muted-foreground">Upload your MYR CSV exports to see real numbers →</span>
+                <span className="text-muted-foreground">Connect your Clover POS or upload MYR CSV exports →</span>
               </p>
             </motion.div>
           </Link>
@@ -153,7 +174,7 @@ export default function Home() {
               <div>
                 <h3 className="font-serif text-lg text-foreground">Sales by Store</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {hasLiveData ? "From uploaded MYR data" : "Last 8 weeks — demo data"}
+                  {hasCloverData ? "Live from Clover POS" : hasLiveData ? "From uploaded MYR data" : "Last 8 weeks — demo data"}
                 </p>
               </div>
               <Link href="/stores">
