@@ -9,6 +9,7 @@ export interface Store {
   color: string;
   image: string;
   labourTarget: number;
+  closedWeekends?: boolean;
 }
 
 export interface KPI {
@@ -102,6 +103,7 @@ export const stores: Store[] = [
     color: "#F97316",
     image: "https://images.unsplash.com/photo-1559329007-40df8a9345d8?w=800&q=80",
     labourTarget: 24,
+    closedWeekends: true,
   },
 ];
 

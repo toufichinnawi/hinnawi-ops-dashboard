@@ -205,3 +205,23 @@
 - [x] Update Labour Monitor page with date filter, Excel upload button, trend chart from Excel data
 - [x] Write 6 vitest tests for Excel parser + tRPC endpoints (all passing)
 - [x] All 29 tests passing (Excel + Clover + 7shifts + Teams + Auth)
+
+---
+
+# Add Excel Labour Data to Overview & Store Performance
+
+- [x] Show real labour cost/% from Excel on Overview page KPIs
+- [x] Show real labour cost/% from Excel on Store Performance page cards
+- [x] Ensure Excel data overlays correctly when Clover data is also present
+
+# Automate Daily Excel Sync at 11:59 PM
+
+- [x] Build scheduled task to fetch daily report from SharePoint at 11:59 PM
+- [x] Parse and upsert new rows into excel_labour_data table
+- [x] Handle authentication and error cases
+
+# Tunnel Store Closed on Weekends
+
+- [x] Add weekend closure flag to Tunnel store config
+- [x] Show "Closed Weekends" badge on Tunnel store card
+- [x] Don't flag missing Tunnel weekend data as an issue

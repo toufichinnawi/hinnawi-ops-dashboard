@@ -420,10 +420,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const totalRev = cloverKpis[0].value + Math.round(ssRevenue);
         const totalOrd = cloverKpis[3].value + ssOrders;
         const storeCount = new Set([...((cloverSalesData as CloverSalesRow[]) || []).filter(s => recentDates.includes(s.date)).map(s => s.merchantId)]).size + 1;
+
+        // Compute total labour cost from Excel + 7shifts
+        const ssLabourCost = recentSS.reduce((s: number, r: any) => s + r.labourCost, 0);
+        let excelLabourCost = 0;
+        if (hasExcelData) {
+          const exRows = excelLabourData as any[];
+          const exDates = Array.from(new Set(exRows.map((r: any) => r.date))).sort().reverse();
+          const recentExDates = exDates.slice(0, 7);
+          excelLabourCost = exRows.filter((r: any) => recentExDates.includes(r.date)).reduce((s: number, r: any) => s + r.labourCost, 0);
+        }
+        const totalLabour = Math.round(ssLabourCost + excelLabourCost);
+        const labourPct = totalRev > 0 ? (totalLabour / totalRev) * 100 : 0;
+        const hasLabour = totalLabour > 0;
+        const labourSrc = hasExcelData && hasSevenShiftsData ? "Excel + 7shifts" : hasExcelData ? "Excel" : hasSevenShiftsData ? "7shifts" : "—";
+
         return [
           { ...cloverKpis[0], value: totalRev, subtitle: `${storeCount} stores — last 7 days` },
-          cloverKpis[1], // Tips (only from Clover)
-          { ...cloverKpis[2], value: totalOrd > 0 ? parseFloat((totalRev / totalOrd).toFixed(2)) : 0, subtitle: `${totalOrd.toLocaleString()} orders` },
+          { title: "Labour Cost", value: totalLabour, format: "currency" as const, trend: 0, trendLabel: hasLabour ? `from ${labourSrc}` : "No labour data", subtitle: hasLabour ? `${labourPct.toFixed(1)}% of revenue` : "Upload Excel report" },
+          { title: "Labour %", value: parseFloat(labourPct.toFixed(1)), format: "percent" as const, trend: 0, trendLabel: hasLabour ? `from ${labourSrc}` : "No labour data", subtitle: hasLabour ? `$${totalLabour.toLocaleString()} / $${totalRev.toLocaleString()}` : "Upload Excel report" },
           { ...cloverKpis[3], value: totalOrd, subtitle: `Avg $${totalOrd > 0 ? (totalRev / totalOrd).toFixed(2) : "0"} per order` },
         ];
       }
@@ -437,7 +452,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ];
     }
     return computeKPIs(data.uploads) ?? demoKPIs;
-  }, [hasCloverData, hasSevenShiftsData, cloverSalesData, sevenShiftsSalesData, data.uploads]);
+  }, [hasCloverData, hasSevenShiftsData, hasExcelData, cloverSalesData, sevenShiftsSalesData, excelLabourData, data.uploads]);
 
   const weeklySales = useMemo(() => {
     const cloverWeekly = hasCloverData ? computeCloverWeeklySales(cloverSalesData as CloverSalesRow[]) : null;

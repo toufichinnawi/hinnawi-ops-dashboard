@@ -167,9 +167,16 @@ export default function Stores() {
                       </div>
                       <h3 className="text-white font-serif text-lg">{store.name}</h3>
                     </div>
-                    <div className="flex items-center gap-1 text-white/70 text-xs">
-                      <MapPin className="w-3 h-3" />
-                      Montreal
+                    <div className="flex items-center gap-1.5">
+                      {store.closedWeekends && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200 text-[9px] font-medium">
+                          Closed Weekends
+                        </span>
+                      )}
+                      <div className="flex items-center gap-1 text-white/70 text-xs">
+                        <MapPin className="w-3 h-3" />
+                        Montreal
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -181,15 +188,20 @@ export default function Stores() {
                     <p className="text-lg font-mono font-semibold mt-0.5">${(labour.revenue / 1000).toFixed(1)}K</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Labour %</p>
-                    <p className={cn("text-lg font-mono font-semibold mt-0.5", isOver ? "text-red-600" : "text-emerald-600")}>
-                      {labour.labourPercent.toFixed(1)}%
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Labour $</p>
+                    <p className={cn("text-lg font-mono font-semibold mt-0.5", isOver ? "text-red-600" : "text-foreground")}>
+                      ${labour.labourCost > 0 ? (labour.labourCost / 1000).toFixed(1) + "K" : "—"}
                     </p>
-                    <p className="text-[9px] text-muted-foreground mt-0.5">Target: {target}%</p>
+                    {labour.labourCost > 0 && (
+                      <p className="text-[9px] text-muted-foreground mt-0.5">from Excel</p>
+                    )}
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Staff</p>
-                    <p className="text-lg font-mono font-semibold mt-0.5">{labour.employees}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Labour %</p>
+                    <p className={cn("text-lg font-mono font-semibold mt-0.5", isOver ? "text-red-600" : "text-emerald-600")}>
+                      {labour.labourPercent > 0 ? labour.labourPercent.toFixed(1) + "%" : "—"}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">Target: {target}%</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Period Sales</p>

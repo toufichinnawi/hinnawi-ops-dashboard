@@ -182,8 +182,8 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
           : `${format(dateFilter.from, "MMM d")} – ${format(dateFilter.to, "MMM d")}`;
       return [
         { title: "Total Revenue", value: 0, format: "currency", trend: 0, trendLabel: periodLabel, subtitle: "No data for this period" },
-        { title: "Total Tips", value: 0, format: "currency", trend: 0, trendLabel: "No data", subtitle: "—" },
-        { title: "Avg Ticket", value: 0, format: "currency", trend: 0, trendLabel: "No data", subtitle: "0 orders" },
+        { title: "Labour Cost", value: 0, format: "currency", trend: 0, trendLabel: "No data", subtitle: "—" },
+        { title: "Labour %", value: 0, format: "percent", trend: 0, trendLabel: "No data", subtitle: "—" },
         { title: "Total Orders", value: 0, format: "number", trend: 0, trendLabel: periodLabel, subtitle: "No data for this period" },
       ];
     }
@@ -192,14 +192,21 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
     const totalRevenue = unifiedRows.reduce((s, r) => s + r.totalSales, 0);
     const totalOrders = unifiedRows.reduce((s, r) => s + r.orderCount, 0);
     const totalTips = unifiedRows.reduce((s, r) => s + r.totalTips, 0);
+    const totalLabourCost = unifiedRows.reduce((s, r) => s + r.labourCost, 0);
     const storeCount = new Set(unifiedRows.map(r => r.storeId)).size;
     const dayCount = new Set(unifiedRows.map(r => r.date)).size;
+    const overallLabourPercent = totalRevenue > 0 ? (totalLabourCost / totalRevenue) * 100 : 0;
+    const hasAnyLabour = totalLabourCost > 0;
 
     const sources: string[] = [];
     if (hasCloverData) sources.push("Clover");
     if (hasSevenShiftsData) sources.push("7shifts");
     if (hasExcelData) sources.push("Excel");
     const sourceLabel = sources.join(" + ");
+
+    const labourSource = hasExcelData && hasSevenShiftsData
+      ? "Excel + 7shifts"
+      : hasExcelData ? "Excel" : hasSevenShiftsData ? "7shifts" : "—";
 
     const periodLabel = dateFilter.label !== "Custom"
       ? dateFilter.label
@@ -217,20 +224,20 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
         subtitle: `${storeCount} store${storeCount !== 1 ? "s" : ""} — ${dayCount} day${dayCount !== 1 ? "s" : ""}`,
       },
       {
-        title: "Total Tips",
-        value: Math.round(totalTips),
+        title: "Labour Cost",
+        value: Math.round(totalLabourCost),
         format: "currency",
         trend: 0,
-        trendLabel: `from ${sourceLabel}`,
-        subtitle: totalRevenue > 0 ? `${((totalTips / totalRevenue) * 100).toFixed(1)}% of revenue` : "",
+        trendLabel: hasAnyLabour ? `from ${labourSource}` : "No labour data",
+        subtitle: hasAnyLabour ? `${overallLabourPercent.toFixed(1)}% of revenue` : "Upload Excel report",
       },
       {
-        title: "Avg Ticket",
-        value: totalOrders > 0 ? parseFloat((totalRevenue / totalOrders).toFixed(2)) : 0,
-        format: "currency",
+        title: "Labour %",
+        value: parseFloat(overallLabourPercent.toFixed(1)),
+        format: "percent",
         trend: 0,
-        trendLabel: `from ${sourceLabel}`,
-        subtitle: `${totalOrders.toLocaleString()} orders`,
+        trendLabel: hasAnyLabour ? `from ${labourSource}` : "No labour data",
+        subtitle: hasAnyLabour ? `$${Math.round(totalLabourCost).toLocaleString()} / $${Math.round(totalRevenue).toLocaleString()}` : "Upload Excel report",
       },
       {
         title: "Total Orders",
