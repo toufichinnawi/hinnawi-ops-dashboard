@@ -1,14 +1,17 @@
 // Design: "Golden Hour Operations" — Refined Editorial
 // Store Performance: Per-store cards with images, metrics, and comparison
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts";
-import { MapPin, Database } from "lucide-react";
+import { MapPin, CheckCircle2, Database, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
+import { DateFilter, getDefaultDateFilter, type DateFilterValue } from "@/components/DateFilter";
 import { useData } from "@/contexts/DataContext";
+import { useFilteredCloverData } from "@/hooks/useFilteredCloverData";
 import { stores } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
@@ -31,35 +34,81 @@ const radarData = [
 ];
 
 export default function Stores() {
-  const { labourData, weeklySales, hourlySales, hasLiveData } = useData();
+  const { hasLiveData, hasCloverData, hourlySales } = useData();
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>(getDefaultDateFilter);
+
+  // Fetch filtered Clover data
+  const {
+    labourData: filteredLabour,
+    weeklySales: filteredSales,
+    isLoading: filterLoading,
+    hasData: hasFilteredData,
+  } = useFilteredCloverData(dateFilter);
+
+  // Fall back to DataContext data if no filtered Clover data
+  const { labourData: contextLabour, weeklySales: contextSales } = useData();
+
+  const labourData = hasCloverData && filteredLabour ? filteredLabour : contextLabour;
+  const weeklySales = hasCloverData && filteredSales ? filteredSales : contextSales;
 
   function getLabour(storeId: string) {
     return labourData.find((d) => d.store === storeId) ?? { revenue: 0, labourCost: 0, labourPercent: 0, target: 30, employees: 0, hoursWorked: 0 };
   }
 
+  // Compute dynamic radar data from filtered sales when Clover data is available
+  const dynamicRadarData = hasCloverData && filteredLabour ? (() => {
+    const maxRevenue = Math.max(...filteredLabour.map(l => l.revenue), 1);
+    return radarData.map(item => {
+      const updated = { ...item };
+      for (const store of stores) {
+        const labour = filteredLabour.find(l => l.store === store.id);
+        if (labour && item.metric === "Revenue") {
+          (updated as any)[store.id] = Math.round((labour.revenue / maxRevenue) * 100);
+        }
+      }
+      return updated;
+    });
+  })() : radarData;
+
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 space-y-8 max-w-[1400px]">
-        {/* Header */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start justify-between">
+        {/* Header with Date Filter */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <p className="text-xs text-[#D4A853] uppercase tracking-[0.2em] font-medium">Store Performance</p>
             <h2 className="text-2xl font-serif text-foreground mt-1">Location Overview</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              {hasLiveData ? "From uploaded MYR data" : "Compare performance across all 4 locations — demo data"}
+              {hasCloverData
+                ? `From Clover POS — ${dateFilter.label}`
+                : hasLiveData
+                  ? "From uploaded MYR data"
+                  : "Compare performance across all 4 locations — demo data"}
             </p>
           </div>
-          {hasLiveData && (
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs text-emerald-700 font-medium">Live Data</span>
-            </span>
-          )}
+          <div className="flex items-center gap-3 shrink-0">
+            {hasCloverData && (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs text-emerald-700 font-medium">Clover POS</span>
+              </span>
+            )}
+            {!hasCloverData && hasLiveData && (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs text-emerald-700 font-medium">Live Data</span>
+              </span>
+            )}
+            {filterLoading && hasCloverData && (
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            )}
+            <DateFilter value={dateFilter} onChange={setDateFilter} />
+          </div>
         </motion.div>
 
         {/* Data Source Banner */}
         {!hasLiveData && (
-          <Link href="/data">
+          <Link href="/clover">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -68,7 +117,7 @@ export default function Stores() {
               <Database className="w-4 h-4 text-[#D4A853]" />
               <p className="text-sm text-foreground">
                 <span className="font-medium">Showing demo data.</span>{" "}
-                <span className="text-muted-foreground">Upload your MYR exports to see real store performance →</span>
+                <span className="text-muted-foreground">Connect your Clover POS to see real store performance →</span>
               </p>
             </motion.div>
           </Link>
@@ -79,8 +128,16 @@ export default function Stores() {
           {stores.map((store) => {
             const labour = getLabour(store.id);
             const isOver = labour.labourPercent > labour.target;
-            const lastWeek = weeklySales[weeklySales.length - 1];
-            const weekRevenue = lastWeek ? (lastWeek[store.id as keyof typeof lastWeek] as number ?? 0) : 0;
+
+            // Compute total sales for this store from filtered weekly sales
+            const storeTotalSales = weeklySales
+              ? weeklySales.reduce((sum, week) => sum + ((week as any)[store.id] ?? 0), 0)
+              : 0;
+
+            // Compute total orders from filtered data
+            const storeOrders = hasCloverData && filteredLabour
+              ? labour.revenue // Revenue is already computed from filtered data
+              : 0;
 
             return (
               <motion.div
@@ -128,8 +185,8 @@ export default function Stores() {
                     <p className="text-lg font-mono font-semibold mt-0.5">{labour.employees}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Wk Sales</p>
-                    <p className="text-lg font-mono font-semibold mt-0.5">${(weekRevenue / 1000).toFixed(1)}K</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Period Sales</p>
+                    <p className="text-lg font-mono font-semibold mt-0.5">${(storeTotalSales / 1000).toFixed(1)}K</p>
                   </div>
                 </div>
               </motion.div>
@@ -143,7 +200,7 @@ export default function Stores() {
             <h3 className="font-serif text-lg text-foreground mb-1">Store Comparison</h3>
             <p className="text-xs text-muted-foreground mb-4">Multi-dimensional performance radar</p>
             <ResponsiveContainer width="100%" height={320}>
-              <RadarChart data={radarData}>
+              <RadarChart data={dynamicRadarData}>
                 <PolarGrid stroke="#E7E5E4" />
                 <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11, fill: "#78716C" }} />
                 <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />

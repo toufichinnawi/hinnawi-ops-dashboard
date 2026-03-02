@@ -1,17 +1,20 @@
 // Design: "Golden Hour Operations" — Refined Editorial
-// Overview page: Hero banner, KPI cards, weekly sales chart, alerts, report status
+// Overview page: Hero banner, Date filter, KPI cards, weekly sales chart, alerts, report status
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   AreaChart, Area,
 } from "recharts";
 import {
-  AlertTriangle, CheckCircle2, Clock, XCircle, ArrowRight, Database,
+  AlertTriangle, CheckCircle2, Clock, XCircle, ArrowRight, Database, Loader2,
 } from "lucide-react";
 import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import KPICard from "@/components/KPICard";
+import { DateFilter, getDefaultDateFilter, type DateFilterValue } from "@/components/DateFilter";
 import { useData } from "@/contexts/DataContext";
+import { useFilteredCloverData } from "@/hooks/useFilteredCloverData";
 import { stores } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
@@ -58,7 +61,18 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Home() {
-  const { kpis, weeklySales, weeklyTraffic, reportSubmissions, alerts, hasLiveData, hasCloverData } = useData();
+  const { reportSubmissions, alerts, hasLiveData, hasCloverData } = useData();
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>(getDefaultDateFilter);
+
+  // Fetch filtered Clover data based on date selection
+  const { kpis: filteredKpis, weeklySales: filteredSales, dailyTraffic: filteredTraffic, isLoading: filterLoading, hasData: hasFilteredData } = useFilteredCloverData(dateFilter);
+
+  // Fall back to DataContext data if no filtered Clover data
+  const { kpis: contextKpis, weeklySales: contextSales, weeklyTraffic: contextTraffic } = useData();
+
+  const kpis = hasCloverData && filteredKpis ? filteredKpis : contextKpis;
+  const weeklySales = hasCloverData && filteredSales ? filteredSales : contextSales;
+  const weeklyTraffic = hasCloverData && filteredTraffic ? filteredTraffic : contextTraffic;
 
   const todayReports = reportSubmissions.filter((r) => r.type === "Daily Report");
   const status = {
@@ -115,37 +129,49 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {/* Data Source Banner */}
-        {hasCloverData && (
-          <Link href="/clover">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/15 transition-colors"
-            >
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <p className="text-sm text-foreground">
-                <span className="font-medium">Clover POS connected.</span>{" "}
-                <span className="text-muted-foreground">Showing live sales data from your stores →</span>
-              </p>
-            </motion.div>
-          </Link>
-        )}
-        {!hasLiveData && (
-          <Link href="/clover">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#D4A853]/10 border border-[#D4A853]/20 cursor-pointer hover:bg-[#D4A853]/15 transition-colors"
-            >
-              <Database className="w-4 h-4 text-[#D4A853]" />
-              <p className="text-sm text-foreground">
-                <span className="font-medium">Currently showing demo data.</span>{" "}
-                <span className="text-muted-foreground">Connect your Clover POS or upload MYR CSV exports →</span>
-              </p>
-            </motion.div>
-          </Link>
-        )}
+        {/* Data Source Banner + Date Filter */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            {hasCloverData && (
+              <Link href="/clover">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/15 transition-colors"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <p className="text-sm text-foreground">
+                    <span className="font-medium">Clover POS connected.</span>{" "}
+                    <span className="text-muted-foreground">Showing live sales data from your stores →</span>
+                  </p>
+                </motion.div>
+              </Link>
+            )}
+            {!hasLiveData && (
+              <Link href="/clover">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#D4A853]/10 border border-[#D4A853]/20 cursor-pointer hover:bg-[#D4A853]/15 transition-colors"
+                >
+                  <Database className="w-4 h-4 text-[#D4A853]" />
+                  <p className="text-sm text-foreground">
+                    <span className="font-medium">Currently showing demo data.</span>{" "}
+                    <span className="text-muted-foreground">Connect your Clover POS or upload MYR CSV exports →</span>
+                  </p>
+                </motion.div>
+              </Link>
+            )}
+          </div>
+
+          {/* Date Filter */}
+          <div className="flex items-center gap-2 shrink-0">
+            {filterLoading && hasCloverData && (
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            )}
+            <DateFilter value={dateFilter} onChange={setDateFilter} />
+          </div>
+        </div>
 
         {/* KPI Cards */}
         <motion.div
@@ -163,7 +189,7 @@ export default function Home() {
 
         {/* Main content grid: Chart + Sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Weekly Sales Chart */}
+          {/* Sales Chart */}
           <motion.div
             variants={fadeUp}
             initial="hidden"
@@ -174,7 +200,11 @@ export default function Home() {
               <div>
                 <h3 className="font-serif text-lg text-foreground">Sales by Store</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {hasCloverData ? "Live from Clover POS" : hasLiveData ? "From uploaded MYR data" : "Last 8 weeks — demo data"}
+                  {hasCloverData
+                    ? `Live from Clover POS — ${dateFilter.label}`
+                    : hasLiveData
+                      ? "From uploaded MYR data"
+                      : "Last 8 weeks — demo data"}
                 </p>
               </div>
               <Link href="/stores">
@@ -285,7 +315,11 @@ export default function Home() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-serif text-lg text-foreground">Weekly Order Pattern</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Average daily orders by day of week</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {hasCloverData
+                  ? `Average daily orders — ${dateFilter.label}`
+                  : "Average daily orders by day of week"}
+              </p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>

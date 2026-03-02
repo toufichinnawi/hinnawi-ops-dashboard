@@ -97,3 +97,15 @@
 - [x] Update Sales by Store chart with real Clover data
 - [x] Update Weekly Order Pattern with real Clover data
 - [x] Add "Clover POS Live" badge and connected banner
+
+---
+
+# Date Filtering on Overview & Store Performance
+
+- [x] Build reusable DateFilter component (single day + date range modes)
+- [x] Add date picker UI (calendar popup with presets: Today, Yesterday, Last 7 Days, Last 30 Days, Custom Range)
+- [x] Update backend salesData query to accept optional date filters (fromDate/toDate params)
+- [x] Wire date filter into Overview page (KPIs, Sales chart, Order Pattern)
+- [x] Wire date filter into Store Performance page (store cards, period sales)
+- [x] Ensure filtered data updates KPIs, charts, and tables dynamically
+- [x] Test date filtering end-to-end (22 tests passing)

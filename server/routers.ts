@@ -9,7 +9,7 @@ import {
   listAlertHistory, createAlertHistoryEntry,
   listCloverConnections, getCloverConnectionById, getCloverConnectionByMerchantId,
   createCloverConnection, updateCloverConnection, deleteCloverConnection,
-  upsertCloverDailySales, getAllCloverSales, getCloverSalesByConnection,
+  upsertCloverDailySales, getAllCloverSales, getCloverSalesByConnection, getCloverSalesByDateRange,
   upsertCloverShift, getAllCloverShifts,
 } from "./db";
 import { sendTeamsAlert, testWebhookConnection, buildLabourAlert, buildReportOverdueAlert, buildSalesDropAlert, buildDailySummaryAlert } from "./teams";
@@ -546,8 +546,17 @@ export const appRouter = router({
 
     // Get aggregated sales data for the dashboard
     salesData: protectedProcedure
-      .input(z.object({ connectionId: z.number().optional(), limit: z.number().optional() }).optional())
+      .input(z.object({
+        connectionId: z.number().optional(),
+        limit: z.number().optional(),
+        fromDate: z.string().optional(),
+        toDate: z.string().optional(),
+      }).optional())
       .query(async ({ input }) => {
+        // If date range is provided, use date-filtered query
+        if (input?.fromDate && input?.toDate) {
+          return getCloverSalesByDateRange(input.fromDate, input.toDate);
+        }
         if (input?.connectionId) {
           return getCloverSalesByConnection(input.connectionId, input.limit ?? 30);
         }

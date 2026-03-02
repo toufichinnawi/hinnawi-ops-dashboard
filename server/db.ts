@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -289,6 +289,17 @@ export async function getAllCloverSales(limit = 120): Promise<CloverDailySales[]
   return db.select().from(cloverDailySales)
     .orderBy(desc(cloverDailySales.date))
     .limit(limit);
+}
+
+export async function getCloverSalesByDateRange(fromDate: string, toDate: string): Promise<CloverDailySales[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(cloverDailySales)
+    .where(and(
+      gte(cloverDailySales.date, fromDate),
+      lte(cloverDailySales.date, toDate)
+    ))
+    .orderBy(desc(cloverDailySales.date));
 }
 
 // ─── Clover Shifts ──────────────────────────────────────────────────
