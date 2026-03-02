@@ -6,15 +6,13 @@ import {
   AreaChart, Area,
 } from "recharts";
 import {
-  AlertTriangle, CheckCircle2, Clock, XCircle, ArrowRight,
+  AlertTriangle, CheckCircle2, Clock, XCircle, ArrowRight, Database,
 } from "lucide-react";
 import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import KPICard from "@/components/KPICard";
-import {
-  overviewKPIs, weeklySales, alerts, reportSubmissions, stores,
-  weeklyTraffic,
-} from "@/lib/data";
+import { useData } from "@/contexts/DataContext";
+import { stores } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 const stagger = {
@@ -43,16 +41,6 @@ function getStoreName(id: string) {
   return stores.find((s) => s.id === id)?.shortName ?? id;
 }
 
-function getStatusCounts() {
-  const today = reportSubmissions.filter((r) => r.type === "Daily Report");
-  return {
-    submitted: today.filter((r) => r.status === "submitted").length,
-    pending: today.filter((r) => r.status === "pending").length,
-    overdue: today.filter((r) => r.status === "overdue").length,
-    total: today.length,
-  };
-}
-
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload) return null;
   return (
@@ -70,7 +58,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Home() {
-  const status = getStatusCounts();
+  const { kpis, weeklySales, weeklyTraffic, reportSubmissions, alerts, hasLiveData } = useData();
+
+  const todayReports = reportSubmissions.filter((r) => r.type === "Daily Report");
+  const status = {
+    submitted: todayReports.filter((r) => r.status === "submitted").length,
+    pending: todayReports.filter((r) => r.status === "pending").length,
+    overdue: todayReports.filter((r) => r.status === "overdue").length,
+  };
 
   return (
     <DashboardLayout>
@@ -89,17 +84,47 @@ export default function Home() {
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#1C1210]/85 via-[#1C1210]/60 to-transparent" />
           <div className="relative z-10 h-full flex flex-col justify-center px-8">
-            <p className="text-[#D4A853] text-xs font-medium uppercase tracking-[0.2em] mb-1">
-              Operations Dashboard
-            </p>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-[#D4A853] text-xs font-medium uppercase tracking-[0.2em]">
+                Operations Dashboard
+              </p>
+              {hasLiveData && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-medium">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Live Data
+                </span>
+              )}
+              {!hasLiveData && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/50 text-[10px] font-medium">
+                  Demo Data
+                </span>
+              )}
+            </div>
             <h2 className="text-white text-2xl lg:text-3xl font-serif">
               Good morning, Hinnawi Bros
             </h2>
             <p className="text-white/70 text-sm mt-1.5 max-w-md">
-              All 4 stores are open. Here is your operational snapshot for today, March 2, 2026.
+              All 4 stores are open. Here is your operational snapshot for today.
             </p>
           </div>
         </motion.div>
+
+        {/* Data Source Banner */}
+        {!hasLiveData && (
+          <Link href="/data">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#D4A853]/10 border border-[#D4A853]/20 cursor-pointer hover:bg-[#D4A853]/15 transition-colors"
+            >
+              <Database className="w-4 h-4 text-[#D4A853]" />
+              <p className="text-sm text-foreground">
+                <span className="font-medium">Currently showing demo data.</span>{" "}
+                <span className="text-muted-foreground">Upload your MYR CSV exports to see real numbers →</span>
+              </p>
+            </motion.div>
+          </Link>
+        )}
 
         {/* KPI Cards */}
         <motion.div
@@ -108,7 +133,7 @@ export default function Home() {
           animate="show"
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
         >
-          {overviewKPIs.map((kpi, i) => (
+          {kpis.map((kpi) => (
             <motion.div key={kpi.title} variants={fadeUp}>
               <KPICard kpi={kpi} invertTrend={kpi.title === "Labour %"} />
             </motion.div>
@@ -126,8 +151,10 @@ export default function Home() {
           >
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-serif text-lg text-foreground">Weekly Sales by Store</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Last 8 weeks — all locations</p>
+                <h3 className="font-serif text-lg text-foreground">Sales by Store</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {hasLiveData ? "From uploaded MYR data" : "Last 8 weeks — demo data"}
+                </p>
               </div>
               <Link href="/stores">
                 <span className="text-xs text-[#D4A853] hover:underline flex items-center gap-1 cursor-pointer">

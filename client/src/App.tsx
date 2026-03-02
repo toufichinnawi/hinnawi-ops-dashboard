@@ -4,12 +4,14 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { DataProvider } from "./contexts/DataContext";
 import Home from "./pages/Home";
 import Labour from "./pages/Labour";
 import Reports from "./pages/Reports";
 import Stores from "./pages/Stores";
 import Maintenance from "./pages/Maintenance";
 import Alerts from "./pages/Alerts";
+import DataManagement from "./pages/DataManagement";
 
 function Router() {
   return (
@@ -20,6 +22,7 @@ function Router() {
       <Route path="/stores" component={Stores} />
       <Route path="/maintenance" component={Maintenance} />
       <Route path="/alerts" component={Alerts} />
+      <Route path="/data" component={DataManagement} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -30,10 +33,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <DataProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </DataProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

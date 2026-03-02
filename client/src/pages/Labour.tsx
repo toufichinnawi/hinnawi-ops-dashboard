@@ -5,9 +5,11 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell, ReferenceLine,
 } from "recharts";
-import { Users, DollarSign, Clock, Target } from "lucide-react";
+import { Users, DollarSign, Clock, Database } from "lucide-react";
+import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
-import { labourData, labourTrend, stores } from "@/lib/data";
+import { useData } from "@/contexts/DataContext";
+import { stores } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 const fadeUp = {
@@ -26,9 +28,11 @@ function getBarColor(percent: number, target: number) {
 }
 
 export default function Labour() {
+  const { labourData, labourTrend, hasLiveData } = useData();
+
   const totalRevenue = labourData.reduce((s, d) => s + d.revenue, 0);
   const totalLabour = labourData.reduce((s, d) => s + d.labourCost, 0);
-  const totalPercent = (totalLabour / totalRevenue) * 100;
+  const totalPercent = totalRevenue > 0 ? (totalLabour / totalRevenue) * 100 : 0;
   const totalEmployees = labourData.reduce((s, d) => s + d.employees, 0);
   const totalHours = labourData.reduce((s, d) => s + d.hoursWorked, 0);
 
@@ -36,11 +40,38 @@ export default function Labour() {
     <DashboardLayout>
       <div className="p-6 lg:p-8 space-y-8 max-w-[1400px]">
         {/* Header */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <p className="text-xs text-[#D4A853] uppercase tracking-[0.2em] font-medium">Labour Monitoring</p>
-          <h2 className="text-2xl font-serif text-foreground mt-1">Labour Cost Analysis</h2>
-          <p className="text-sm text-muted-foreground mt-1">Current biweekly period — all 4 locations</p>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start justify-between">
+          <div>
+            <p className="text-xs text-[#D4A853] uppercase tracking-[0.2em] font-medium">Labour Monitoring</p>
+            <h2 className="text-2xl font-serif text-foreground mt-1">Labour Cost Analysis</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {hasLiveData ? "From uploaded MYR data — all locations" : "Current biweekly period — demo data"}
+            </p>
+          </div>
+          {hasLiveData && (
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs text-emerald-700 font-medium">Live Data</span>
+            </span>
+          )}
         </motion.div>
+
+        {/* Data Source Banner */}
+        {!hasLiveData && (
+          <Link href="/data">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#D4A853]/10 border border-[#D4A853]/20 cursor-pointer hover:bg-[#D4A853]/15 transition-colors"
+            >
+              <Database className="w-4 h-4 text-[#D4A853]" />
+              <p className="text-sm text-foreground">
+                <span className="font-medium">Showing demo data.</span>{" "}
+                <span className="text-muted-foreground">Upload your MYR labour reports to see real numbers →</span>
+              </p>
+            </motion.div>
+          </Link>
+        )}
 
         {/* Summary KPIs */}
         <motion.div variants={fadeUp} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -129,7 +160,9 @@ export default function Labour() {
         <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 overflow-hidden">
           <div className="p-5 border-b border-border/60">
             <h3 className="font-serif text-lg text-foreground">Store Labour Breakdown</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Current biweekly period details</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {hasLiveData ? "From uploaded MYR data" : "Current biweekly period — demo data"}
+            </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

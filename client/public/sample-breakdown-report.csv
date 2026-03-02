@@ -1,0 +1,11 @@
+Item,Category,Qty Sold,Revenue,Qty Refunded
+Classic Bagel,Bagels,245,$612.50,3
+Everything Bagel,Bagels,198,$495.00,1
+Sesame Bagel,Bagels,156,$390.00,0
+Cream Cheese Spread,Spreads,312,$468.00,2
+Lox & Cream Cheese,Sandwiches,89,$801.00,1
+Turkey Club,Sandwiches,67,$603.00,0
+Latte,Coffee,423,$2115.00,5
+Americano,Coffee,287,$861.00,2
+Cappuccino,Coffee,198,$990.00,1
+Drip Coffee,Coffee,534,$1068.00,3

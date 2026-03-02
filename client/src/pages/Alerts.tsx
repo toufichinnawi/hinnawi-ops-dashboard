@@ -4,7 +4,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, CheckCircle2, Clock, XCircle, Bell, Filter } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { alerts, stores, teamsChannels } from "@/lib/data";
+import { useData } from "@/contexts/DataContext";
+import { stores, teamsChannels } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 const fadeUp = {
@@ -24,6 +25,7 @@ function getStore(id: string) {
 }
 
 export default function Alerts() {
+  const { alerts } = useData();
   const [filterType, setFilterType] = useState<string>("all");
 
   const filtered = filterType === "all" ? alerts : alerts.filter((a) => a.type === filterType);

@@ -5,9 +5,11 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts";
-import { MapPin, TrendingUp, Users, DollarSign } from "lucide-react";
+import { MapPin, Database } from "lucide-react";
+import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
-import { stores, labourData, weeklySales, hourlySales } from "@/lib/data";
+import { useData } from "@/contexts/DataContext";
+import { stores } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 const fadeUp = {
@@ -19,59 +21,58 @@ const stagger = {
   show: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-function getLabour(storeId: string) {
-  return labourData.find((d) => d.store === storeId)!;
-}
-
 // Radar data: normalize metrics to 0-100 scale for comparison
 const radarData = [
-  {
-    metric: "Revenue",
-    pk: 100,
-    mk: 82,
-    ontario: 76,
-    tunnel: 68,
-  },
-  {
-    metric: "Orders",
-    pk: 95,
-    mk: 85,
-    ontario: 72,
-    tunnel: 78,
-  },
-  {
-    metric: "Labour Eff.",
-    pk: 95,
-    mk: 70,
-    ontario: 85,
-    tunnel: 75,
-  },
-  {
-    metric: "Report Rate",
-    pk: 100,
-    mk: 90,
-    ontario: 60,
-    tunnel: 70,
-  },
-  {
-    metric: "Cleanliness",
-    pk: 88,
-    mk: 92,
-    ontario: 78,
-    tunnel: 85,
-  },
+  { metric: "Revenue", pk: 100, mk: 82, ontario: 76, tunnel: 68 },
+  { metric: "Orders", pk: 95, mk: 85, ontario: 72, tunnel: 78 },
+  { metric: "Labour Eff.", pk: 95, mk: 70, ontario: 85, tunnel: 75 },
+  { metric: "Report Rate", pk: 100, mk: 90, ontario: 60, tunnel: 70 },
+  { metric: "Cleanliness", pk: 88, mk: 92, ontario: 78, tunnel: 85 },
 ];
 
 export default function Stores() {
+  const { labourData, weeklySales, hourlySales, hasLiveData } = useData();
+
+  function getLabour(storeId: string) {
+    return labourData.find((d) => d.store === storeId) ?? { revenue: 0, labourCost: 0, labourPercent: 0, target: 30, employees: 0, hoursWorked: 0 };
+  }
+
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 space-y-8 max-w-[1400px]">
         {/* Header */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <p className="text-xs text-[#D4A853] uppercase tracking-[0.2em] font-medium">Store Performance</p>
-          <h2 className="text-2xl font-serif text-foreground mt-1">Location Overview</h2>
-          <p className="text-sm text-muted-foreground mt-1">Compare performance across all 4 Hinnawi Bros locations</p>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start justify-between">
+          <div>
+            <p className="text-xs text-[#D4A853] uppercase tracking-[0.2em] font-medium">Store Performance</p>
+            <h2 className="text-2xl font-serif text-foreground mt-1">Location Overview</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {hasLiveData ? "From uploaded MYR data" : "Compare performance across all 4 locations — demo data"}
+            </p>
+          </div>
+          {hasLiveData && (
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs text-emerald-700 font-medium">Live Data</span>
+            </span>
+          )}
         </motion.div>
+
+        {/* Data Source Banner */}
+        {!hasLiveData && (
+          <Link href="/data">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#D4A853]/10 border border-[#D4A853]/20 cursor-pointer hover:bg-[#D4A853]/15 transition-colors"
+            >
+              <Database className="w-4 h-4 text-[#D4A853]" />
+              <p className="text-sm text-foreground">
+                <span className="font-medium">Showing demo data.</span>{" "}
+                <span className="text-muted-foreground">Upload your MYR exports to see real store performance →</span>
+              </p>
+            </motion.div>
+          </Link>
+        )}
 
         {/* Store Cards */}
         <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -79,7 +80,7 @@ export default function Stores() {
             const labour = getLabour(store.id);
             const isOver = labour.labourPercent > labour.target;
             const lastWeek = weeklySales[weeklySales.length - 1];
-            const weekRevenue = lastWeek[store.id as keyof typeof lastWeek] as number;
+            const weekRevenue = lastWeek ? (lastWeek[store.id as keyof typeof lastWeek] as number ?? 0) : 0;
 
             return (
               <motion.div

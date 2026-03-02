@@ -4,7 +4,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, Clock, XCircle, Filter } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { reportSubmissions, stores } from "@/lib/data";
+import { useData } from "@/contexts/DataContext";
+import { stores } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 const fadeUp = {
@@ -22,9 +23,10 @@ function getStore(id: string) {
   return stores.find((s) => s.id === id)!;
 }
 
-const reportTypes = Array.from(new Set(reportSubmissions.map((r) => r.type)));
+
 
 export default function Reports() {
+  const { reportSubmissions } = useData();
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
@@ -40,8 +42,10 @@ export default function Reports() {
     overdue: reportSubmissions.filter((r) => r.status === "overdue").length,
   };
 
+  const reportTypes = Array.from(new Set(reportSubmissions.map((r: { type: string }) => r.type)));
+
   // Build matrix: reportType x store
-  const matrix = reportTypes.map((type) => ({
+  const matrix = reportTypes.map((type: string) => ({
     type,
     stores: stores.map((store) => {
       const entry = reportSubmissions.find((r) => r.type === type && r.store === store.id);

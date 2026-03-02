@@ -12,8 +12,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Coffee,
+  Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useData } from "@/contexts/DataContext";
 
 const navItems = [
   { path: "/", label: "Overview", icon: LayoutDashboard },
@@ -22,11 +24,13 @@ const navItems = [
   { path: "/stores", label: "Store Performance", icon: Store },
   { path: "/maintenance", label: "Maintenance", icon: Wrench },
   { path: "/alerts", label: "Alerts", icon: Bell },
+  { path: "/data", label: "Data Management", icon: Database },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [location] = useLocation();
+  const { hasLiveData, lastUpdated } = useData();
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -62,6 +66,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location === item.path;
+            const isDataPage = item.path === "/data";
             return (
               <Link key={item.path} href={item.path}>
                 <div
@@ -78,6 +83,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <item.icon className={cn("w-[18px] h-[18px] shrink-0", isActive && "text-[#D4A853]")} />
                   {!collapsed && (
                     <span className="text-sm font-medium truncate">{item.label}</span>
+                  )}
+                  {/* Live data indicator on Data Management nav */}
+                  {isDataPage && hasLiveData && !collapsed && (
+                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   )}
                 </div>
               </Link>
@@ -96,12 +105,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Bottom info */}
         {!collapsed && (
           <div className="px-4 py-4 border-t border-white/10">
-            <p className="text-[10px] text-[#78716C] uppercase tracking-widest">
-              Last synced
-            </p>
-            <p className="text-xs text-[#A8A29E] font-mono mt-0.5">
-              Mar 2, 2026 — 10:30 AM
-            </p>
+            {hasLiveData ? (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-[10px] text-emerald-400 uppercase tracking-widest">
+                    Live Data
+                  </p>
+                </div>
+                <p className="text-xs text-[#A8A29E] font-mono mt-0.5">
+                  {lastUpdated
+                    ? new Date(lastUpdated).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    : "—"}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[10px] text-[#78716C] uppercase tracking-widest">
+                  Demo Data
+                </p>
+                <p className="text-xs text-[#A8A29E] font-mono mt-0.5">
+                  Upload MYR data →
+                </p>
+              </>
+            )}
           </div>
         )}
       </aside>
