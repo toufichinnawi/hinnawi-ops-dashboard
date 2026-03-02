@@ -56,6 +56,10 @@ export default function Stores() {
     return labourData.find((d) => d.store === storeId) ?? { revenue: 0, labourCost: 0, labourPercent: 0, target: 30, employees: 0, hoursWorked: 0 };
   }
 
+  function getLabourTarget(storeId: string) {
+    return stores.find(s => s.id === storeId)?.labourTarget ?? 30;
+  }
+
   // Compute dynamic radar data from filtered sales when Clover data is available
   const dynamicRadarData = hasCloverData && filteredLabour ? (() => {
     const maxRevenue = Math.max(...filteredLabour.map(l => l.revenue), 1);
@@ -128,7 +132,8 @@ export default function Stores() {
         <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {stores.map((store) => {
             const labour = getLabour(store.id);
-            const isOver = labour.labourPercent > labour.target;
+            const target = getLabourTarget(store.id);
+            const isOver = labour.labourPercent > target;
 
             // Compute total sales for this store from filtered weekly sales
             const storeTotalSales = weeklySales
@@ -180,6 +185,7 @@ export default function Stores() {
                     <p className={cn("text-lg font-mono font-semibold mt-0.5", isOver ? "text-red-600" : "text-emerald-600")}>
                       {labour.labourPercent.toFixed(1)}%
                     </p>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">Target: {target}%</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Staff</p>

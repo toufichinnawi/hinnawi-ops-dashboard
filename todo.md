@@ -164,3 +164,27 @@
 - [x] Wire Ontario labour data into DataContext (real labour % from 7shifts)
 - [x] Ontario visible in Sales by Store chart and Weekly Order Pattern
 - [x] Test end-to-end with real data — 61 days synced, 23 tests passing
+
+---
+
+# Combined Sync All Sources Button
+
+- [x] Add a "Sync All Sources" button that syncs Clover (3 stores) + 7shifts (Ontario) simultaneously
+- [x] Show progress/status toast for each source during sync
+- [x] Placed button on Overview page next to date filter (gold "Sync All" button)
+
+---
+
+# Per-Store Labour Targets with Red Highlighting
+
+- [x] Set custom labour targets per store: Ontario 28%, Mackay 23%, Tunnel 24%, PK 18%
+- [x] Highlight labour % in red when above target on Store Performance page
+- [x] Updated labourTarget in Store interface and stores config in lib/data.ts
+
+---
+
+# Koomi/MYR Integration Research
+
+- [x] Deep dive into Koomi/MYR API, webhooks, or automated export options
+- [x] Check if there's any programmatic way to pull data
+- [x] Present findings to user

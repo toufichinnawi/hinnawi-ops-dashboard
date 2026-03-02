@@ -792,6 +792,109 @@ export const appRouter = router({
         return getAllSevenShiftsSales(input?.limit ?? 120);
       }),
   }),
+
+  // ─── Combined Sync All Sources ────────────────────────────────
+  syncAllSources: protectedProcedure
+    .input(z.object({ daysBack: z.number().min(1).max(180).optional() }).optional())
+    .mutation(async ({ input }) => {
+      const daysBack = input?.daysBack ?? 60;
+      const results: { source: string; success: boolean; message: string; details?: any }[] = [];
+
+      // Run Clover and 7shifts sync in parallel
+      const [cloverResult, sevenShiftsResult] = await Promise.allSettled([
+        // Clover sync
+        (async () => {
+          const connections = await listCloverConnections();
+          const active = connections.filter(c => c.isActive);
+          if (active.length === 0) return { source: "Clover", success: true, message: "No active connections", synced: 0 };
+
+          const { startTime, endTime } = getDateRange(daysBack);
+          let synced = 0;
+          const storeResults: any[] = [];
+
+          for (const conn of active) {
+            try {
+              const payments = await fetchPayments(conn.merchantId, conn.accessToken, startTime, endTime);
+              const dailySales = aggregatePaymentsByDay(payments);
+              for (const day of dailySales) {
+                await upsertCloverDailySales({
+                  connectionId: conn.id,
+                  merchantId: conn.merchantId,
+                  date: day.date,
+                  totalSales: day.totalSales,
+                  totalTips: day.totalTips,
+                  totalTax: day.totalTax,
+                  orderCount: day.orderCount,
+                  netSales: day.netSales,
+                  refundAmount: day.refundAmount,
+                });
+              }
+              await updateCloverConnection(conn.id, { lastSyncAt: new Date(), lastSyncSuccess: true });
+              synced++;
+              storeResults.push({ store: conn.storeName, success: true, days: dailySales.length });
+            } catch (err: any) {
+              await updateCloverConnection(conn.id, { lastSyncAt: new Date(), lastSyncSuccess: false });
+              storeResults.push({ store: conn.storeName, success: false, error: err.message });
+            }
+          }
+          return { source: "Clover", success: synced > 0, message: `${synced}/${active.length} stores synced`, synced, storeResults };
+        })(),
+
+        // 7shifts sync
+        (async () => {
+          const connections = await listSevenShiftsConnections();
+          const active = connections.filter(c => c.isActive);
+          if (active.length === 0) return { source: "7shifts", success: true, message: "No active connections", synced: 0 };
+
+          let synced = 0;
+          const storeResults: any[] = [];
+
+          for (const conn of active) {
+            try {
+              const { startDate, endDate } = getDateRangeStrings(daysBack);
+              const dailyData = await fetchDailySalesAndLabor(conn.companyId, conn.locationId, conn.accessToken, startDate, endDate);
+              for (const day of dailyData) {
+                await upsertSevenShiftsDailySales({
+                  connectionId: conn.id,
+                  locationId: conn.locationId,
+                  date: day.date,
+                  totalSales: day.actual_sales / 100,
+                  projectedSales: day.projected_sales / 100,
+                  labourCost: day.actual_labor_cost / 100,
+                  projectedLabourCost: day.projected_labor_cost / 100,
+                  labourMinutes: day.actual_labor_minutes,
+                  overtimeMinutes: day.actual_ot_minutes,
+                  labourPercent: day.labor_percent,
+                  salesPerLabourHour: day.sales_per_labor_hour / 100,
+                  orderCount: day.actual_items,
+                });
+              }
+              await updateSevenShiftsConnection(conn.id, { lastSyncAt: new Date(), lastSyncSuccess: true });
+              synced++;
+              storeResults.push({ store: conn.storeName, success: true, days: dailyData.length });
+            } catch (err: any) {
+              await updateSevenShiftsConnection(conn.id, { lastSyncAt: new Date(), lastSyncSuccess: false });
+              storeResults.push({ store: conn.storeName, success: false, error: err.message });
+            }
+          }
+          return { source: "7shifts", success: synced > 0, message: `${synced}/${active.length} locations synced`, synced, storeResults };
+        })(),
+      ]);
+
+      // Process results
+      if (cloverResult.status === "fulfilled") {
+        results.push(cloverResult.value);
+      } else {
+        results.push({ source: "Clover", success: false, message: cloverResult.reason?.message ?? "Unknown error" });
+      }
+      if (sevenShiftsResult.status === "fulfilled") {
+        results.push(sevenShiftsResult.value);
+      } else {
+        results.push({ source: "7shifts", success: false, message: sevenShiftsResult.reason?.message ?? "Unknown error" });
+      }
+
+      return { results, allSuccess: results.every(r => r.success) };
+    }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -8,6 +8,7 @@ export interface Store {
   shortName: string;
   color: string;
   image: string;
+  labourTarget: number;
 }
 
 export interface KPI {
@@ -76,6 +77,7 @@ export const stores: Store[] = [
     shortName: "PK",
     color: "#D4A853",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663391168179/i5zcri4CVdStBBckDWTaVK/store-montreal-RcRt6eBtLfwQpQzQtscz4r.webp",
+    labourTarget: 18,
   },
   {
     id: "mk",
@@ -83,6 +85,7 @@ export const stores: Store[] = [
     shortName: "MK",
     color: "#3B82F6",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663391168179/i5zcri4CVdStBBckDWTaVK/store-laval-dpjkGF2brpbGH54kMSVUMD.webp",
+    labourTarget: 23,
   },
   {
     id: "ontario",
@@ -90,6 +93,7 @@ export const stores: Store[] = [
     shortName: "ON",
     color: "#10B981",
     image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80",
+    labourTarget: 28,
   },
   {
     id: "tunnel",
@@ -97,6 +101,7 @@ export const stores: Store[] = [
     shortName: "TN",
     color: "#F97316",
     image: "https://images.unsplash.com/photo-1559329007-40df8a9345d8?w=800&q=80",
+    labourTarget: 24,
   },
 ];
 

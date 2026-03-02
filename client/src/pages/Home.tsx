@@ -7,7 +7,7 @@ import {
   AreaChart, Area,
 } from "recharts";
 import {
-  AlertTriangle, CheckCircle2, Clock, XCircle, ArrowRight, Database, Loader2,
+  AlertTriangle, CheckCircle2, Clock, XCircle, ArrowRight, Database, Loader2, RefreshCw,
 } from "lucide-react";
 import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -15,8 +15,10 @@ import KPICard from "@/components/KPICard";
 import { DateFilter, getDefaultDateFilter, type DateFilterValue } from "@/components/DateFilter";
 import { useData } from "@/contexts/DataContext";
 import { useFilteredCloverData } from "@/hooks/useFilteredCloverData";
+import { trpc } from "@/lib/trpc";
 import { stores } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -63,6 +65,25 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function Home() {
   const { reportSubmissions, alerts, hasLiveData, hasCloverData } = useData();
   const [dateFilter, setDateFilter] = useState<DateFilterValue>(getDefaultDateFilter);
+  const utils = trpc.useUtils();
+
+  // Combined Sync All Sources mutation
+  const syncAllSources = trpc.syncAllSources.useMutation({
+    onSuccess: (data) => {
+      const summaries = data.results.map(r => `${r.source}: ${r.message}`).join(" | ");
+      if (data.allSuccess) {
+        toast.success("Sync Complete", { description: summaries });
+      } else {
+        toast.error("Sync Partially Failed", { description: summaries });
+      }
+      // Invalidate queries to refresh data
+      utils.clover.salesData.invalidate();
+      utils.sevenShifts.salesData.invalidate();
+    },
+    onError: (err) => {
+      toast.error("Sync Failed", { description: err.message });
+    },
+  });
 
   // Fetch filtered Clover data based on date selection
   const { kpis: filteredKpis, weeklySales: filteredSales, dailyTraffic: filteredTraffic, isLoading: filterLoading, hasData: hasFilteredData, noDataForPeriod } = useFilteredCloverData(dateFilter);
@@ -165,10 +186,24 @@ export default function Home() {
             )}
           </div>
 
-          {/* Date Filter */}
+          {/* Date Filter + Sync Button */}
           <div className="flex items-center gap-2 shrink-0">
             {filterLoading && hasCloverData && (
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            )}
+            {hasCloverData && (
+              <button
+                onClick={() => syncAllSources.mutate()}
+                disabled={syncAllSources.isPending}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                  "bg-[#D4A853] text-white hover:bg-[#C49A48]",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              >
+                <RefreshCw className={cn("w-3.5 h-3.5", syncAllSources.isPending && "animate-spin")} />
+                {syncAllSources.isPending ? "Syncing..." : "Sync All"}
+              </button>
             )}
             <DateFilter value={dateFilter} onChange={setDateFilter} />
           </div>
