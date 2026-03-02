@@ -9,6 +9,8 @@ import {
   cloverConnections, InsertCloverConnection, CloverConnection,
   cloverDailySales, InsertCloverDailySales, CloverDailySales,
   cloverShifts, InsertCloverShift, CloverShift,
+  sevenShiftsConnections, InsertSevenShiftsConnection, SevenShiftsConnection,
+  sevenShiftsDailySales, InsertSevenShiftsDailySales, SevenShiftsDailySales,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -331,5 +333,91 @@ export async function getAllCloverShifts(limit = 500): Promise<CloverShift[]> {
   if (!db) return [];
   return db.select().from(cloverShifts)
     .orderBy(desc(cloverShifts.inTime))
+    .limit(limit);
+}
+
+// ─── 7shifts Connections ────────────────────────────────────────────
+
+export async function listSevenShiftsConnections(): Promise<SevenShiftsConnection[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(sevenShiftsConnections).orderBy(desc(sevenShiftsConnections.createdAt));
+}
+
+export async function getSevenShiftsConnectionById(id: number): Promise<SevenShiftsConnection | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(sevenShiftsConnections).where(eq(sevenShiftsConnections.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function getSevenShiftsConnectionByLocationId(locationId: number): Promise<SevenShiftsConnection | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(sevenShiftsConnections).where(eq(sevenShiftsConnections.locationId, locationId)).limit(1);
+  return rows[0];
+}
+
+export async function createSevenShiftsConnection(data: InsertSevenShiftsConnection): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(sevenShiftsConnections).values(data);
+}
+
+export async function updateSevenShiftsConnection(id: number, data: Partial<InsertSevenShiftsConnection>): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(sevenShiftsConnections).set(data).where(eq(sevenShiftsConnections.id, id));
+}
+
+export async function deleteSevenShiftsConnection(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(sevenShiftsConnections).where(eq(sevenShiftsConnections.id, id));
+}
+
+// ─── 7shifts Daily Sales ────────────────────────────────────────────
+
+export async function upsertSevenShiftsDailySales(data: InsertSevenShiftsDailySales): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select().from(sevenShiftsDailySales)
+    .where(and(
+      eq(sevenShiftsDailySales.locationId, data.locationId),
+      eq(sevenShiftsDailySales.date, data.date)
+    ))
+    .limit(1);
+  if (existing.length > 0) {
+    await db.update(sevenShiftsDailySales).set(data).where(eq(sevenShiftsDailySales.id, existing[0].id));
+  } else {
+    await db.insert(sevenShiftsDailySales).values(data);
+  }
+}
+
+export async function getAllSevenShiftsSales(limit = 120): Promise<SevenShiftsDailySales[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(sevenShiftsDailySales)
+    .orderBy(desc(sevenShiftsDailySales.date))
+    .limit(limit);
+}
+
+export async function getSevenShiftsSalesByDateRange(fromDate: string, toDate: string): Promise<SevenShiftsDailySales[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(sevenShiftsDailySales)
+    .where(and(
+      gte(sevenShiftsDailySales.date, fromDate),
+      lte(sevenShiftsDailySales.date, toDate)
+    ))
+    .orderBy(desc(sevenShiftsDailySales.date));
+}
+
+export async function getSevenShiftsSalesByConnection(connectionId: number, limit = 60): Promise<SevenShiftsDailySales[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(sevenShiftsDailySales)
+    .where(eq(sevenShiftsDailySales.connectionId, connectionId))
+    .orderBy(desc(sevenShiftsDailySales.date))
     .limit(limit);
 }

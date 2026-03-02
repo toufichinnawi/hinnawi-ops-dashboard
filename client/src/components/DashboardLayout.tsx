@@ -15,6 +15,7 @@ import {
   Database,
   MessageSquare,
   CreditCard,
+  Clock,
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
   { path: "/alerts", label: "Alerts", icon: Bell },
   { path: "/data", label: "Data Management", icon: Database },
   { path: "/clover", label: "Clover POS", icon: CreditCard },
+  { path: "/7shifts", label: "7shifts", icon: Clock },
   { path: "/teams", label: "Teams Integration", icon: MessageSquare, adminOnly: true },
 ];
 

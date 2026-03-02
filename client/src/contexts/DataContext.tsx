@@ -359,6 +359,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     retry: 1,
   });
 
+  // Fetch 7shifts data from API
+  const { data: sevenShiftsSalesData } = trpc.sevenShifts.salesData.useQuery(undefined, {
+    refetchInterval: 5 * 60 * 1000,
+    retry: 1,
+  });
+
   useEffect(() => {
     saveToStorage(data);
   }, [data]);
@@ -383,28 +389,146 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const hasCSVData = data.uploads.length > 0;
   const hasCloverData = (cloverSalesData?.length ?? 0) > 0;
-  const hasLiveData = hasCloverData || hasCSVData;
+  const hasSevenShiftsData = (sevenShiftsSalesData?.length ?? 0) > 0;
+  const hasLiveData = hasCloverData || hasSevenShiftsData || hasCSVData;
 
-  // Compute merged data — Clover data takes priority over CSV, CSV over demo
+  // Compute merged data — Clover+7shifts data takes priority over CSV, CSV over demo
   const kpis = useMemo(() => {
-    if (hasCloverData) return computeCloverKPIs(cloverSalesData as CloverSalesRow[]) ?? demoKPIs;
+    if (hasCloverData || hasSevenShiftsData) {
+      // Merge Clover + 7shifts KPIs
+      const cloverKpis = hasCloverData ? computeCloverKPIs(cloverSalesData as CloverSalesRow[]) : null;
+      if (!hasSevenShiftsData) return cloverKpis ?? demoKPIs;
+
+      // Combine: add Ontario revenue/orders from 7shifts
+      const ssRows = sevenShiftsSalesData as any[];
+      const sortedDates = Array.from(new Set(ssRows.map((s: any) => s.date))).sort().reverse();
+      const recentDates = sortedDates.slice(0, 7);
+      const recentSS = ssRows.filter((s: any) => recentDates.includes(s.date));
+      const ssRevenue = recentSS.reduce((s: number, r: any) => s + r.totalSales, 0);
+      const ssOrders = recentSS.reduce((s: number, r: any) => s + r.orderCount, 0);
+
+      if (cloverKpis) {
+        // Add 7shifts revenue/orders to existing Clover KPIs
+        const totalRev = cloverKpis[0].value + Math.round(ssRevenue);
+        const totalOrd = cloverKpis[3].value + ssOrders;
+        const storeCount = new Set([...((cloverSalesData as CloverSalesRow[]) || []).filter(s => recentDates.includes(s.date)).map(s => s.merchantId)]).size + 1;
+        return [
+          { ...cloverKpis[0], value: totalRev, subtitle: `${storeCount} stores — last 7 days` },
+          cloverKpis[1], // Tips (only from Clover)
+          { ...cloverKpis[2], value: totalOrd > 0 ? parseFloat((totalRev / totalOrd).toFixed(2)) : 0, subtitle: `${totalOrd.toLocaleString()} orders` },
+          { ...cloverKpis[3], value: totalOrd, subtitle: `Avg $${totalOrd > 0 ? (totalRev / totalOrd).toFixed(2) : "0"} per order` },
+        ];
+      }
+
+      // Only 7shifts data
+      return [
+        { title: "Total Revenue", value: Math.round(ssRevenue), format: "currency" as const, trend: 0, trendLabel: "from 7shifts", subtitle: "1 store — last 7 days" },
+        { title: "Labour Cost", value: Math.round(recentSS.reduce((s: number, r: any) => s + r.labourCost, 0)), format: "currency" as const, trend: 0, trendLabel: "from 7shifts", subtitle: "Ontario" },
+        { title: "Avg Ticket", value: ssOrders > 0 ? parseFloat((ssRevenue / ssOrders).toFixed(2)) : 0, format: "currency" as const, trend: 0, trendLabel: "from 7shifts", subtitle: `${ssOrders} orders` },
+        { title: "Total Orders", value: ssOrders, format: "number" as const, trend: 0, trendLabel: "from 7shifts", subtitle: `Avg $${ssOrders > 0 ? (ssRevenue / ssOrders).toFixed(2) : "0"} per order` },
+      ];
+    }
     return computeKPIs(data.uploads) ?? demoKPIs;
-  }, [hasCloverData, cloverSalesData, data.uploads]);
+  }, [hasCloverData, hasSevenShiftsData, cloverSalesData, sevenShiftsSalesData, data.uploads]);
 
   const weeklySales = useMemo(() => {
-    if (hasCloverData) return computeCloverWeeklySales(cloverSalesData as CloverSalesRow[]) ?? demoWeeklySales;
-    return computeWeeklySales(data.uploads) ?? demoWeeklySales;
-  }, [hasCloverData, cloverSalesData, data.uploads]);
+    const cloverWeekly = hasCloverData ? computeCloverWeeklySales(cloverSalesData as CloverSalesRow[]) : null;
+    if (!hasCloverData && !hasSevenShiftsData) return computeWeeklySales(data.uploads) ?? demoWeeklySales;
+
+    // Start with Clover data or empty
+    const dateMap = new Map<string, { pk: number; mk: number; ontario: number; tunnel: number }>();
+    if (cloverWeekly) {
+      for (const entry of cloverWeekly) {
+        dateMap.set(entry.week, { pk: entry.pk, mk: entry.mk, ontario: entry.ontario, tunnel: entry.tunnel });
+      }
+    }
+
+    // Add 7shifts Ontario data
+    if (hasSevenShiftsData) {
+      for (const row of sevenShiftsSalesData as any[]) {
+        const d = new Date(row.date + "T12:00:00");
+        const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const existing = dateMap.get(label) ?? { pk: 0, mk: 0, ontario: 0, tunnel: 0 };
+        existing.ontario = row.totalSales;
+        dateMap.set(label, existing);
+      }
+    }
+
+    if (dateMap.size === 0) return demoWeeklySales;
+    return Array.from(dateMap.entries()).map(([week, data]) => ({ week, ...data }));
+  }, [hasCloverData, hasSevenShiftsData, cloverSalesData, sevenShiftsSalesData, data.uploads]);
 
   const labourData = useMemo(() => {
-    if (hasCloverData) return computeCloverLabourData(cloverSalesData as CloverSalesRow[]) ?? demoLabourData;
+    if (hasCloverData || hasSevenShiftsData) {
+      const cloverLabour = hasCloverData ? computeCloverLabourData(cloverSalesData as CloverSalesRow[]) : null;
+      const result = cloverLabour ?? demoLabourData.map(d => ({ ...d }));
+
+      // Update Ontario with real 7shifts labour data
+      if (hasSevenShiftsData) {
+        const ssRows = sevenShiftsSalesData as any[];
+        const sortedDates = Array.from(new Set(ssRows.map((s: any) => s.date))).sort().reverse();
+        const recentDates = sortedDates.slice(0, 7);
+        const recentSS = ssRows.filter((s: any) => recentDates.includes(s.date));
+        const ssRevenue = recentSS.reduce((s: number, r: any) => s + r.totalSales, 0);
+        const ssLabourCost = recentSS.reduce((s: number, r: any) => s + r.labourCost, 0);
+        const ssLabourMinutes = recentSS.reduce((s: number, r: any) => s + r.labourMinutes, 0);
+
+        const ontarioIdx = result.findIndex(r => r.store === "ontario");
+        if (ontarioIdx >= 0) {
+          result[ontarioIdx] = {
+            store: "ontario",
+            revenue: Math.round(ssRevenue),
+            labourCost: Math.round(ssLabourCost),
+            labourPercent: ssRevenue > 0 ? parseFloat(((ssLabourCost / ssRevenue) * 100).toFixed(1)) : 0,
+            target: 30,
+            employees: 0,
+            hoursWorked: Math.round(ssLabourMinutes / 60),
+          };
+        }
+      }
+
+      return result;
+    }
     return computeLabourData(data.uploads) ?? demoLabourData;
-  }, [hasCloverData, cloverSalesData, data.uploads]);
+  }, [hasCloverData, hasSevenShiftsData, cloverSalesData, sevenShiftsSalesData, data.uploads]);
 
   const weeklyTraffic = useMemo(() => {
-    if (hasCloverData) return computeCloverDailyTraffic(cloverSalesData as CloverSalesRow[]) ?? demoTraffic;
-    return demoTraffic;
-  }, [hasCloverData, cloverSalesData]);
+    const cloverTraffic = hasCloverData ? computeCloverDailyTraffic(cloverSalesData as CloverSalesRow[]) : null;
+    if (!hasCloverData && !hasSevenShiftsData) return demoTraffic;
+
+    // Start with Clover traffic or empty
+    const dayMap = new Map<string, { pk: number; mk: number; ontario: number; tunnel: number }>();
+    if (cloverTraffic) {
+      for (const entry of cloverTraffic) {
+        dayMap.set(entry.day, { pk: entry.pk, mk: entry.mk, ontario: entry.ontario, tunnel: entry.tunnel });
+      }
+    }
+
+    // Add 7shifts Ontario traffic
+    if (hasSevenShiftsData) {
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const dayOrders = new Map<string, number[]>();
+      for (const row of sevenShiftsSalesData as any[]) {
+        const d = new Date(row.date + "T12:00:00");
+        const dayName = dayNames[d.getDay()];
+        const arr = dayOrders.get(dayName) ?? [];
+        arr.push(row.orderCount);
+        dayOrders.set(dayName, arr);
+      }
+      for (const [day, orders] of Array.from(dayOrders)) {
+        const avg = Math.round(orders.reduce((a: number, b: number) => a + b, 0) / orders.length);
+        const existing = dayMap.get(day) ?? { pk: 0, mk: 0, ontario: 0, tunnel: 0 };
+        existing.ontario = avg;
+        dayMap.set(day, existing);
+      }
+    }
+
+    if (dayMap.size === 0) return demoTraffic;
+    const orderedDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    return orderedDays
+      .filter(day => dayMap.has(day))
+      .map(day => ({ day, ...dayMap.get(day)! }));
+  }, [hasCloverData, hasSevenShiftsData, cloverSalesData, sevenShiftsSalesData]);
 
   const value: DataContextValue = {
     uploads: data.uploads,

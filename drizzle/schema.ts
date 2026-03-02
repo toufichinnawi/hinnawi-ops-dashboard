@@ -153,3 +153,48 @@ export const cloverShifts = mysqlTable("clover_shifts", {
 
 export type CloverShift = typeof cloverShifts.$inferSelect;
 export type InsertCloverShift = typeof cloverShifts.$inferInsert;
+
+/**
+ * 7shifts connections — stores access tokens and company/location info
+ */
+export const sevenShiftsConnections = mysqlTable("seven_shifts_connections", {
+  id: int("id").autoincrement().primaryKey(),
+  storeName: varchar("storeName", { length: 255 }).notNull(),
+  companyId: int("companyId").notNull(),
+  companyName: varchar("companyName", { length: 255 }),
+  locationId: int("locationId").notNull(),
+  locationName: varchar("locationName", { length: 255 }),
+  accessToken: text("accessToken").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  lastSyncAt: timestamp("lastSyncAt"),
+  lastSyncSuccess: boolean("lastSyncSuccess"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SevenShiftsConnection = typeof sevenShiftsConnections.$inferSelect;
+export type InsertSevenShiftsConnection = typeof sevenShiftsConnections.$inferInsert;
+
+/**
+ * 7shifts daily sales & labour — cached daily aggregates from 7shifts API
+ */
+export const sevenShiftsDailySales = mysqlTable("seven_shifts_daily_sales", {
+  id: int("id").autoincrement().primaryKey(),
+  connectionId: int("connectionId").notNull(),
+  locationId: int("locationId").notNull(),
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
+  totalSales: float("totalSales").default(0).notNull(), // in dollars
+  projectedSales: float("projectedSales").default(0).notNull(),
+  labourCost: float("labourCost").default(0).notNull(),
+  projectedLabourCost: float("projectedLabourCost").default(0).notNull(),
+  labourMinutes: int("labourMinutes").default(0).notNull(),
+  overtimeMinutes: int("overtimeMinutes").default(0).notNull(),
+  labourPercent: float("labourPercent").default(0).notNull(),
+  salesPerLabourHour: float("salesPerLabourHour").default(0).notNull(),
+  orderCount: int("orderCount").default(0).notNull(), // actual_items
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SevenShiftsDailySales = typeof sevenShiftsDailySales.$inferSelect;
+export type InsertSevenShiftsDailySales = typeof sevenShiftsDailySales.$inferInsert;

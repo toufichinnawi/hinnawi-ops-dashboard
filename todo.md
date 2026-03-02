@@ -138,3 +138,29 @@
 - [x] Add rate limiting (300ms between pages, 500ms between chunks, retry on 429)
 - [x] Re-sync all stores: Tunnel 4,013 payments/41 days, Mackay 7,263/59 days, PK 13,569/59 days
 - [x] Verified: Jan 10–20 shows $49,491 revenue, 4,342 orders — January data is live!
+
+---
+
+# Lightspeed POS Integration (Ontario Store)
+
+- [ ] Research Lightspeed POS API (Restaurant vs Retail, auth method, sales endpoints)
+- [ ] Determine best integration approach (OAuth2, API key, CSV upload)
+- [ ] Present options to user for approval
+- [ ] Implement chosen approach
+- [ ] Wire Ontario Lightspeed data into dashboard alongside Clover stores
+
+---
+
+# 7shifts Integration (Ontario Store - via Lightspeed)
+
+- [x] Research 7shifts API (authentication, sales/labour/shifts endpoints)
+- [x] Determine best auth approach — Access Token (simple, no OAuth needed)
+- [x] Build 7shifts service module (fetchCompanies, fetchLocations, fetchDailySalesAndLabor)
+- [x] Database tables for 7shifts connections + daily sales/labour
+- [x] tRPC routes for connect, disconnect, sync, salesData
+- [x] 7shifts Integration page UI (connect, sync, view data tabs)
+- [x] Wire Ontario 7shifts data into Overview (KPIs: $34,567 total, 4 stores)
+- [x] Wire Ontario data into Store Performance (Ontario card: $3.2K, 43% labour)
+- [x] Wire Ontario labour data into DataContext (real labour % from 7shifts)
+- [x] Ontario visible in Sales by Store chart and Weekly Order Pattern
+- [x] Test end-to-end with real data — 61 days synced, 23 tests passing

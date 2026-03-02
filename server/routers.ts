@@ -11,6 +11,10 @@ import {
   createCloverConnection, updateCloverConnection, deleteCloverConnection,
   upsertCloverDailySales, getAllCloverSales, getCloverSalesByConnection, getCloverSalesByDateRange,
   upsertCloverShift, getAllCloverShifts,
+  listSevenShiftsConnections, getSevenShiftsConnectionById, getSevenShiftsConnectionByLocationId,
+  createSevenShiftsConnection, updateSevenShiftsConnection, deleteSevenShiftsConnection,
+  upsertSevenShiftsDailySales, getAllSevenShiftsSales, getSevenShiftsSalesByDateRange,
+  getSevenShiftsSalesByConnection,
 } from "./db";
 import { sendTeamsAlert, testWebhookConnection, buildLabourAlert, buildReportOverdueAlert, buildSalesDropAlert, buildDailySummaryAlert } from "./teams";
 import type { AlertPayload } from "./teams";
@@ -18,6 +22,9 @@ import {
   getCloverAuthUrl, exchangeCloverCode, fetchMerchantInfo,
   fetchPayments, fetchShifts, aggregatePaymentsByDay, aggregateShifts, getDateRange,
 } from "./clover";
+import {
+  fetchCompanies, fetchLocations, fetchDailySalesAndLabor, getDateRangeStrings,
+} from "./sevenShifts";
 
 export const appRouter = router({
   system: systemRouter,
@@ -571,6 +578,218 @@ export const appRouter = router({
       .input(z.object({ limit: z.number().optional() }).optional())
       .query(async ({ input }) => {
         return getAllCloverShifts(input?.limit ?? 500);
+      }),
+  }),
+
+  // ─── 7shifts Integration ───────────────────────────────────────
+  sevenShifts: router({
+    // List companies (auto-discovered from token)
+    companies: protectedProcedure.query(async () => {
+      const token = process.env.SEVEN_SHIFTS_ACCESS_TOKEN;
+      if (!token) throw new Error("7shifts access token not configured");
+      return fetchCompanies(token);
+    }),
+
+    // List locations for a company
+    locations: protectedProcedure
+      .input(z.object({ companyId: z.number() }))
+      .query(async ({ input }) => {
+        const token = process.env.SEVEN_SHIFTS_ACCESS_TOKEN;
+        if (!token) throw new Error("7shifts access token not configured");
+        return fetchLocations(input.companyId, token);
+      }),
+
+    // Connect a location
+    connect: protectedProcedure
+      .input(z.object({
+        storeName: z.string().min(1),
+        companyId: z.number(),
+        companyName: z.string(),
+        locationId: z.number(),
+        locationName: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const token = process.env.SEVEN_SHIFTS_ACCESS_TOKEN;
+        if (!token) throw new Error("7shifts access token not configured");
+
+        // Check if already connected
+        const existing = await getSevenShiftsConnectionByLocationId(input.locationId);
+        if (existing) {
+          await updateSevenShiftsConnection(existing.id, {
+            storeName: input.storeName,
+            accessToken: token,
+            isActive: true,
+          });
+        } else {
+          await createSevenShiftsConnection({
+            storeName: input.storeName,
+            companyId: input.companyId,
+            companyName: input.companyName,
+            locationId: input.locationId,
+            locationName: input.locationName,
+            accessToken: token,
+          });
+        }
+
+        return { success: true };
+      }),
+
+    // List connections
+    connections: protectedProcedure.query(async () => {
+      const connections = await listSevenShiftsConnections();
+      return connections.map(c => ({
+        id: c.id,
+        storeName: c.storeName,
+        companyId: c.companyId,
+        companyName: c.companyName,
+        locationId: c.locationId,
+        locationName: c.locationName,
+        isActive: c.isActive,
+        lastSyncAt: c.lastSyncAt,
+        lastSyncSuccess: c.lastSyncSuccess,
+        createdAt: c.createdAt,
+      }));
+    }),
+
+    // Disconnect
+    disconnect: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteSevenShiftsConnection(input.id);
+        return { success: true };
+      }),
+
+    // Sync data for a specific connection
+    syncStore: protectedProcedure
+      .input(z.object({ connectionId: z.number(), daysBack: z.number().min(1).max(180).optional() }))
+      .mutation(async ({ input }) => {
+        const connection = await getSevenShiftsConnectionById(input.connectionId);
+        if (!connection) throw new Error("Connection not found");
+        if (!connection.isActive) throw new Error("Connection is disabled");
+
+        const daysBack = input.daysBack ?? 60;
+        const { startDate, endDate } = getDateRangeStrings(daysBack);
+
+        try {
+          console.log(`[7shifts Sync] Starting sync for ${connection.storeName} (location ${connection.locationId}), ${daysBack} days back`);
+
+          const dailyData = await fetchDailySalesAndLabor(
+            connection.companyId,
+            connection.locationId,
+            connection.accessToken,
+            startDate,
+            endDate
+          );
+
+          console.log(`[7shifts Sync] Fetched ${dailyData.length} daily records for ${connection.storeName}`);
+
+          for (const day of dailyData) {
+            await upsertSevenShiftsDailySales({
+              connectionId: connection.id,
+              locationId: connection.locationId,
+              date: day.date,
+              totalSales: day.actual_sales / 100, // cents to dollars
+              projectedSales: day.projected_sales / 100,
+              labourCost: day.actual_labor_cost / 100,
+              projectedLabourCost: day.projected_labor_cost / 100,
+              labourMinutes: day.actual_labor_minutes,
+              overtimeMinutes: day.actual_ot_minutes,
+              labourPercent: day.labor_percent,
+              salesPerLabourHour: day.sales_per_labor_hour / 100,
+              orderCount: day.actual_items,
+            });
+          }
+
+          await updateSevenShiftsConnection(connection.id, {
+            lastSyncAt: new Date(),
+            lastSyncSuccess: true,
+          });
+
+          console.log(`[7shifts Sync] \u2713 Complete for ${connection.storeName}: ${dailyData.length} days saved`);
+
+          return {
+            success: true,
+            daysProcessed: dailyData.length,
+          };
+        } catch (error: any) {
+          await updateSevenShiftsConnection(connection.id, {
+            lastSyncAt: new Date(),
+            lastSyncSuccess: false,
+          });
+          console.error(`[7shifts Sync] Failed for ${connection.storeName}: ${error.message}`);
+          throw new Error(`Sync failed for ${connection.storeName}: ${error.message}`);
+        }
+      }),
+
+    // Sync all active connections
+    syncAll: protectedProcedure
+      .input(z.object({ daysBack: z.number().min(1).max(180).optional() }).optional())
+      .mutation(async ({ input }) => {
+        const connections = await listSevenShiftsConnections();
+        const active = connections.filter(c => c.isActive);
+        const results: Array<{ storeName: string; success: boolean; error?: string; daysProcessed?: number }> = [];
+
+        for (const conn of active) {
+          try {
+            const daysBack = input?.daysBack ?? 60;
+            const { startDate, endDate } = getDateRangeStrings(daysBack);
+
+            console.log(`[7shifts SyncAll] Starting sync for ${conn.storeName} (location ${conn.locationId}), ${daysBack} days back`);
+
+            const dailyData = await fetchDailySalesAndLabor(
+              conn.companyId,
+              conn.locationId,
+              conn.accessToken,
+              startDate,
+              endDate
+            );
+
+            for (const day of dailyData) {
+              await upsertSevenShiftsDailySales({
+                connectionId: conn.id,
+                locationId: conn.locationId,
+                date: day.date,
+                totalSales: day.actual_sales / 100,
+                projectedSales: day.projected_sales / 100,
+                labourCost: day.actual_labor_cost / 100,
+                projectedLabourCost: day.projected_labor_cost / 100,
+                labourMinutes: day.actual_labor_minutes,
+                overtimeMinutes: day.actual_ot_minutes,
+                labourPercent: day.labor_percent,
+                salesPerLabourHour: day.sales_per_labor_hour / 100,
+                orderCount: day.actual_items,
+              });
+            }
+
+            await updateSevenShiftsConnection(conn.id, { lastSyncAt: new Date(), lastSyncSuccess: true });
+            console.log(`[7shifts SyncAll] \u2713 Complete for ${conn.storeName}: ${dailyData.length} days`);
+            results.push({ storeName: conn.storeName, success: true, daysProcessed: dailyData.length });
+          } catch (error: any) {
+            console.error(`[7shifts SyncAll] \u2717 FAILED for ${conn.storeName}: ${error.message}`);
+            await updateSevenShiftsConnection(conn.id, { lastSyncAt: new Date(), lastSyncSuccess: false });
+            results.push({ storeName: conn.storeName, success: false, error: error.message });
+          }
+        }
+
+        return { results, totalSynced: results.filter(r => r.success).length };
+      }),
+
+    // Get sales data (for dashboard)
+    salesData: protectedProcedure
+      .input(z.object({
+        connectionId: z.number().optional(),
+        fromDate: z.string().optional(),
+        toDate: z.string().optional(),
+        limit: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        if (input?.fromDate && input?.toDate) {
+          return getSevenShiftsSalesByDateRange(input.fromDate, input.toDate);
+        }
+        if (input?.connectionId) {
+          return getSevenShiftsSalesByConnection(input.connectionId, input.limit ?? 60);
+        }
+        return getAllSevenShiftsSales(input?.limit ?? 120);
       }),
   }),
 });
