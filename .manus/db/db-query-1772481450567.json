@@ -1,0 +1,38 @@
+{
+  "query": "SELECT storeId, COUNT(*) as days, ROUND(AVG(labourPercent), 1) as avg_labour_pct, ROUND(SUM(netSales), 2) as total_sales, ROUND(SUM(labourCost), 2) as total_labour FROM excel_labour_data GROUP BY storeId ORDER BY storeId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT storeId, COUNT(*) as days, ROUND(AVG(labourPercent), 1) as avg_labour_pct, ROUND(SUM(netSales), 2) as total_sales, ROUND(SUM(labourCost), 2) as total_labour FROM excel_labour_data GROUP BY storeId ORDER BY storeId;",
+  "rows": [
+    {
+      "storeId": "mk",
+      "days": "7",
+      "avg_labour_pct": "22.1",
+      "total_sales": "12532.72",
+      "total_labour": "2764.32"
+    },
+    {
+      "storeId": "ontario",
+      "days": "7",
+      "avg_labour_pct": "35.9",
+      "total_sales": "3506.05",
+      "total_labour": "1138.27"
+    },
+    {
+      "storeId": "pk",
+      "days": "7",
+      "avg_labour_pct": "25.6",
+      "total_sales": "16661",
+      "total_labour": "3914"
+    },
+    {
+      "storeId": "tunnel",
+      "days": "4",
+      "avg_labour_pct": "30.2",
+      "total_sales": "4844.55",
+      "total_labour": "1333.08"
+    }
+  ],
+  "messages": [],
+  "stdout": "storeId\tdays\tavg_labour_pct\ttotal_sales\ttotal_labour\nmk\t7\t22.1\t12532.72\t2764.32\nontario\t7\t35.9\t3506.05\t1138.27\npk\t7\t25.6\t16661\t3914\ntunnel\t4\t30.2\t4844.55\t1333.08\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

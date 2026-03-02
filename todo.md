@@ -188,3 +188,20 @@
 - [x] Deep dive into Koomi/MYR API, webhooks, or automated export options
 - [x] Check if there's any programmatic way to pull data
 - [x] Present findings to user
+
+---
+
+# SharePoint Excel Labour Data Integration (All 4 Stores)
+
+- [x] Download Excel daily report from SharePoint via browser
+- [x] Parse Excel file structure (Id, Business Date, Store, Net Sales, Labour, Notes, Labour %)
+- [x] Create database schema: excel_labour_data + excel_sync_meta tables
+- [x] Build Excel parser service (excelParser.ts) with column detection, date parsing, store mapping
+- [x] Create database helpers (bulkUpsert, query by date/store, sync meta)
+- [x] Create tRPC endpoints: excelLabour.upload, excelLabour.data, excelLabour.syncMeta, excelLabour.clearAll
+- [x] Seed database with 25 rows of real labour data (Feb 23 – Mar 1, 2026)
+- [x] Update useFilteredCloverData hook to merge Excel labour data with Clover sales data
+- [x] Update DataContext to incorporate Excel labour data (hasExcelData flag, overlay on Clover data)
+- [x] Update Labour Monitor page with date filter, Excel upload button, trend chart from Excel data
+- [x] Write 6 vitest tests for Excel parser + tRPC endpoints (all passing)
+- [x] All 29 tests passing (Excel + Clover + 7shifts + Teams + Auth)

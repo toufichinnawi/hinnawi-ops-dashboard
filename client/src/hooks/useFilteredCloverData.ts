@@ -1,4 +1,4 @@
-// Hook: Fetch Clover + 7shifts sales data filtered by date range and compute KPIs/charts
+// Hook: Fetch Clover + 7shifts + Excel labour data filtered by date range and compute KPIs/charts
 import { useMemo } from "react";
 import { format } from "date-fns";
 import { trpc } from "@/lib/trpc";
@@ -9,7 +9,6 @@ import {
   type WeeklySales,
   type LabourEntry,
   type DailyTraffic,
-  labourData as demoLabourData,
 } from "@/lib/data";
 
 // Map Clover merchant IDs to our store IDs
@@ -52,6 +51,20 @@ interface SevenShiftsSalesRow {
   updatedAt: Date;
 }
 
+interface ExcelLabourRow {
+  id: number;
+  date: string;
+  store: string;
+  storeId: string;
+  netSales: number;
+  labourCost: number;
+  labourPercent: number;
+  notes: string | null;
+  sourceRowId: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Unified daily record for all stores
 interface UnifiedDailyRecord {
   storeId: string;
@@ -63,7 +76,7 @@ interface UnifiedDailyRecord {
   labourMinutes: number;
   overtimeMinutes: number;
   labourPercent: number;
-  source: "clover" | "7shifts";
+  source: "clover" | "7shifts" | "excel";
 }
 
 export function useFilteredCloverData(dateFilter: DateFilterValue) {
@@ -82,40 +95,63 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
     { retry: 1 }
   );
 
-  const isLoading = cloverLoading || sevenShiftsLoading;
+  // Fetch Excel labour data
+  const { data: excelData, isLoading: excelLoading } = trpc.excelLabour.data.useQuery(
+    { fromDate, toDate },
+    { retry: 1 }
+  );
+
+  const isLoading = cloverLoading || sevenShiftsLoading || excelLoading;
 
   const cloverRows = (cloverData ?? []) as CloverSalesRow[];
   const sevenShiftsRows = (sevenShiftsData ?? []) as SevenShiftsSalesRow[];
+  const excelRows = (excelData ?? []) as ExcelLabourRow[];
+
+  // Build a lookup map of Excel labour data: storeId+date -> { labourCost, labourPercent, netSales }
+  const excelLabourMap = useMemo(() => {
+    const map = new Map<string, ExcelLabourRow>();
+    for (const row of excelRows) {
+      const key = `${row.storeId}:${row.date}`;
+      map.set(key, row);
+    }
+    return map;
+  }, [excelRows]);
+
+  const hasExcelData = excelRows.length > 0;
 
   // Merge both data sources into unified records
   const unifiedRows = useMemo((): UnifiedDailyRecord[] => {
     const records: UnifiedDailyRecord[] = [];
 
-    // Add Clover records
+    // Add Clover records, enriched with Excel labour data when available
     for (const row of cloverRows) {
       const storeId = merchantToStoreId[row.merchantId] || "pk";
+      const excelKey = `${storeId}:${row.date}`;
+      const excelRow = excelLabourMap.get(excelKey);
+
       records.push({
         storeId,
         date: row.date,
         totalSales: row.totalSales,
         orderCount: row.orderCount,
         totalTips: row.totalTips,
-        labourCost: 0, // Clover doesn't have labour data
+        // Use Excel labour data if available, otherwise 0
+        labourCost: excelRow?.labourCost ?? 0,
         labourMinutes: 0,
         overtimeMinutes: 0,
-        labourPercent: 0,
-        source: "clover",
+        labourPercent: excelRow?.labourPercent ?? 0,
+        source: excelRow ? "excel" : "clover",
       });
     }
 
-    // Add 7shifts records (Ontario)
+    // Add 7shifts records (Ontario) — these have their own labour data
     for (const row of sevenShiftsRows) {
       records.push({
         storeId: "ontario",
         date: row.date,
         totalSales: row.totalSales,
         orderCount: row.orderCount,
-        totalTips: 0, // 7shifts doesn't have tips data
+        totalTips: 0,
         labourCost: row.labourCost,
         labourMinutes: row.labourMinutes,
         overtimeMinutes: row.overtimeMinutes,
@@ -125,7 +161,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
     }
 
     return records;
-  }, [cloverRows, sevenShiftsRows]);
+  }, [cloverRows, sevenShiftsRows, excelLabourMap]);
 
   const hasData = unifiedRows.length > 0;
   const hasCloverData = cloverRows.length > 0;
@@ -162,6 +198,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
     const sources: string[] = [];
     if (hasCloverData) sources.push("Clover");
     if (hasSevenShiftsData) sources.push("7shifts");
+    if (hasExcelData) sources.push("Excel");
     const sourceLabel = sources.join(" + ");
 
     const periodLabel = dateFilter.label !== "Custom"
@@ -204,7 +241,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
         subtitle: `Avg $${totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) : "0"} per order`,
       },
     ];
-  }, [unifiedRows, hasData, hasCloverData, hasSevenShiftsData, noDataForPeriod, dateFilter]);
+  }, [unifiedRows, hasData, hasCloverData, hasSevenShiftsData, hasExcelData, noDataForPeriod, dateFilter]);
 
   const weeklySales = useMemo((): WeeklySales[] | null => {
     if (!hasData) return null;
@@ -256,43 +293,46 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
     const storeRevenue = new Map<string, number>();
     const storeLabourCost = new Map<string, number>();
     const storeLabourMinutes = new Map<string, number>();
+    const storeHasRealLabour = new Map<string, boolean>();
 
     for (const row of unifiedRows) {
       storeRevenue.set(row.storeId, (storeRevenue.get(row.storeId) || 0) + row.totalSales);
       storeLabourCost.set(row.storeId, (storeLabourCost.get(row.storeId) || 0) + row.labourCost);
       storeLabourMinutes.set(row.storeId, (storeLabourMinutes.get(row.storeId) || 0) + row.labourMinutes);
+      // Track whether this store has real labour data (from 7shifts or Excel)
+      if (row.labourCost > 0 && (row.source === "7shifts" || row.source === "excel")) {
+        storeHasRealLabour.set(row.storeId, true);
+      }
     }
 
     return stores.map((store) => {
       const revenue = storeRevenue.get(store.id) || 0;
       const labourCost = storeLabourCost.get(store.id) || 0;
       const labourMinutes = storeLabourMinutes.get(store.id) || 0;
+      const hasRealLabour = storeHasRealLabour.get(store.id) || false;
 
-      // For Ontario (7shifts), we have real labour data
-      if (store.id === "ontario" && labourCost > 0) {
+      // If we have real labour data (from 7shifts or Excel), use it
+      if (hasRealLabour && labourCost > 0) {
         return {
           store: store.id,
           revenue: Math.round(revenue),
           labourCost: Math.round(labourCost),
           labourPercent: revenue > 0 ? parseFloat(((labourCost / revenue) * 100).toFixed(1)) : 0,
-          target: 30,
-          employees: 0, // 7shifts daily report doesn't include employee count
-          hoursWorked: Math.round(labourMinutes / 60),
+          target: store.labourTarget,
+          employees: 0,
+          hoursWorked: labourMinutes > 0 ? Math.round(labourMinutes / 60) : 0,
         };
       }
 
-      // For Clover stores, use demo labour % (no real labour data from Clover)
-      const demoEntry = demoLabourData.find(d => d.store === store.id);
-      const labourPercent = demoEntry?.labourPercent ?? 28;
-      const estimatedLabourCost = revenue * (labourPercent / 100);
+      // No real labour data — show revenue with 0% labour (no estimate)
       return {
         store: store.id,
         revenue: Math.round(revenue),
-        labourCost: Math.round(estimatedLabourCost),
-        labourPercent,
-        target: 30,
-        employees: demoEntry?.employees ?? 0,
-        hoursWorked: demoEntry?.hoursWorked ?? 0,
+        labourCost: 0,
+        labourPercent: 0,
+        target: store.labourTarget,
+        employees: 0,
+        hoursWorked: 0,
       };
     });
   }, [unifiedRows, hasData]);
@@ -302,6 +342,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
     hasData,
     hasCloverData,
     hasSevenShiftsData,
+    hasExcelData,
     noDataForPeriod,
     kpis,
     weeklySales,
@@ -309,6 +350,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
     labourData,
     salesRows: cloverRows,
     sevenShiftsRows,
+    excelRows,
     unifiedRows,
   };
 }

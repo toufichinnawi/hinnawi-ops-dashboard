@@ -198,3 +198,40 @@ export const sevenShiftsDailySales = mysqlTable("seven_shifts_daily_sales", {
 
 export type SevenShiftsDailySales = typeof sevenShiftsDailySales.$inferSelect;
 export type InsertSevenShiftsDailySales = typeof sevenShiftsDailySales.$inferInsert;
+
+/**
+ * Excel labour data — parsed from SharePoint/OneDrive daily report Excel file
+ * Contains daily labour costs and net sales for all 4 stores
+ */
+export const excelLabourData = mysqlTable("excel_labour_data", {
+  id: int("id").autoincrement().primaryKey(),
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
+  store: varchar("store", { length: 64 }).notNull(), // "Tunnel", "Ontario", "Mackay", "President Kennedy"
+  storeId: varchar("storeId", { length: 32 }).notNull(), // "tunnel", "ontario", "mk", "pk"
+  netSales: float("netSales").default(0).notNull(),
+  labourCost: float("labourCost").default(0).notNull(),
+  labourPercent: float("labourPercent").default(0).notNull(),
+  notes: text("notes"),
+  sourceRowId: int("sourceRowId"), // ID from the Excel file for dedup
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ExcelLabourData = typeof excelLabourData.$inferSelect;
+export type InsertExcelLabourData = typeof excelLabourData.$inferInsert;
+
+/**
+ * Excel sync metadata — tracks when the Excel file was last synced
+ */
+export const excelSyncMeta = mysqlTable("excel_sync_meta", {
+  id: int("id").autoincrement().primaryKey(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  rowCount: int("rowCount").default(0).notNull(),
+  dateRange: varchar("dateRange", { length: 64 }), // "2026-02-23 to 2026-03-01"
+  lastSyncAt: timestamp("lastSyncAt").defaultNow().notNull(),
+  syncSuccess: boolean("syncSuccess").default(true).notNull(),
+  errorMessage: text("errorMessage"),
+});
+
+export type ExcelSyncMeta = typeof excelSyncMeta.$inferSelect;
+export type InsertExcelSyncMeta = typeof excelSyncMeta.$inferInsert;

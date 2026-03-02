@@ -38,6 +38,7 @@ interface DataContextValue {
   lastUpdated: string | null;
   hasLiveData: boolean;
   hasCloverData: boolean;
+  hasExcelData: boolean;
 
   // Computed dashboard data (merges live + demo fallback)
   kpis: KPI[];
@@ -365,6 +366,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     retry: 1,
   });
 
+  // Fetch Excel labour data from API (all available data)
+  const { data: excelLabourData } = trpc.excelLabour.data.useQuery(undefined, {
+    refetchInterval: 5 * 60 * 1000,
+    retry: 1,
+  });
+  const hasExcelData = (excelLabourData?.length ?? 0) > 0;
+
   useEffect(() => {
     saveToStorage(data);
   }, [data]);
@@ -390,7 +398,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const hasCSVData = data.uploads.length > 0;
   const hasCloverData = (cloverSalesData?.length ?? 0) > 0;
   const hasSevenShiftsData = (sevenShiftsSalesData?.length ?? 0) > 0;
-  const hasLiveData = hasCloverData || hasSevenShiftsData || hasCSVData;
+  const hasLiveData = hasCloverData || hasSevenShiftsData || hasCSVData || hasExcelData;
 
   // Compute merged data — Clover+7shifts data takes priority over CSV, CSV over demo
   const kpis = useMemo(() => {
@@ -487,10 +495,41 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Overlay Excel labour data on top of Clover revenue data
+      if (hasExcelData) {
+        const excelRows = excelLabourData as any[];
+        // Get the most recent 7 days of Excel data
+        const excelDates = Array.from(new Set(excelRows.map((r: any) => r.date))).sort().reverse();
+        const recentExcelDates = excelDates.slice(0, 7);
+        const recentExcel = excelRows.filter((r: any) => recentExcelDates.includes(r.date));
+
+        // Group by storeId
+        const storeLabour = new Map<string, { labourCost: number; netSales: number }>();
+        for (const row of recentExcel) {
+          const existing = storeLabour.get(row.storeId) ?? { labourCost: 0, netSales: 0 };
+          existing.labourCost += row.labourCost;
+          existing.netSales += row.netSales;
+          storeLabour.set(row.storeId, existing);
+        }
+
+        // Update each store's labour data from Excel
+        for (const [storeId, excelAgg] of Array.from(storeLabour)) {
+          const idx = result.findIndex(r => r.store === storeId);
+          if (idx >= 0) {
+            const revenue = result[idx].revenue || Math.round(excelAgg.netSales);
+            result[idx] = {
+              ...result[idx],
+              labourCost: Math.round(excelAgg.labourCost),
+              labourPercent: revenue > 0 ? parseFloat(((excelAgg.labourCost / revenue) * 100).toFixed(1)) : 0,
+            };
+          }
+        }
+      }
+
       return result;
     }
     return computeLabourData(data.uploads) ?? demoLabourData;
-  }, [hasCloverData, hasSevenShiftsData, cloverSalesData, sevenShiftsSalesData, data.uploads]);
+  }, [hasCloverData, hasSevenShiftsData, hasExcelData, cloverSalesData, sevenShiftsSalesData, excelLabourData, data.uploads]);
 
   const weeklyTraffic = useMemo(() => {
     const cloverTraffic = hasCloverData ? computeCloverDailyTraffic(cloverSalesData as CloverSalesRow[]) : null;
@@ -538,6 +577,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     lastUpdated: data.lastUpdated,
     hasLiveData,
     hasCloverData,
+    hasExcelData,
     kpis,
     weeklySales,
     labourData,

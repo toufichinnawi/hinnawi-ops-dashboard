@@ -15,7 +15,11 @@ import {
   createSevenShiftsConnection, updateSevenShiftsConnection, deleteSevenShiftsConnection,
   upsertSevenShiftsDailySales, getAllSevenShiftsSales, getSevenShiftsSalesByDateRange,
   getSevenShiftsSalesByConnection,
+  bulkUpsertExcelLabourData, getAllExcelLabourData, getExcelLabourByDateRange,
+  getExcelLabourByStore, deleteAllExcelLabourData,
+  getLatestExcelSyncMeta, createExcelSyncMeta,
 } from "./db";
+import { parseExcelBuffer } from "./excelParser";
 import { sendTeamsAlert, testWebhookConnection, buildLabourAlert, buildReportOverdueAlert, buildSalesDropAlert, buildDailySummaryAlert } from "./teams";
 import type { AlertPayload } from "./teams";
 import {
@@ -791,6 +795,96 @@ export const appRouter = router({
         }
         return getAllSevenShiftsSales(input?.limit ?? 120);
       }),
+  }),
+
+  // ─── Excel Labour Data (SharePoint Daily Report) ──────────────
+  excelLabour: router({
+    // Upload and parse an Excel file
+    upload: protectedProcedure
+      .input(z.object({
+        fileBase64: z.string(), // Base64-encoded .xlsx file
+        fileName: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        console.log(`[Excel] Parsing uploaded file: ${input.fileName ?? "unknown"}`);
+        const buffer = Buffer.from(input.fileBase64, "base64");
+        const result = parseExcelBuffer(buffer);
+
+        if (!result.success) {
+          await createExcelSyncMeta({
+            fileName: input.fileName ?? "unknown.xlsx",
+            rowCount: 0,
+            dateRange: null,
+            syncSuccess: false,
+            errorMessage: result.errors.join("; "),
+          });
+          return { success: false, errors: result.errors, rowCount: 0, skipped: result.skipped };
+        }
+
+        // Upsert all parsed rows into database
+        const upserted = await bulkUpsertExcelLabourData(
+          result.rows.map(r => ({
+            date: r.date,
+            store: r.store,
+            storeId: r.storeId,
+            netSales: r.netSales,
+            labourCost: r.labourCost,
+            labourPercent: r.labourPercent,
+            notes: r.notes,
+            sourceRowId: r.sourceRowId,
+          }))
+        );
+
+        const dateRange = result.dateRange
+          ? `${result.dateRange.from} to ${result.dateRange.to}`
+          : null;
+
+        await createExcelSyncMeta({
+          fileName: input.fileName ?? "unknown.xlsx",
+          rowCount: upserted,
+          dateRange,
+          syncSuccess: true,
+        });
+
+        console.log(`[Excel] Uploaded ${upserted} rows, date range: ${dateRange}`);
+
+        return {
+          success: true,
+          rowCount: upserted,
+          dateRange: result.dateRange,
+          errors: result.errors,
+          skipped: result.skipped,
+        };
+      }),
+
+    // Get all labour data
+    data: protectedProcedure
+      .input(z.object({
+        fromDate: z.string().optional(),
+        toDate: z.string().optional(),
+        storeId: z.string().optional(),
+        limit: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        if (input?.fromDate && input?.toDate) {
+          return getExcelLabourByDateRange(input.fromDate, input.toDate);
+        }
+        if (input?.storeId) {
+          return getExcelLabourByStore(input.storeId, input.limit ?? 60);
+        }
+        return getAllExcelLabourData(input?.limit ?? 500);
+      }),
+
+    // Get sync metadata
+    syncMeta: protectedProcedure.query(async () => {
+      return getLatestExcelSyncMeta();
+    }),
+
+    // Clear all Excel data
+    clearAll: protectedProcedure.mutation(async () => {
+      await deleteAllExcelLabourData();
+      return { success: true };
+    }),
   }),
 
   // ─── Combined Sync All Sources ────────────────────────────────

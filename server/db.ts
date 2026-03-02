@@ -11,6 +11,8 @@ import {
   cloverShifts, InsertCloverShift, CloverShift,
   sevenShiftsConnections, InsertSevenShiftsConnection, SevenShiftsConnection,
   sevenShiftsDailySales, InsertSevenShiftsDailySales, SevenShiftsDailySales,
+  excelLabourData, InsertExcelLabourData, ExcelLabourData,
+  excelSyncMeta, InsertExcelSyncMeta, ExcelSyncMeta,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -420,4 +422,83 @@ export async function getSevenShiftsSalesByConnection(connectionId: number, limi
     .where(eq(sevenShiftsDailySales.connectionId, connectionId))
     .orderBy(desc(sevenShiftsDailySales.date))
     .limit(limit);
+}
+
+// ─── Excel Labour Data ─────────────────────────────────────────────
+
+export async function upsertExcelLabourData(data: InsertExcelLabourData): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Check if entry exists for this store + date
+  const existing = await db.select().from(excelLabourData)
+    .where(and(
+      eq(excelLabourData.storeId, data.storeId),
+      eq(excelLabourData.date, data.date)
+    ))
+    .limit(1);
+  if (existing.length > 0) {
+    await db.update(excelLabourData).set(data).where(eq(excelLabourData.id, existing[0].id));
+  } else {
+    await db.insert(excelLabourData).values(data);
+  }
+}
+
+export async function bulkUpsertExcelLabourData(rows: InsertExcelLabourData[]): Promise<number> {
+  let upserted = 0;
+  for (const row of rows) {
+    await upsertExcelLabourData(row);
+    upserted++;
+  }
+  return upserted;
+}
+
+export async function getAllExcelLabourData(limit = 500): Promise<ExcelLabourData[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(excelLabourData)
+    .orderBy(desc(excelLabourData.date))
+    .limit(limit);
+}
+
+export async function getExcelLabourByDateRange(fromDate: string, toDate: string): Promise<ExcelLabourData[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(excelLabourData)
+    .where(and(
+      gte(excelLabourData.date, fromDate),
+      lte(excelLabourData.date, toDate)
+    ))
+    .orderBy(desc(excelLabourData.date));
+}
+
+export async function getExcelLabourByStore(storeId: string, limit = 60): Promise<ExcelLabourData[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(excelLabourData)
+    .where(eq(excelLabourData.storeId, storeId))
+    .orderBy(desc(excelLabourData.date))
+    .limit(limit);
+}
+
+export async function deleteAllExcelLabourData(): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(excelLabourData);
+}
+
+// ─── Excel Sync Meta ───────────────────────────────────────────────
+
+export async function getLatestExcelSyncMeta(): Promise<ExcelSyncMeta | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(excelSyncMeta)
+    .orderBy(desc(excelSyncMeta.lastSyncAt))
+    .limit(1);
+  return rows[0];
+}
+
+export async function createExcelSyncMeta(data: InsertExcelSyncMeta): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(excelSyncMeta).values(data);
 }

@@ -1,0 +1,28 @@
+{
+  "query": "INSERT INTO excel_sync_meta (fileName, rowCount, dateRange, syncSuccess) VALUES ('daily_report.xlsx', 25, '2026-02-23 to 2026-03-01', true);\nSELECT COUNT(*) as total_rows FROM excel_labour_data;\nSELECT storeId, COUNT(*) as days, ROUND(AVG(labourPercent), 1) as avg_labour_pct FROM excel_labour_data GROUP BY storeId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute INSERT INTO excel_sync_meta (fileName, rowCount, dateRange, syncSuccess) VALUES ('daily_report.xlsx', 25, '2026-02-23 to 2026-03-01', true);\nSELECT COUNT(*) as total_rows FROM excel_labour_data;\nSELECT storeId, COUNT(*) as days, ROUND(AVG(labourPercent), 1) as avg_labour_pct FROM excel_labour_data GROUP BY storeId;",
+  "rows": [
+    {
+      "total_rows": "25"
+    },
+    {
+      "total_rows": "storeId\tdays\tavg_labour_pct"
+    },
+    {
+      "total_rows": "ontario\t7\t35.9"
+    },
+    {
+      "total_rows": "tunnel\t4\t30.2"
+    },
+    {
+      "total_rows": "pk\t7\t25.6"
+    },
+    {
+      "total_rows": "mk\t7\t22.1"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_rows\n25\nstoreId\tdays\tavg_labour_pct\nontario\t7\t35.9\ntunnel\t4\t30.2\npk\t7\t25.6\nmk\t7\t22.1\n",
+  "stderr": "",
+  "execution_time_ms": 90
+}
