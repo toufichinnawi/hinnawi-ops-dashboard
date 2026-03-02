@@ -479,7 +479,7 @@ export const appRouter = router({
 
         for (const conn of active) {
           try {
-            const daysBack = input?.daysBack ?? 7;
+            const daysBack = input?.daysBack ?? 30;
             const { startTime, endTime } = getDateRange(daysBack);
 
             console.log(`[Clover SyncAll] Starting sync for ${conn.storeName} (${conn.merchantId}), ${daysBack} days back`);
@@ -555,7 +555,10 @@ export const appRouter = router({
       .query(async ({ input }) => {
         // If date range is provided, use date-filtered query
         if (input?.fromDate && input?.toDate) {
-          return getCloverSalesByDateRange(input.fromDate, input.toDate);
+          console.log(`[Clover salesData] Querying date range: ${input.fromDate} to ${input.toDate}`);
+          const results = await getCloverSalesByDateRange(input.fromDate, input.toDate);
+          console.log(`[Clover salesData] Returned ${results.length} rows for ${input.fromDate} to ${input.toDate}`);
+          return results;
         }
         if (input?.connectionId) {
           return getCloverSalesByConnection(input.connectionId, input.limit ?? 30);

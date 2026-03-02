@@ -47,8 +47,24 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
 
   const rows = (salesData ?? []) as CloverSalesRow[];
   const hasData = rows.length > 0;
+  // True when the query has completed but returned no rows for the selected period
+  const noDataForPeriod = !isLoading && salesData !== undefined && rows.length === 0;
 
   const kpis = useMemo((): KPI[] | null => {
+    // If query completed with no data, return zeroed KPIs (not null) so we don't fall back
+    if (noDataForPeriod) {
+      const periodLabel = dateFilter.label !== "Custom"
+        ? dateFilter.label
+        : dateFilter.mode === "single"
+          ? format(dateFilter.from, "MMM d, yyyy")
+          : `${format(dateFilter.from, "MMM d")} – ${format(dateFilter.to, "MMM d")}`;
+      return [
+        { title: "Total Revenue", value: 0, format: "currency", trend: 0, trendLabel: periodLabel, subtitle: "No data for this period" },
+        { title: "Total Tips", value: 0, format: "currency", trend: 0, trendLabel: "No data", subtitle: "—" },
+        { title: "Avg Ticket", value: 0, format: "currency", trend: 0, trendLabel: "No data", subtitle: "0 orders" },
+        { title: "Total Orders", value: 0, format: "number", trend: 0, trendLabel: periodLabel, subtitle: "No data for this period" },
+      ];
+    }
     if (!hasData) return null;
 
     const totalRevenue = rows.reduce((s, r) => s + r.totalSales, 0);
@@ -98,7 +114,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
         subtitle: `Avg $${totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) : "0"} per order`,
       },
     ];
-  }, [rows, hasData, dateFilter]);
+  }, [rows, hasData, noDataForPeriod, dateFilter]);
 
   const weeklySales = useMemo((): WeeklySales[] | null => {
     if (!hasData) return null;
@@ -174,6 +190,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
   return {
     isLoading,
     hasData,
+    noDataForPeriod,
     kpis,
     weeklySales,
     dailyTraffic,

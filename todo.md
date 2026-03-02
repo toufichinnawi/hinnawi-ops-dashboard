@@ -117,3 +117,14 @@
 - [x] Add "Apply" button to Date Range mode so filter only applies after both dates are selected
 - [x] Keep single day and quick presets working as instant-apply
 - [x] Test date range selection end-to-end
+
+---
+
+# Bug Fix: Date Filter Not Refreshing Data
+
+- [x] Trace full data flow from DateFilter → hook → backend → KPI computation
+- [x] Fix filtering: when Clover connected, always use filtered data (don't fall back to unfiltered DataContext)
+- [x] Return zeroed KPIs for empty periods instead of null (prevents fallback to all-time data)
+- [x] Verified: Feb 24–27 shows $24,339 (correct subset of $30,985 total)
+- [x] Verified: Today shows $1,594, Yesterday shows $2,722 (correct single-day sums)
+- [x] Increased default sync range from 7 to 30 days for more historical data

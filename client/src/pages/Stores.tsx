@@ -43,13 +43,14 @@ export default function Stores() {
     weeklySales: filteredSales,
     isLoading: filterLoading,
     hasData: hasFilteredData,
+    noDataForPeriod,
   } = useFilteredCloverData(dateFilter);
 
-  // Fall back to DataContext data if no filtered Clover data
+  // When Clover is connected, always use filtered data (even empty for no-data periods)
   const { labourData: contextLabour, weeklySales: contextSales } = useData();
 
-  const labourData = hasCloverData && filteredLabour ? filteredLabour : contextLabour;
-  const weeklySales = hasCloverData && filteredSales ? filteredSales : contextSales;
+  const labourData = hasCloverData ? (filteredLabour ?? contextLabour) : contextLabour;
+  const weeklySales = hasCloverData ? (filteredSales ?? contextSales) : contextSales;
 
   function getLabour(storeId: string) {
     return labourData.find((d) => d.store === storeId) ?? { revenue: 0, labourCost: 0, labourPercent: 0, target: 30, employees: 0, hoursWorked: 0 };

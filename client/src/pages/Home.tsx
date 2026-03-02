@@ -65,14 +65,15 @@ export default function Home() {
   const [dateFilter, setDateFilter] = useState<DateFilterValue>(getDefaultDateFilter);
 
   // Fetch filtered Clover data based on date selection
-  const { kpis: filteredKpis, weeklySales: filteredSales, dailyTraffic: filteredTraffic, isLoading: filterLoading, hasData: hasFilteredData } = useFilteredCloverData(dateFilter);
+  const { kpis: filteredKpis, weeklySales: filteredSales, dailyTraffic: filteredTraffic, isLoading: filterLoading, hasData: hasFilteredData, noDataForPeriod } = useFilteredCloverData(dateFilter);
 
-  // Fall back to DataContext data if no filtered Clover data
+  // When Clover is connected, always use filtered data (even zeroed KPIs for empty periods)
+  // Only fall back to DataContext when Clover is NOT connected
   const { kpis: contextKpis, weeklySales: contextSales, weeklyTraffic: contextTraffic } = useData();
 
-  const kpis = hasCloverData && filteredKpis ? filteredKpis : contextKpis;
-  const weeklySales = hasCloverData && filteredSales ? filteredSales : contextSales;
-  const weeklyTraffic = hasCloverData && filteredTraffic ? filteredTraffic : contextTraffic;
+  const kpis = hasCloverData ? (filteredKpis ?? contextKpis) : contextKpis;
+  const weeklySales = hasCloverData ? (filteredSales ?? contextSales) : contextSales;
+  const weeklyTraffic = hasCloverData ? (filteredTraffic ?? contextTraffic) : contextTraffic;
 
   const todayReports = reportSubmissions.filter((r) => r.type === "Daily Report");
   const status = {
