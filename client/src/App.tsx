@@ -13,6 +13,7 @@ import Maintenance from "./pages/Maintenance";
 import Alerts from "./pages/Alerts";
 import DataManagement from "./pages/DataManagement";
 import TeamsIntegration from "./pages/TeamsIntegration";
+import CloverIntegration from "./pages/CloverIntegration";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/maintenance" component={Maintenance} />
       <Route path="/alerts" component={Alerts} />
       <Route path="/data" component={DataManagement} />
+      <Route path="/clover" component={CloverIntegration} />
       <Route path="/teams" component={TeamsIntegration} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

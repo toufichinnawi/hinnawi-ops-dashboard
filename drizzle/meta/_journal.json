@@ -15,6 +15,20 @@
       "when": 1772432692429,
       "tag": "0001_lazy_captain_flint",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1772462629115,
+      "tag": "0002_serious_black_tom",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1772464613022,
+      "tag": "0003_cynical_mentor",
+      "breakpoints": true
     }
   ]
 }

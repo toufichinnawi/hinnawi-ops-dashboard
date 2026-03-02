@@ -37,4 +37,43 @@
 - [x] Auth gate working for protected routes
 
 ## Phase 5: Deliver
-- [ ] Save checkpoint and deliver to user
+- [x] Save checkpoint and deliver to user
+
+---
+
+# Scheduled Daily Summary Alerts
+
+- [x] Store schedule config in database (scheduledSummary table)
+- [x] Backend daily summary builder (buildDailySummaryAlert)
+- [x] tRPC route for sending daily summary (alerts.sendDailySummary)
+- [ ] Add daily summary settings UI (enable/disable, time, webhook selection)
+- [ ] Backend cron/interval logic to auto-trigger the summary
+
+# Role-Based Access Control
+
+- [x] Restrict Teams Integration nav item to admin users only (sidebar filtering)
+- [x] Backend tRPC routes use protectedProcedure for all sensitive operations
+- [ ] Show "Admin Access Required" message for non-admin users on Teams page URL
+- [ ] Add admin badge/indicator in sidebar for admin users
+
+---
+
+# QuickBooks Integration
+
+- [ ] Research QuickBooks Online API capabilities (payroll, P&L, expenses)
+- [ ] Determine best integration approach (OAuth2, API keys, CSV)
+- [ ] Present options to user for approval
+- [ ] Implement chosen approach
+
+---
+
+# Clover POS Integration
+
+- [x] Research Clover REST API (orders, payments, employees, reporting)
+- [x] Build Clover service module (OAuth, data fetching, aggregation)
+- [x] Database tables for connections, daily sales, shifts
+- [x] tRPC routes for connect, disconnect, sync, sales/shift data
+- [x] Manual connect flow (Merchant ID + API Token)
+- [x] Clover POS Integration page with 3 tabs (Connections, Sales, Labour)
+- [x] Sync individual store or all stores
+- [x] 22 vitest tests passing (clover + teams + auth)

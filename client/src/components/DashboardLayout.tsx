@@ -14,11 +14,21 @@ import {
   Coffee,
   Database,
   MessageSquare,
+  CreditCard,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 
-const navItems = [
+interface NavItem {
+  path: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
+}
+
+const navItems: NavItem[] = [
   { path: "/", label: "Overview", icon: LayoutDashboard },
   { path: "/labour", label: "Labour Monitor", icon: Users },
   { path: "/reports", label: "Report Tracker", icon: FileText },
@@ -26,13 +36,18 @@ const navItems = [
   { path: "/maintenance", label: "Maintenance", icon: Wrench },
   { path: "/alerts", label: "Alerts", icon: Bell },
   { path: "/data", label: "Data Management", icon: Database },
-  { path: "/teams", label: "Teams Integration", icon: MessageSquare },
+  { path: "/clover", label: "Clover POS", icon: CreditCard },
+  { path: "/teams", label: "Teams Integration", icon: MessageSquare, adminOnly: true },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [location] = useLocation();
   const { hasLiveData, lastUpdated } = useData();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+
+  const visibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -66,7 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Navigation */}
         <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = location === item.path;
             const isDataPage = item.path === "/data";
             return (

@@ -5,6 +5,10 @@ import {
   teamsWebhooks, InsertTeamsWebhook, TeamsWebhook,
   alertRules, InsertAlertRule, AlertRule,
   alertHistory, InsertAlertHistory, AlertHistoryEntry,
+  scheduledSummary, InsertScheduledSummary, ScheduledSummary,
+  cloverConnections, InsertCloverConnection, CloverConnection,
+  cloverDailySales, InsertCloverDailySales, CloverDailySales,
+  cloverShifts, InsertCloverShift, CloverShift,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -170,4 +174,136 @@ export async function createAlertHistoryEntry(data: InsertAlertHistory): Promise
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.insert(alertHistory).values(data);
+}
+
+// ─── Scheduled Summary ───────────────────────────────────────────
+
+export async function getScheduledSummary(): Promise<ScheduledSummary | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(scheduledSummary).limit(1);
+  return rows[0];
+}
+
+export async function upsertScheduledSummary(data: Partial<InsertScheduledSummary> & { webhookId: number }): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await getScheduledSummary();
+  if (existing) {
+    await db.update(scheduledSummary).set(data).where(eq(scheduledSummary.id, existing.id));
+  } else {
+    await db.insert(scheduledSummary).values(data);
+  }
+}
+
+export async function updateScheduledSummaryRun(id: number, success: boolean): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(scheduledSummary).set({ lastRunAt: new Date(), lastRunSuccess: success }).where(eq(scheduledSummary.id, id));
+}
+
+// ─── Clover Connections ─────────────────────────────────────────────
+
+export async function listCloverConnections(): Promise<CloverConnection[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(cloverConnections).orderBy(desc(cloverConnections.createdAt));
+}
+
+export async function getCloverConnectionById(id: number): Promise<CloverConnection | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(cloverConnections).where(eq(cloverConnections.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function getCloverConnectionByMerchantId(merchantId: string): Promise<CloverConnection | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(cloverConnections).where(eq(cloverConnections.merchantId, merchantId)).limit(1);
+  return rows[0];
+}
+
+export async function createCloverConnection(data: InsertCloverConnection): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(cloverConnections).values(data);
+}
+
+export async function updateCloverConnection(id: number, data: Partial<InsertCloverConnection>): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(cloverConnections).set(data).where(eq(cloverConnections.id, id));
+}
+
+export async function deleteCloverConnection(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(cloverConnections).where(eq(cloverConnections.id, id));
+}
+
+// ─── Clover Daily Sales ─────────────────────────────────────────────
+
+export async function upsertCloverDailySales(data: InsertCloverDailySales): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Check if entry exists for this merchant + date
+  const existing = await db.select().from(cloverDailySales)
+    .where(eq(cloverDailySales.merchantId, data.merchantId))
+    .limit(500);
+  const match = existing.find(e => e.date === data.date);
+  if (match) {
+    await db.update(cloverDailySales).set(data).where(eq(cloverDailySales.id, match.id));
+  } else {
+    await db.insert(cloverDailySales).values(data);
+  }
+}
+
+export async function getCloverSalesByConnection(connectionId: number, limit = 30): Promise<CloverDailySales[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(cloverDailySales)
+    .where(eq(cloverDailySales.connectionId, connectionId))
+    .orderBy(desc(cloverDailySales.date))
+    .limit(limit);
+}
+
+export async function getAllCloverSales(limit = 120): Promise<CloverDailySales[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(cloverDailySales)
+    .orderBy(desc(cloverDailySales.date))
+    .limit(limit);
+}
+
+// ─── Clover Shifts ──────────────────────────────────────────────────
+
+export async function upsertCloverShift(data: InsertCloverShift): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select().from(cloverShifts)
+    .where(eq(cloverShifts.shiftId, data.shiftId))
+    .limit(1);
+  if (existing.length > 0) {
+    await db.update(cloverShifts).set(data).where(eq(cloverShifts.id, existing[0].id));
+  } else {
+    await db.insert(cloverShifts).values(data);
+  }
+}
+
+export async function getCloverShiftsByConnection(connectionId: number, limit = 200): Promise<CloverShift[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(cloverShifts)
+    .where(eq(cloverShifts.connectionId, connectionId))
+    .orderBy(desc(cloverShifts.inTime))
+    .limit(limit);
+}
+
+export async function getAllCloverShifts(limit = 500): Promise<CloverShift[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(cloverShifts)
+    .orderBy(desc(cloverShifts.inTime))
+    .limit(limit);
 }

@@ -1,15 +1,23 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import {
   listWebhooks, getWebhookById, createWebhook, updateWebhook, deleteWebhook,
   listAlertRules, createAlertRule, updateAlertRule, deleteAlertRule,
   listAlertHistory, createAlertHistoryEntry,
+  listCloverConnections, getCloverConnectionById, getCloverConnectionByMerchantId,
+  createCloverConnection, updateCloverConnection, deleteCloverConnection,
+  upsertCloverDailySales, getAllCloverSales, getCloverSalesByConnection,
+  upsertCloverShift, getAllCloverShifts,
 } from "./db";
 import { sendTeamsAlert, testWebhookConnection, buildLabourAlert, buildReportOverdueAlert, buildSalesDropAlert, buildDailySummaryAlert } from "./teams";
 import type { AlertPayload } from "./teams";
+import {
+  getCloverAuthUrl, exchangeCloverCode, fetchMerchantInfo,
+  fetchPayments, fetchShifts, aggregatePaymentsByDay, aggregateShifts, getDateRange,
+} from "./clover";
 
 export const appRouter = router({
   system: systemRouter,
@@ -274,6 +282,252 @@ export const appRouter = router({
         });
 
         return result;
+      }),
+  }),
+
+  // ─── Clover POS Integration ───────────────────────────────────
+  clover: router({
+    // Get OAuth URL to start connection
+    getAuthUrl: protectedProcedure.query(() => {
+      const baseUrl = process.env.VITE_APP_URL || "";
+      const redirectUri = `${baseUrl}/api/clover/callback`;
+      return { url: getCloverAuthUrl(redirectUri) };
+    }),
+
+    // Exchange authorization code for access token
+    connect: protectedProcedure
+      .input(z.object({
+        code: z.string(),
+        merchantId: z.string(),
+        storeName: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        // Exchange code for token
+        const { accessToken } = await exchangeCloverCode(input.code);
+
+        // Fetch merchant info to verify connection
+        const merchant = await fetchMerchantInfo(input.merchantId, accessToken);
+
+        // Check if already connected
+        const existing = await getCloverConnectionByMerchantId(input.merchantId);
+        if (existing) {
+          await updateCloverConnection(existing.id, {
+            accessToken,
+            storeName: input.storeName,
+            isActive: true,
+          });
+        } else {
+          await createCloverConnection({
+            storeName: input.storeName,
+            merchantId: input.merchantId,
+            accessToken,
+          });
+        }
+
+        return { success: true, merchantName: merchant.name };
+      }),
+
+    // Manual connect with API token (simpler for non-developers)
+    connectManual: protectedProcedure
+      .input(z.object({
+        storeName: z.string().min(1),
+        merchantId: z.string().min(1),
+        accessToken: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        // Verify the token works by fetching merchant info
+        try {
+          const merchant = await fetchMerchantInfo(input.merchantId, input.accessToken);
+
+          const existing = await getCloverConnectionByMerchantId(input.merchantId);
+          if (existing) {
+            await updateCloverConnection(existing.id, {
+              accessToken: input.accessToken,
+              storeName: input.storeName,
+              isActive: true,
+            });
+          } else {
+            await createCloverConnection({
+              storeName: input.storeName,
+              merchantId: input.merchantId,
+              accessToken: input.accessToken,
+            });
+          }
+
+          return { success: true, merchantName: merchant.name };
+        } catch (error: any) {
+          throw new Error(`Could not connect to Clover: ${error.message}`);
+        }
+      }),
+
+    // List all connected stores
+    connections: protectedProcedure.query(async () => {
+      const connections = await listCloverConnections();
+      // Don't expose access tokens to the frontend
+      return connections.map(c => ({
+        id: c.id,
+        storeName: c.storeName,
+        merchantId: c.merchantId,
+        isActive: c.isActive,
+        lastSyncAt: c.lastSyncAt,
+        lastSyncSuccess: c.lastSyncSuccess,
+        createdAt: c.createdAt,
+      }));
+    }),
+
+    // Disconnect a store
+    disconnect: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteCloverConnection(input.id);
+        return { success: true };
+      }),
+
+    // Toggle connection active/inactive
+    toggleConnection: protectedProcedure
+      .input(z.object({ id: z.number(), isActive: z.boolean() }))
+      .mutation(async ({ input }) => {
+        await updateCloverConnection(input.id, { isActive: input.isActive });
+        return { success: true };
+      }),
+
+    // Sync data for a specific connection
+    syncStore: protectedProcedure
+      .input(z.object({ connectionId: z.number(), daysBack: z.number().min(1).max(90).optional() }))
+      .mutation(async ({ input }) => {
+        const connection = await getCloverConnectionById(input.connectionId);
+        if (!connection) throw new Error("Connection not found");
+        if (!connection.isActive) throw new Error("Connection is disabled");
+
+        const daysBack = input.daysBack ?? 7;
+        const { startTime, endTime } = getDateRange(daysBack);
+
+        try {
+          // Fetch payments and aggregate by day
+          const payments = await fetchPayments(connection.merchantId, connection.accessToken, startTime, endTime);
+          const dailySales = aggregatePaymentsByDay(payments);
+
+          for (const day of dailySales) {
+            await upsertCloverDailySales({
+              connectionId: connection.id,
+              merchantId: connection.merchantId,
+              date: day.date,
+              totalSales: day.totalSales,
+              totalTips: day.totalTips,
+              totalTax: day.totalTax,
+              orderCount: day.orderCount,
+              refundAmount: day.refundAmount,
+              netSales: day.netSales,
+            });
+          }
+
+          // Fetch shifts
+          const shifts = await fetchShifts(connection.merchantId, connection.accessToken, startTime, endTime);
+          for (const shift of shifts) {
+            const hours = shift.outTime ? (shift.outTime - shift.inTime) / (1000 * 60 * 60) : null;
+            await upsertCloverShift({
+              connectionId: connection.id,
+              merchantId: connection.merchantId,
+              employeeId: shift.employee.id,
+              employeeName: shift.employee.name || "Unknown",
+              shiftId: shift.id,
+              inTime: new Date(shift.inTime),
+              outTime: shift.outTime ? new Date(shift.outTime) : null,
+              hoursWorked: hours,
+            });
+          }
+
+          await updateCloverConnection(connection.id, {
+            lastSyncAt: new Date(),
+            lastSyncSuccess: true,
+          });
+
+          return {
+            success: true,
+            salesDays: dailySales.length,
+            shiftsProcessed: shifts.length,
+            totalPayments: payments.length,
+          };
+        } catch (error: any) {
+          await updateCloverConnection(connection.id, {
+            lastSyncAt: new Date(),
+            lastSyncSuccess: false,
+          });
+          throw new Error(`Sync failed: ${error.message}`);
+        }
+      }),
+
+    // Sync all active connections
+    syncAll: protectedProcedure
+      .input(z.object({ daysBack: z.number().min(1).max(90).optional() }).optional())
+      .mutation(async ({ input }) => {
+        const connections = await listCloverConnections();
+        const active = connections.filter(c => c.isActive);
+        const results: Array<{ storeName: string; success: boolean; error?: string }> = [];
+
+        for (const conn of active) {
+          try {
+            const daysBack = input?.daysBack ?? 7;
+            const { startTime, endTime } = getDateRange(daysBack);
+
+            const payments = await fetchPayments(conn.merchantId, conn.accessToken, startTime, endTime);
+            const dailySales = aggregatePaymentsByDay(payments);
+
+            for (const day of dailySales) {
+              await upsertCloverDailySales({
+                connectionId: conn.id,
+                merchantId: conn.merchantId,
+                date: day.date,
+                totalSales: day.totalSales,
+                totalTips: day.totalTips,
+                totalTax: day.totalTax,
+                orderCount: day.orderCount,
+                refundAmount: day.refundAmount,
+                netSales: day.netSales,
+              });
+            }
+
+            const shifts = await fetchShifts(conn.merchantId, conn.accessToken, startTime, endTime);
+            for (const shift of shifts) {
+              const hours = shift.outTime ? (shift.outTime - shift.inTime) / (1000 * 60 * 60) : null;
+              await upsertCloverShift({
+                connectionId: conn.id,
+                merchantId: conn.merchantId,
+                employeeId: shift.employee.id,
+                employeeName: shift.employee.name || "Unknown",
+                shiftId: shift.id,
+                inTime: new Date(shift.inTime),
+                outTime: shift.outTime ? new Date(shift.outTime) : null,
+                hoursWorked: hours,
+              });
+            }
+
+            await updateCloverConnection(conn.id, { lastSyncAt: new Date(), lastSyncSuccess: true });
+            results.push({ storeName: conn.storeName, success: true });
+          } catch (error: any) {
+            await updateCloverConnection(conn.id, { lastSyncAt: new Date(), lastSyncSuccess: false });
+            results.push({ storeName: conn.storeName, success: false, error: error.message });
+          }
+        }
+
+        return { results, totalSynced: results.filter(r => r.success).length };
+      }),
+
+    // Get aggregated sales data for the dashboard
+    salesData: protectedProcedure
+      .input(z.object({ connectionId: z.number().optional(), limit: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        if (input?.connectionId) {
+          return getCloverSalesByConnection(input.connectionId, input.limit ?? 30);
+        }
+        return getAllCloverSales(input?.limit ?? 120);
+      }),
+
+    // Get shift/labour data for the dashboard
+    shiftData: protectedProcedure
+      .input(z.object({ limit: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return getAllCloverShifts(input?.limit ?? 500);
       }),
   }),
 });
