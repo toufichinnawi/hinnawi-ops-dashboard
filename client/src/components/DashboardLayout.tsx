@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Coffee,
   Database,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useData } from "@/contexts/DataContext";
@@ -25,6 +26,7 @@ const navItems = [
   { path: "/maintenance", label: "Maintenance", icon: Wrench },
   { path: "/alerts", label: "Alerts", icon: Bell },
   { path: "/data", label: "Data Management", icon: Database },
+  { path: "/teams", label: "Teams Integration", icon: MessageSquare },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
