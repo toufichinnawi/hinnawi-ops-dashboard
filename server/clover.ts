@@ -117,12 +117,17 @@ async function cloverGet<T>(merchantId: string, accessToken: string, path: strin
 
   console.log(`[Clover API] GET ${url.toString().replace(accessToken, '***')}`);
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json",
-    },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+  try {
+    const response = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+      signal: controller.signal,
+    });
 
   if (!response.ok) {
     const text = await response.text();
@@ -131,10 +136,35 @@ async function cloverGet<T>(merchantId: string, accessToken: string, path: strin
         "Authentication failed. Please verify: (1) Your Merchant ID is correct — check the URL in your Clover Dashboard (clover.com/dashboard/m/YOUR_MERCHANT_ID). (2) Your API Token is correct — copy it again from Account & Setup → API Tokens. (3) The token has Read permissions for Employees, Merchant, Orders, and Payments."
       );
     }
+    if (response.status === 429) {
+      throw new Error(`RATE_LIMITED`);
+    }
     throw new Error(`Clover API error: ${response.status} ${text}`);
   }
 
   return response.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function cloverGetWithRetry<T>(merchantId: string, accessToken: string, path: string, params?: Record<string, string | string[]>, region?: string): Promise<T> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await cloverGet<T>(merchantId, accessToken, path, params, region);
+    } catch (err: any) {
+      if (err.message === 'RATE_LIMITED' && attempt < 2) {
+        const waitMs = (attempt + 1) * 2000; // 2s, 4s
+        console.log(`[Clover API] Rate limited, waiting ${waitMs}ms before retry ${attempt + 1}...`);
+        await delay(waitMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error('Max retries exceeded');
 }
 
 // ─── Data Fetching ──────────────────────────────────────────────────
@@ -151,27 +181,40 @@ export async function fetchPayments(
   limit = 500,
   region?: string
 ): Promise<CloverPayment[]> {
+  // Break large date ranges into 7-day chunks to avoid API timeouts
+  const CHUNK_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
   const allPayments: CloverPayment[] = [];
-  let offset = 0;
 
-  while (true) {
-    const data = await cloverGet<{ elements: CloverPayment[] }>(
-      merchantId,
-      accessToken,
-      "/payments",
-      {
-        filter: [`createdTime>=${startTime}`, `createdTime<=${endTime}`],
-        limit: String(limit),
-        offset: String(offset),
-        expand: "employee",
-      },
-      region
-    );
+  let chunkStart = startTime;
+  while (chunkStart < endTime) {
+    const chunkEnd = Math.min(chunkStart + CHUNK_MS - 1, endTime);
+    let offset = 0;
 
-    if (!data.elements || data.elements.length === 0) break;
-    allPayments.push(...data.elements);
-    if (data.elements.length < limit) break;
-    offset += limit;
+    console.log(`[Clover Payments] Fetching chunk ${new Date(chunkStart).toISOString().slice(0,10)} to ${new Date(chunkEnd).toISOString().slice(0,10)}`);
+
+    while (true) {
+      const data = await cloverGetWithRetry<{ elements: CloverPayment[] }>(
+        merchantId,
+        accessToken,
+        "/payments",
+        {
+          filter: [`createdTime>=${chunkStart}`, `createdTime<=${chunkEnd}`],
+          limit: String(limit),
+          offset: String(offset),
+          expand: "employee",
+        },
+        region
+      );
+
+      if (!data.elements || data.elements.length === 0) break;
+      allPayments.push(...data.elements);
+      if (data.elements.length < limit) break;
+      offset += limit;
+      await delay(300); // Rate limit: 300ms between pagination requests
+    }
+
+    await delay(500); // Rate limit: 500ms between chunk requests
+    chunkStart = chunkEnd + 1;
   }
 
   return allPayments;

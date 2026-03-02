@@ -69,12 +69,12 @@ export default function CloverIntegration() {
 
   const handleSync = (connectionId: number) => {
     setSyncingId(connectionId);
-    syncStoreMutation.mutate({ connectionId, daysBack: 7 });
+    syncStoreMutation.mutate({ connectionId });
   };
 
   const handleSyncAll = () => {
     setSyncAllLoading(true);
-    syncAllMutation.mutate({ daysBack: 7 });
+    syncAllMutation.mutate({});
   };
 
   return (

@@ -400,13 +400,13 @@ export const appRouter = router({
 
     // Sync data for a specific connection
     syncStore: protectedProcedure
-      .input(z.object({ connectionId: z.number(), daysBack: z.number().min(1).max(90).optional() }))
+      .input(z.object({ connectionId: z.number(), daysBack: z.number().min(1).max(180).optional() }))
       .mutation(async ({ input }) => {
         const connection = await getCloverConnectionById(input.connectionId);
         if (!connection) throw new Error("Connection not found");
         if (!connection.isActive) throw new Error("Connection is disabled");
 
-        const daysBack = input.daysBack ?? 7;
+        const daysBack = input.daysBack ?? 60;
         const { startTime, endTime } = getDateRange(daysBack);
 
         try {
@@ -471,7 +471,7 @@ export const appRouter = router({
 
     // Sync all active connections
     syncAll: protectedProcedure
-      .input(z.object({ daysBack: z.number().min(1).max(90).optional() }).optional())
+      .input(z.object({ daysBack: z.number().min(1).max(180).optional() }).optional())
       .mutation(async ({ input }) => {
         const connections = await listCloverConnections();
         const active = connections.filter(c => c.isActive);
@@ -479,7 +479,7 @@ export const appRouter = router({
 
         for (const conn of active) {
           try {
-            const daysBack = input?.daysBack ?? 30;
+            const daysBack = input?.daysBack ?? 60;
             const { startTime, endTime } = getDateRange(daysBack);
 
             console.log(`[Clover SyncAll] Starting sync for ${conn.storeName} (${conn.merchantId}), ${daysBack} days back`);

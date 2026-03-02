@@ -128,3 +128,13 @@
 - [x] Verified: Feb 24–27 shows $24,339 (correct subset of $30,985 total)
 - [x] Verified: Today shows $1,594, Yesterday shows $2,722 (correct single-day sums)
 - [x] Increased default sync range from 7 to 30 days for more historical data
+
+---
+
+# Extend Clover Sync Range to January 2026
+
+- [x] Increase default sync range from 30 to 60 days
+- [x] Increase max allowed daysBack to 180 days
+- [x] Add rate limiting (300ms between pages, 500ms between chunks, retry on 429)
+- [x] Re-sync all stores: Tunnel 4,013 payments/41 days, Mackay 7,263/59 days, PK 13,569/59 days
+- [x] Verified: Jan 10–20 shows $49,491 revenue, 4,342 orders — January data is live!
