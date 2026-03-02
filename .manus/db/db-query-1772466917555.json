@@ -1,0 +1,37 @@
+{
+  "query": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE();",
+  "rows": [
+    {
+      "TABLE_NAME": "users"
+    },
+    {
+      "TABLE_NAME": "teams_webhooks"
+    },
+    {
+      "TABLE_NAME": "scheduled_summary"
+    },
+    {
+      "TABLE_NAME": "clover_shifts"
+    },
+    {
+      "TABLE_NAME": "clover_daily_sales"
+    },
+    {
+      "TABLE_NAME": "clover_connections"
+    },
+    {
+      "TABLE_NAME": "alert_rules"
+    },
+    {
+      "TABLE_NAME": "alert_history"
+    },
+    {
+      "TABLE_NAME": "__drizzle_migrations"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\nusers\nteams_webhooks\nscheduled_summary\nclover_shifts\nclover_daily_sales\nclover_connections\nalert_rules\nalert_history\n__drizzle_migrations\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

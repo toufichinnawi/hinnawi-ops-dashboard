@@ -77,3 +77,11 @@
 - [x] Clover POS Integration page with 3 tabs (Connections, Sales, Labour)
 - [x] Sync individual store or all stores
 - [x] 22 vitest tests passing (clover + teams + auth)
+
+---
+
+# Bug Fix: Clover 401 Unauthorized
+
+- [ ] Fix Clover API base URL for Canadian merchants
+- [ ] Add region selection to connect form (US/Canada/EU)
+- [ ] Test connection with correct regional endpoint

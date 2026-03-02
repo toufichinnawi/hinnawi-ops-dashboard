@@ -403,8 +403,10 @@ export const appRouter = router({
         const { startTime, endTime } = getDateRange(daysBack);
 
         try {
+          console.log(`[Clover Sync] Starting sync for ${connection.storeName} (${connection.merchantId}), ${daysBack} days back`);
           // Fetch payments and aggregate by day
           const payments = await fetchPayments(connection.merchantId, connection.accessToken, startTime, endTime);
+          console.log(`[Clover Sync] Fetched ${payments.length} payments for ${connection.storeName}`);
           const dailySales = aggregatePaymentsByDay(payments);
 
           for (const day of dailySales) {
@@ -422,7 +424,9 @@ export const appRouter = router({
           }
 
           // Fetch shifts
+          console.log(`[Clover Sync] Fetching shifts for ${connection.storeName}...`);
           const shifts = await fetchShifts(connection.merchantId, connection.accessToken, startTime, endTime);
+          console.log(`[Clover Sync] Fetched ${shifts.length} shifts for ${connection.storeName}`);
           for (const shift of shifts) {
             const hours = shift.outTime ? (shift.outTime - shift.inTime) / (1000 * 60 * 60) : null;
             await upsertCloverShift({
@@ -453,7 +457,8 @@ export const appRouter = router({
             lastSyncAt: new Date(),
             lastSyncSuccess: false,
           });
-          throw new Error(`Sync failed: ${error.message}`);
+          console.error(`[Clover Sync] Failed for ${connection.storeName}: ${error.message}`);
+          throw new Error(`Sync failed for ${connection.storeName}: ${error.message}`);
         }
       }),
 

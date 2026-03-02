@@ -1,0 +1,37 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "alert_history"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "alert_rules"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "clover_connections"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "clover_daily_sales"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "clover_shifts"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "scheduled_summary"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "teams_webhooks"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "users"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_i5zcri4CVdStBBckDWTaVK\n__drizzle_migrations\nalert_history\nalert_rules\nclover_connections\nclover_daily_sales\nclover_shifts\nscheduled_summary\nteams_webhooks\nusers\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

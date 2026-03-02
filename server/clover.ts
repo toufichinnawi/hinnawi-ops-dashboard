@@ -4,8 +4,18 @@
  */
 import { ENV } from "./_core/env";
 
-const CLOVER_BASE_URL = "https://api.clover.com";
-const CLOVER_AUTH_URL = "https://sandbox.dev.clover.com"; // Switch to clover.com for production
+// Clover regional API base URLs
+const CLOVER_REGIONS: Record<string, string> = {
+  "north_america": "https://api.clover.com",
+  "europe": "https://api.eu.clover.com",
+  "latin_america": "https://api.la.clover.com",
+};
+
+const DEFAULT_REGION = "north_america";
+
+function getBaseUrl(region?: string): string {
+  return CLOVER_REGIONS[region || DEFAULT_REGION] || CLOVER_REGIONS[DEFAULT_REGION];
+}
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -60,7 +70,8 @@ export function getCloverAuthUrl(redirectUri: string): string {
   const appId = process.env.CLOVER_APP_ID;
   if (!appId) throw new Error("CLOVER_APP_ID not configured");
 
-  return `${CLOVER_BASE_URL}/oauth/v2/authorize?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  const baseUrl = getBaseUrl();
+  return `${baseUrl}/oauth/v2/authorize?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 }
 
 export async function exchangeCloverCode(code: string): Promise<{ accessToken: string }> {
@@ -68,7 +79,8 @@ export async function exchangeCloverCode(code: string): Promise<{ accessToken: s
   const appSecret = process.env.CLOVER_APP_SECRET;
   if (!appId || !appSecret) throw new Error("Clover credentials not configured");
 
-  const response = await fetch(`${CLOVER_BASE_URL}/oauth/v2/token`, {
+  const baseUrl = getBaseUrl();
+  const response = await fetch(`${baseUrl}/oauth/v2/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -89,11 +101,21 @@ export async function exchangeCloverCode(code: string): Promise<{ accessToken: s
 
 // ─── API Helpers ────────────────────────────────────────────────────
 
-async function cloverGet<T>(merchantId: string, accessToken: string, path: string, params?: Record<string, string>): Promise<T> {
-  const url = new URL(`/v3/merchants/${merchantId}${path}`, CLOVER_BASE_URL);
+async function cloverGet<T>(merchantId: string, accessToken: string, path: string, params?: Record<string, string | string[]>, region?: string): Promise<T> {
+  const baseUrl = getBaseUrl(region);
+  const url = new URL(`/v3/merchants/${merchantId}${path}`, baseUrl);
   if (params) {
-    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+    Object.entries(params).forEach(([k, v]) => {
+      if (Array.isArray(v)) {
+        // Multiple values for the same key (e.g., multiple filter params)
+        v.forEach(val => url.searchParams.append(k, val));
+      } else {
+        url.searchParams.set(k, v);
+      }
+    });
   }
+
+  console.log(`[Clover API] GET ${url.toString().replace(accessToken, '***')}`);
 
   const response = await fetch(url.toString(), {
     headers: {
@@ -104,6 +126,11 @@ async function cloverGet<T>(merchantId: string, accessToken: string, path: strin
 
   if (!response.ok) {
     const text = await response.text();
+    if (response.status === 401) {
+      throw new Error(
+        "Authentication failed. Please verify: (1) Your Merchant ID is correct — check the URL in your Clover Dashboard (clover.com/dashboard/m/YOUR_MERCHANT_ID). (2) Your API Token is correct — copy it again from Account & Setup → API Tokens. (3) The token has Read permissions for Employees, Merchant, Orders, and Payments."
+      );
+    }
     throw new Error(`Clover API error: ${response.status} ${text}`);
   }
 
@@ -112,8 +139,8 @@ async function cloverGet<T>(merchantId: string, accessToken: string, path: strin
 
 // ─── Data Fetching ──────────────────────────────────────────────────
 
-export async function fetchMerchantInfo(merchantId: string, accessToken: string): Promise<CloverMerchant> {
-  return cloverGet<CloverMerchant>(merchantId, accessToken, "", { expand: "address" });
+export async function fetchMerchantInfo(merchantId: string, accessToken: string, region?: string): Promise<CloverMerchant> {
+  return cloverGet<CloverMerchant>(merchantId, accessToken, "", { expand: "address" }, region);
 }
 
 export async function fetchPayments(
@@ -121,7 +148,8 @@ export async function fetchPayments(
   accessToken: string,
   startTime: number,
   endTime: number,
-  limit = 500
+  limit = 500,
+  region?: string
 ): Promise<CloverPayment[]> {
   const allPayments: CloverPayment[] = [];
   let offset = 0;
@@ -132,11 +160,12 @@ export async function fetchPayments(
       accessToken,
       "/payments",
       {
-        filter: `createdTime>=${startTime}&createdTime<=${endTime}`,
+        filter: [`createdTime>=${startTime}`, `createdTime<=${endTime}`],
         limit: String(limit),
         offset: String(offset),
         expand: "employee",
-      }
+      },
+      region
     );
 
     if (!data.elements || data.elements.length === 0) break;
@@ -189,7 +218,8 @@ export async function fetchShifts(
   merchantId: string,
   accessToken: string,
   startTime: number,
-  endTime: number
+  endTime: number,
+  region?: string
 ): Promise<CloverShift[]> {
   const allShifts: CloverShift[] = [];
   let offset = 0;
@@ -200,11 +230,12 @@ export async function fetchShifts(
       accessToken,
       "/shifts",
       {
-        filter: `inTime>=${startTime}&inTime<=${endTime}`,
+        filter: [`inTime>=${startTime}`, `inTime<=${endTime}`],
         limit: "500",
         offset: String(offset),
         expand: "employee",
-      }
+      },
+      region
     );
 
     if (!data.elements || data.elements.length === 0) break;
