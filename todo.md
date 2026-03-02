@@ -109,3 +109,11 @@
 - [x] Wire date filter into Store Performance page (store cards, period sales)
 - [x] Ensure filtered data updates KPIs, charts, and tables dynamically
 - [x] Test date filtering end-to-end (22 tests passing)
+
+---
+
+# Bug Fix: Date Range Filter Apply Button
+
+- [x] Add "Apply" button to Date Range mode so filter only applies after both dates are selected
+- [x] Keep single day and quick presets working as instant-apply
+- [x] Test date range selection end-to-end

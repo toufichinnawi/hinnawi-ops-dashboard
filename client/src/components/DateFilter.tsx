@@ -1,8 +1,9 @@
 // DateFilter: Reusable date filtering component
 // Supports: Single day, Date range, and Quick presets (Today, Yesterday, Last 7/30 days)
+// Date Range mode uses a staged "Apply" button so both dates must be selected first.
 import { useState, useMemo } from "react";
 import { format, subDays, startOfDay, endOfDay, isEqual } from "date-fns";
-import { CalendarIcon, ChevronDown } from "lucide-react";
+import { CalendarIcon, ChevronDown, Check } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -78,7 +79,10 @@ export function DateFilter({ value, onChange, className }: DateFilterProps) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<DateFilterMode>(value.mode);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(value.from);
-  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>({
+
+  // Staged range: this is what the user sees in the calendar while picking,
+  // but it does NOT apply until they click "Apply Filter".
+  const [stagedRange, setStagedRange] = useState<DateRange | undefined>({
     from: value.from,
     to: value.to,
   });
@@ -91,6 +95,16 @@ export function DateFilter({ value, onChange, className }: DateFilterProps) {
     return `${format(value.from, "MMM d")} – ${format(value.to, "MMM d, yyyy")}`;
   }, [value]);
 
+  // Whether the staged range is complete (both from and to selected)
+  const rangeComplete = !!(stagedRange?.from && stagedRange?.to);
+
+  // Format the staged range for the helper text
+  const stagedRangeText = useMemo(() => {
+    if (!stagedRange?.from) return "Select start date";
+    if (!stagedRange?.to) return `${format(stagedRange.from, "MMM d")} → Select end date`;
+    return `${format(stagedRange.from, "MMM d")} – ${format(stagedRange.to, "MMM d, yyyy")}`;
+  }, [stagedRange]);
+
   function handlePreset(preset: (typeof PRESETS)[number]) {
     const val = preset.getValue();
     onChange(val);
@@ -98,7 +112,7 @@ export function DateFilter({ value, onChange, className }: DateFilterProps) {
     if (val.mode === "single") {
       setSelectedDate(val.from);
     } else {
-      setSelectedRange({ from: val.from, to: val.to });
+      setStagedRange({ from: val.from, to: val.to });
     }
     setOpen(false);
   }
@@ -121,29 +135,40 @@ export function DateFilter({ value, onChange, className }: DateFilterProps) {
   }
 
   function handleRangeSelect(range: DateRange | undefined) {
-    if (!range) return;
-    setSelectedRange(range);
-    if (range.from && range.to) {
-      const val: DateFilterValue = {
-        mode: "range",
-        from: startOfDay(range.from),
-        to: endOfDay(range.to),
-        label: "Custom",
-      };
-      // Check if it matches a preset
-      for (const preset of PRESETS) {
-        const pv = preset.getValue();
-        if (
-          pv.mode === "range" &&
-          isEqual(startOfDay(range.from), pv.from) &&
-          isEqual(startOfDay(range.to), startOfDay(pv.to))
-        ) {
-          val.label = preset.label;
-          break;
-        }
+    // Only stage the range — do NOT apply yet
+    setStagedRange(range);
+  }
+
+  function handleApplyRange() {
+    if (!stagedRange?.from || !stagedRange?.to) return;
+
+    const val: DateFilterValue = {
+      mode: "range",
+      from: startOfDay(stagedRange.from),
+      to: endOfDay(stagedRange.to),
+      label: "Custom",
+    };
+    // Check if it matches a preset
+    for (const preset of PRESETS) {
+      const pv = preset.getValue();
+      if (
+        pv.mode === "range" &&
+        isEqual(startOfDay(stagedRange.from), pv.from) &&
+        isEqual(startOfDay(stagedRange.to), startOfDay(pv.to))
+      ) {
+        val.label = preset.label;
+        break;
       }
-      onChange(val);
-      setOpen(false);
+    }
+    onChange(val);
+    setOpen(false);
+  }
+
+  function handleModeSwitch(newMode: DateFilterMode) {
+    setMode(newMode);
+    // When switching to range mode, initialize staged range from current value
+    if (newMode === "range") {
+      setStagedRange({ from: value.from, to: value.to });
     }
   }
 
@@ -188,7 +213,7 @@ export function DateFilter({ value, onChange, className }: DateFilterProps) {
               Mode
             </p>
             <button
-              onClick={() => setMode("single")}
+              onClick={() => handleModeSwitch("single")}
               className={cn(
                 "w-full text-left text-sm px-2 py-1.5 rounded-md transition-colors",
                 mode === "single"
@@ -199,7 +224,7 @@ export function DateFilter({ value, onChange, className }: DateFilterProps) {
               Single Day
             </button>
             <button
-              onClick={() => setMode("range")}
+              onClick={() => handleModeSwitch("range")}
               className={cn(
                 "w-full text-left text-sm px-2 py-1.5 rounded-md transition-colors",
                 mode === "range"
@@ -211,7 +236,7 @@ export function DateFilter({ value, onChange, className }: DateFilterProps) {
             </button>
           </div>
 
-          {/* Calendar */}
+          {/* Calendar + Apply button */}
           <div className="p-2">
             {mode === "single" ? (
               <Calendar
@@ -222,14 +247,36 @@ export function DateFilter({ value, onChange, className }: DateFilterProps) {
                 defaultMonth={selectedDate}
               />
             ) : (
-              <Calendar
-                mode="range"
-                selected={selectedRange}
-                onSelect={handleRangeSelect}
-                disabled={{ after: new Date() }}
-                defaultMonth={selectedRange?.from}
-                numberOfMonths={1}
-              />
+              <>
+                <Calendar
+                  mode="range"
+                  selected={stagedRange}
+                  onSelect={handleRangeSelect}
+                  disabled={{ after: new Date() }}
+                  defaultMonth={stagedRange?.from}
+                  numberOfMonths={1}
+                />
+                {/* Staged range summary + Apply button */}
+                <div className="border-t border-border mt-1 pt-2 px-1 space-y-2">
+                  <p className="text-xs text-muted-foreground text-center">
+                    {stagedRangeText}
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={handleApplyRange}
+                    disabled={!rangeComplete}
+                    className={cn(
+                      "w-full gap-1.5",
+                      rangeComplete
+                        ? "bg-[#D4A853] hover:bg-[#C49A48] text-white"
+                        : ""
+                    )}
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    Apply Filter
+                  </Button>
+                </div>
+              </>
             )}
           </div>
         </div>
