@@ -362,3 +362,10 @@
 
 - [x] Add /checklists route back (Checklists landing page with position cards, copy links, open buttons)
 - [x] Verified: /checklists now loads the Checklists management page
+
+---
+
+# Rename Checklists
+
+- [x] Rename "Operations Checklist" → "Store Manager Checklist"
+- [x] Rename "Weekly Store Audit" → "Ops. Mgr Weekly Audit"

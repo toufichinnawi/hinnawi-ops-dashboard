@@ -147,8 +147,8 @@ const SLUG_TO_CHECKLIST: Record<string, ChecklistType> = {
 };
 
 const SLUG_TO_LABEL: Record<string, string> = {
-  "operations": "Operations Checklist",
-  "weekly-audit": "Weekly Store Audit",
+  "operations": "Store Manager Checklist",
+  "weekly-audit": "Ops. Mgr Weekly Audit",
   "weekly-scorecard": "Weekly Scorecard",
   "performance": "Performance Evaluation",
   "waste": "Leftovers & Waste",
@@ -182,7 +182,7 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
       <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
       <h3 className="text-xl font-serif">Submitted Successfully</h3>
-      <p className="text-muted-foreground">Operations Checklist for {currentStoreName}</p>
+      <p className="text-muted-foreground">Store Manager Checklist for {currentStoreName}</p>
       <Button onClick={onBack} variant="outline">Back</Button>
     </motion.div>
   );
@@ -231,7 +231,7 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
       <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
       <h3 className="text-xl font-serif">Audit Submitted</h3>
-      <p className="text-muted-foreground">Weekly Store Audit for {currentStoreName}</p>
+      <p className="text-muted-foreground">Ops. Mgr Weekly Audit for {currentStoreName}</p>
       <Button onClick={onBack} variant="outline">Back</Button>
     </motion.div>
   );

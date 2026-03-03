@@ -80,8 +80,8 @@ const navSections: NavSection[] = [
   {
     title: "Reports & Checklists",
     items: [
-      { path: "/checklists/operations", label: "Operations Checklist", icon: ClipboardCheck },
-      { path: "/checklists/weekly-audit", label: "Weekly Store Audit", icon: ClipboardCheck },
+      { path: "/checklists/operations", label: "Store Manager Checklist", icon: ClipboardCheck },
+      { path: "/checklists/weekly-audit", label: "Ops. Mgr Weekly Audit", icon: ClipboardCheck },
       { path: "/checklists/weekly-scorecard", label: "Weekly Scorecard", icon: BarChart3 },
       { path: "/checklists/performance", label: "Performance Evaluation", icon: Star },
       { path: "/checklists/waste", label: "Leftovers & Waste", icon: Trash2 },
