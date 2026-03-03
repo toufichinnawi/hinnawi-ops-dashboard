@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE position_pins SET pin = '3597' WHERE positionSlug = 'store-manager'; UPDATE position_pins SET pin = '6143' WHERE positionSlug = 'assistant-manager';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute UPDATE position_pins SET pin = '3597' WHERE positionSlug = 'store-manager'; UPDATE position_pins SET pin = '6143' WHERE positionSlug = 'assistant-manager';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 87
+}

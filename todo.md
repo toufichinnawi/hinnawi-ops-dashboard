@@ -546,3 +546,12 @@
 
 - [x] Add "Copy Portal Link" button on each position card in the grid view (copies /public/:position URL)
 - [x] Make the copy link prominent and easy to find on the main portal page
+
+---
+
+# Bug Fix: Store Manager and Assistant Manager PINs not working
+
+- [x] Check database for existing position_pins rows — found seed had wrong PINs (3567, 2934 instead of 3597, 6143)
+- [x] Fixed database: updated Store Manager to 3597 and Assistant Manager to 6143
+- [x] Fixed seed function defaults to match correct PINs
+- [x] Verified Store Manager PIN 3597 works end-to-end

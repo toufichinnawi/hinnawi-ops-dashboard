@@ -741,8 +741,8 @@ export async function seedDefaultPositionPins() {
   if (existing.length > 0) return; // Already seeded
   const defaults = [
     { positionSlug: "operations-manager", positionLabel: "Operations Manager", pin: "4821" },
-    { positionSlug: "store-manager", positionLabel: "Store Manager", pin: "3567" },
-    { positionSlug: "assistant-manager", positionLabel: "Assistant Manager", pin: "2934" },
+    { positionSlug: "store-manager", positionLabel: "Store Manager", pin: "3597" },
+    { positionSlug: "assistant-manager", positionLabel: "Assistant Manager", pin: "6143" },
     { positionSlug: "staff", positionLabel: "Staff", pin: "1234" },
   ];
   for (const d of defaults) {
