@@ -380,3 +380,25 @@
 - [x] Check how useFilteredCloverData merges Excel labour with Clover sales — logic is correct
 - [x] Fix the root cause: added M/D/YY (2-digit year) parsing to excelParser.ts
 - [x] Added vitest test for 2-digit year parsing (50 tests passing)
+
+---
+
+# QuickBooks Integration — COGS Per Store
+
+- [ ] Research QuickBooks Online API (authentication, COGS/P&L endpoints, multi-location support)
+- [ ] Determine best integration approach (OAuth2, API keys, sandbox testing)
+- [ ] Present options to user for approval
+- [ ] Build QuickBooks OAuth2 connection flow
+- [ ] Create QuickBooks service module (fetch COGS, P&L by location/class)
+- [ ] Database tables for QuickBooks connections + cached COGS data
+- [ ] tRPC routes for connect, disconnect, sync, COGS data queries
+- [ ] Wire COGS data into the Accounting section (COGS Targets page or new COGS page)
+- [ ] Write vitest tests
+
+---
+
+# Copy Link Button for Checklists
+
+- [x] Add "Copy Link" button to each checklist card on the Checklists page
+- [x] Button copies the direct public URL for that checklist to clipboard
+- [x] Show toast/feedback when link is copied

@@ -4,7 +4,8 @@ import { useParams, useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { ALL_CHECKLISTS, type ChecklistType } from "@/lib/positionChecklists";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Copy, Check, Link as LinkIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Re-use the DashboardChecklistForm from ChecklistViewer
 import ChecklistViewer from "./ChecklistViewer";
@@ -23,7 +24,6 @@ import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/StarRating";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 // ─── Checklist Data Definitions (same as ChecklistViewer) ───
@@ -550,6 +550,58 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
   );
 }
 
+// ─── Copy Link Helper ───
+
+function CopyChecklistLink({ slug, label }: { slug: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const url = `${baseUrl}/checklists/${slug}`;
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success(`Link copied for ${label}`);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const textArea = document.createElement("textarea");
+      textArea.value = url;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopied(true);
+      toast.success(`Link copied for ${label}`);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className={cn(
+        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
+        copied
+          ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+          : "bg-[#D4A853]/10 text-[#D4A853] border border-[#D4A853]/20 hover:bg-[#D4A853]/20"
+      )}
+    >
+      {copied ? (
+        <>
+          <Check className="w-3.5 h-3.5" />
+          Copied!
+        </>
+      ) : (
+        <>
+          <Copy className="w-3.5 h-3.5" />
+          Copy Link
+        </>
+      )}
+    </button>
+  );
+}
+
 // ─── Main Component ───
 
 export default function DirectChecklist() {
@@ -595,7 +647,7 @@ export default function DirectChecklist() {
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-[900px]">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <p className="text-xs text-[#D4A853] uppercase tracking-[0.2em] font-medium">
               Reports & Checklists
@@ -604,6 +656,7 @@ export default function DirectChecklist() {
               {label}
             </h2>
           </div>
+          <CopyChecklistLink slug={slug} label={label} />
         </div>
 
         {formMap[slug]}
