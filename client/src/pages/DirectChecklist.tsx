@@ -163,6 +163,7 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [managerName, setManagerName] = useState("");
+  const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [ratings, setRatings] = useState<Record<number, number>>({});
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -172,7 +173,7 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
     const filled = Object.keys(ratings).length;
     if (filled < OPS_TASKS.length) { toast.error(`Please rate all ${OPS_TASKS.length} items`); return; }
     const avg = Object.values(ratings).reduce((a, b) => a + b, 0) / OPS_TASKS.length;
-    const payload = { type: "manager-checklist", location: selectedStore, submittedBy: managerName, data: { ratings, notes, averageScore: avg.toFixed(2) } };
+    const payload = { reportType: "manager-checklist", location: selectedStore, submitterName: managerName, reportDate, data: { ratings, notes, averageScore: avg.toFixed(2) }, totalScore: avg.toFixed(2) };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Checklist submitted!");
@@ -192,6 +193,7 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Your Name</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" /></div>
+        <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
       </CardContent></Card>
       <Card><CardContent className="pt-6 space-y-4">
         <h3 className="font-serif text-lg">Rate Each Area (1–5 Stars)</h3>
@@ -215,13 +217,17 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [auditorName, setAuditorName] = useState("");
+  const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [ratings, setRatings] = useState<Record<string, Record<number, number>>>({});
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = () => {
     if (!auditorName.trim() || !selectedStore) { toast.error("Please fill in your name and select a store"); return; }
-    const payload = { type: "ops-manager-checklist", location: selectedStore, submittedBy: auditorName, data: { ratings, notes } };
+    // Compute average score across all sections
+    const allRatings = Object.values(ratings).flatMap(section => Object.values(section));
+    const avg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 0;
+    const payload = { reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate, data: { ratings, notes }, totalScore: avg.toFixed(2) };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Audit submitted!");
@@ -241,6 +247,7 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Auditor Name</Label><Input value={auditorName} onChange={(e) => setAuditorName(e.target.value)} placeholder="Enter your name" /></div>
+        <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
       </CardContent></Card>
       {AUDIT_SECTIONS.map((section) => (
         <Card key={section.title}><CardContent className="pt-6 space-y-4">
@@ -273,7 +280,7 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
 
   const handleSubmit = () => {
     if (!managerName.trim() || !selectedStore || !weekOf) { toast.error("Please fill required fields"); return; }
-    const payload = { type: "weekly-scorecard", location: selectedStore, submittedBy: managerName, data: { weekOf, totalSales, labourCost, foodCost, customerCount, notes } };
+    const payload = { reportType: "weekly-scorecard", location: selectedStore, submitterName: managerName, reportDate: weekOf, data: { weekOf, totalSales, labourCost, foodCost, customerCount, notes } };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Scorecard submitted!");
@@ -313,6 +320,7 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [evaluatorName, setEvaluatorName] = useState("");
+  const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [employeeName, setEmployeeName] = useState("");
   const [ratings, setRatings] = useState<Record<number, number>>({});
   const [strengths, setStrengths] = useState("");
@@ -321,7 +329,8 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
 
   const handleSubmit = () => {
     if (!evaluatorName.trim() || !employeeName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
-    const payload = { type: "performance-evaluation", location: selectedStore, submittedBy: evaluatorName, data: { employeeName, ratings, strengths, improvements } };
+    const avg = Object.values(ratings).length > 0 ? Object.values(ratings).reduce((a, b) => a + b, 0) / Object.values(ratings).length : 0;
+    const payload = { reportType: "performance-evaluation", location: selectedStore, submitterName: evaluatorName, reportDate, data: { employeeName, ratings, strengths, improvements }, totalScore: avg.toFixed(2) };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Evaluation submitted!");
@@ -340,6 +349,7 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Evaluator Name</Label><Input value={evaluatorName} onChange={(e) => setEvaluatorName(e.target.value)} placeholder="Your name" /></div>
+        <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
         <div className="space-y-1.5"><Label>Employee Name</Label><Input value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} placeholder="Employee being evaluated" /></div>
       </CardContent></Card>
       <Card><CardContent className="pt-6 space-y-4">
@@ -537,7 +547,7 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
       const data = collectData();
       const payload = {
         submitterName: "Store Staff",
-        reportType: "Leftovers & Waste Report",
+        reportType: "waste-report",
         location: selectedStore,
         reportDate,
         data,
@@ -658,13 +668,18 @@ function EquipmentMaintenanceForm({ onBack }: { onBack: () => void }) {
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [techName, setTechName] = useState("");
+  const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [checks, setChecks] = useState<Record<string, Record<number, boolean>>>({});
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = () => {
     if (!techName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
-    const payload = { type: "equipment-maintenance", location: selectedStore, submittedBy: techName, data: { checks, notes } };
+    // Compute completion percentage as score
+    const totalItems = Object.values(EQUIPMENT_SECTIONS).flat().length;
+    const checkedItems = Object.values(checks).reduce((sum, section) => sum + Object.values(section).filter(Boolean).length, 0);
+    const score = totalItems > 0 ? ((checkedItems / totalItems) * 5).toFixed(2) : "0";
+    const payload = { reportType: "equipment-maintenance", location: selectedStore, submitterName: techName, reportDate, data: { checks, notes }, totalScore: score };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Maintenance checklist submitted!");
@@ -683,6 +698,7 @@ function EquipmentMaintenanceForm({ onBack }: { onBack: () => void }) {
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Your Name</Label><Input value={techName} onChange={(e) => setTechName(e.target.value)} placeholder="Enter your name" /></div>
+        <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
       </CardContent></Card>
       {Object.entries(EQUIPMENT_SECTIONS).map(([period, items]) => (
         <Card key={period}><CardContent className="pt-6 space-y-3">
@@ -705,6 +721,7 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [trainerName, setTrainerName] = useState("");
+  const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [traineeName, setTraineeName] = useState("");
   const [ratings, setRatings] = useState<Record<number, number>>({});
   const [notes, setNotes] = useState("");
@@ -713,7 +730,8 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
 
   const handleSubmit = () => {
     if (!trainerName.trim() || !traineeName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
-    const payload = { type: "training-evaluation", location: selectedStore, submittedBy: trainerName, data: { traineeName, ratings, notes } };
+    const avg = Object.values(ratings).length > 0 ? Object.values(ratings).reduce((a, b) => a + b, 0) / Object.values(ratings).length : 0;
+    const payload = { reportType: "training-evaluation", location: selectedStore, submitterName: trainerName, reportDate, data: { traineeName, ratings, notes }, totalScore: avg.toFixed(2) };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Training evaluation submitted!");
@@ -732,6 +750,7 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Trainer Name</Label><Input value={trainerName} onChange={(e) => setTrainerName(e.target.value)} placeholder="Your name" /></div>
+        <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
         <div className="space-y-1.5"><Label>Trainee Name</Label><Input value={traineeName} onChange={(e) => setTraineeName(e.target.value)} placeholder="Trainee name" /></div>
       </CardContent></Card>
       <Card><CardContent className="pt-6 space-y-4">
@@ -760,7 +779,7 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
 
   const handleSubmit = () => {
     if (!ordererName.trim() || !selectedStore || !orderDate) { toast.error("Please fill required fields"); return; }
-    const payload = { type: "bagel-orders", location: selectedStore, submittedBy: ordererName, data: { orderDate, quantities, notes } };
+    const payload = { reportType: "bagel-orders", location: selectedStore, submitterName: ordererName, reportDate: orderDate, data: { orderDate, quantities, notes } };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Bagel order submitted!");

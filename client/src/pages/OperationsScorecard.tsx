@@ -26,8 +26,44 @@ interface FilterValue {
   label: string;
 }
 
+// ─── Normalize report types from old human-readable to slug format ──
+const REPORT_TYPE_NORMALIZE: Record<string, string> = {
+  "Manager Checklist": "manager-checklist",
+  "Operations Manager Checklist (Weekly Audit)": "ops-manager-checklist",
+  "Ops. Mgr Weekly Audit": "ops-manager-checklist",
+  "Weekly Store Audit": "ops-manager-checklist",
+  "Deep Cleaning": "weekly-deep-cleaning",
+  "Weekly Deep Cleaning": "weekly-deep-cleaning",
+  "Assistant Manager Checklist": "assistant-manager-checklist",
+  "Store Manager Checklist": "store-manager-checklist",
+  "Store Evaluation Checklist": "store-manager-checklist",
+  "Leftovers & Waste Report": "waste-report",
+  "Leftovers & Waste": "waste-report",
+  "Equipment & Maintenance": "equipment-maintenance",
+  "Equipment Maintenance": "equipment-maintenance",
+  "Weekly Scorecard": "weekly-scorecard",
+  "Training Evaluation": "training-evaluation",
+  "Bagel Orders": "bagel-orders",
+  "Performance Evaluation": "performance-evaluation",
+};
+
+const LOCATION_NORMALIZE: Record<string, string> = {
+  "President Kennedy": "PK", "president kennedy": "PK", "pk": "PK",
+  "Mackay": "MK", "mackay": "MK", "mk": "MK",
+  "Ontario": "ON", "ontario": "ON", "on": "ON",
+  "Tunnel": "TN", "tunnel": "TN", "tn": "TN",
+};
+
+function normalizeReport(r: { reportType: string; location: string; [key: string]: unknown }) {
+  return {
+    ...r,
+    reportType: REPORT_TYPE_NORMALIZE[r.reportType] || r.reportType,
+    location: LOCATION_NORMALIZE[r.location] || r.location,
+  };
+}
+
 // Report types that have numeric scores (out of 5)
-const SCORED_TYPES = ["manager-checklist", "Manager Checklist", "ops-manager-checklist", "performance-evaluation"];
+const SCORED_TYPES = ["manager-checklist", "ops-manager-checklist", "performance-evaluation", "store-manager-checklist", "assistant-manager-checklist"];
 const WEEKLY_AUDIT_TYPE = "ops-manager-checklist";
 
 // Store codes used in submissions
@@ -453,15 +489,21 @@ export default function OperationsScorecard() {
 
   const { data: reports, isLoading } = trpc.scorecard.getData.useQuery({ fromDate: fromStr, toDate: toStr });
 
+  // ─── Normalize reports to handle old data formats ──────────────
+  const normalizedReports = useMemo(() => {
+    if (!reports) return [];
+    return reports.map((r) => normalizeReport(r as any)) as typeof reports;
+  }, [reports]);
+
   // ─── Compute scores per store ──────────────────────────────────
 
   const storeScores = useMemo(() => {
-    if (!reports) return [];
+    if (!normalizedReports.length) return [];
 
     return STORE_CODES.map((code) => {
       const storeInfo = getStoreInfo(code);
-      const storeReports = reports.filter(
-        (r) => r.location === code || r.location === code.toLowerCase() || r.location === storeInfo.name
+      const storeReports = normalizedReports.filter(
+        (r) => r.location === code
       );
 
       // Filter to scored report types only
@@ -471,7 +513,7 @@ export default function OperationsScorecard() {
       const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
 
       // Count by type
-      const managerChecklists = storeReports.filter((r) => r.reportType === "manager-checklist" || r.reportType === "Manager Checklist").length;
+      const managerChecklists = storeReports.filter((r) => r.reportType === "manager-checklist").length;
       const weeklyAudits = storeReports.filter((r) => r.reportType === WEEKLY_AUDIT_TYPE).length;
       const totalSubmissions = storeReports.length;
 
@@ -490,7 +532,7 @@ export default function OperationsScorecard() {
         storeReports,
       };
     });
-  }, [reports]);
+  }, [normalizedReports]);
 
   // ─── Alerts ────────────────────────────────────────────────────
 
@@ -542,18 +584,17 @@ export default function OperationsScorecard() {
   // ─── Daily breakdown for the period ────────────────────────────
 
   const dailyBreakdown = useMemo(() => {
-    if (!reports || filter.mode === "single") return null;
+    if (!normalizedReports.length || filter.mode === "single") return null;
 
     const days = eachDayOfInterval({ start: filter.from, end: filter.to > today ? today : filter.to });
 
     return days.map((day) => {
       const dayStr = format(day, "yyyy-MM-dd");
-      const dayReports = reports.filter((r) => r.reportDate === dayStr);
+      const dayReports = normalizedReports.filter((r) => r.reportDate === dayStr);
 
       const byStore = STORE_CODES.map((code) => {
-        const storeInfo = getStoreInfo(code);
         const storeDay = dayReports.filter(
-          (r) => r.location === code || r.location === code.toLowerCase() || r.location === storeInfo.name
+          (r) => r.location === code
         );
         const scored = storeDay.filter((r) => SCORED_TYPES.includes(r.reportType) && r.totalScore);
         const scores = scored.map((r) => parseScore(r.totalScore)).filter((s): s is number => s !== null);
@@ -563,16 +604,16 @@ export default function OperationsScorecard() {
 
       return { date: day, dateStr: dayStr, byStore };
     });
-  }, [reports, filter]);
+  }, [normalizedReports, filter]);
 
   // ─── Drill-down data ───────────────────────────────────────────
 
   const drillDownData = useMemo(() => {
-    if (!drillDownStore || !reports) return null;
+    if (!drillDownStore || !normalizedReports.length) return null;
     const s = storeScores.find((ss) => ss.code === drillDownStore);
     if (!s) return null;
     return s;
-  }, [drillDownStore, storeScores, reports]);
+  }, [drillDownStore, storeScores, normalizedReports]);
 
   return (
     <DashboardLayout>

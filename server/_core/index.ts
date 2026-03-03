@@ -54,6 +54,50 @@ async function startServer() {
           .status(400)
           .json({ error: "Missing required fields" });
       }
+
+      // ─── Normalize reportType to slug format ─────────────────────
+      const REPORT_TYPE_MAP: Record<string, string> = {
+        "Manager Checklist": "manager-checklist",
+        "Operations Manager Checklist (Weekly Audit)": "ops-manager-checklist",
+        "Ops. Mgr Weekly Audit": "ops-manager-checklist",
+        "Weekly Store Audit": "ops-manager-checklist",
+        "Deep Cleaning": "weekly-deep-cleaning",
+        "Weekly Deep Cleaning": "weekly-deep-cleaning",
+        "Assistant Manager Checklist": "assistant-manager-checklist",
+        "Store Manager Checklist": "store-manager-checklist",
+        "Store Evaluation Checklist": "store-manager-checklist",
+        "Leftovers & Waste Report": "waste-report",
+        "Leftovers & Waste": "waste-report",
+        "Equipment & Maintenance": "equipment-maintenance",
+        "Equipment Maintenance": "equipment-maintenance",
+        "Weekly Scorecard": "weekly-scorecard",
+        "Training Evaluation": "training-evaluation",
+        "Bagel Orders": "bagel-orders",
+        "Performance Evaluation": "performance-evaluation",
+      };
+      const normalizedReportType = REPORT_TYPE_MAP[reportType] || reportType;
+
+      // ─── Normalize location to store code ─────────────────────────
+      const LOCATION_MAP: Record<string, string> = {
+        "President Kennedy": "PK",
+        "president kennedy": "PK",
+        "pk": "PK",
+        "PK": "PK",
+        "Mackay": "MK",
+        "mackay": "MK",
+        "mk": "MK",
+        "MK": "MK",
+        "Ontario": "ON",
+        "ontario": "ON",
+        "on": "ON",
+        "ON": "ON",
+        "Tunnel": "TN",
+        "tunnel": "TN",
+        "tn": "TN",
+        "TN": "TN",
+      };
+      const normalizedLocation = LOCATION_MAP[location] || location;
+
       const { createReportSubmission } = await import("../db");
       const { sendTeamsNotification } = await import(
         "../teamsNotify"
@@ -64,16 +108,16 @@ async function startServer() {
         : { raw: data, submitterName };
       const result = await createReportSubmission({
         userId: null as any,
-        reportType,
-        location,
+        reportType: normalizedReportType,
+        location: normalizedLocation,
         reportDate,
         data: enrichedData,
         totalScore: totalScore || null,
         status: "submitted",
       });
       sendTeamsNotification({
-        reportType,
-        location,
+        reportType: normalizedReportType,
+        location: normalizedLocation,
         submittedBy: submitterName,
         reportDate,
         totalScore,

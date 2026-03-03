@@ -459,3 +459,24 @@
 - [x] Clear visual separation between completed and unfinished sections
 - [x] Store submitterName in data JSON for future submissions
 - [x] All 64 tests passing
+
+---
+
+# Bug Fix: Ops Mgr Weekly Audit Not Reflecting on Scorecard + Add Dates to Checklists
+
+- [x] Investigate why Ops Mgr Weekly Audit for PK doesn't show on Operations Scorecard
+- [x] Check report type naming mismatch between submission and scorecard query
+- [x] Fix the data mapping so all checklist types are recognized by the scorecard
+- [x] Fix all 8 form payloads: type→reportType, submittedBy→submitterName, added reportDate
+- [x] Add date picker to Store MGR Checklist form
+- [x] Add date picker to Ops Mgr Weekly Audit form
+- [x] Add date picker to Equipment Maintenance form
+- [x] Add date picker to Training Evaluation form
+- [x] Add date picker to Performance Evaluation form
+- [x] Fix WasteReportForm reportType to use slug format (waste-report)
+- [x] Fix BagelOrdersForm payload field names
+- [x] Fix WeeklyScorecardForm payload field names
+- [x] Add lowercase store IDs (ontario, tunnel) to backend LOCATION_MAP
+- [x] Add totalScore computation to all forms for scorecard integration
+- [x] Verify all checklist submissions appear on Operations Scorecard
+- [x] All 64 tests passing
