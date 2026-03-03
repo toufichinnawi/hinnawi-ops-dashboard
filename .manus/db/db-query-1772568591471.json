@@ -1,0 +1,94 @@
+{
+  "query": "SELECT reportType, location, reportDate, totalScore FROM report_submissions ORDER BY createdAt DESC LIMIT 20",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT reportType, location, reportDate, totalScore FROM report_submissions ORDER BY createdAt DESC LIMIT 20",
+  "rows": [
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    },
+    {
+      "reportType": "Manager Checklist",
+      "location": "PK",
+      "reportDate": "2026-03-03",
+      "totalScore": "4.49"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00"
+    }
+  ],
+  "messages": [],
+  "stdout": "reportType\tlocation\treportDate\ttotalScore\nmanager-checklist\tMK\t2026-03-03\t5.00\nmanager-checklist\tMK\t2026-03-03\t5.00\nmanager-checklist\tMK\t2026-03-03\t5.00\nmanager-checklist\tMK\t2026-03-03\t5.00\nmanager-checklist\tMK\t2026-03-03\t5.00\nManager Checklist\tPK\t2026-03-03\t4.49\nmanager-checklist\tMK\t2026-03-03\t5.00\nmanager-checklist\tMK\t2026-03-03\t5.00\nmanager-checklist\tMK\t2026-03-03\t5.00\nmanager-checklist\tMK\t2026-03-03\t5.00\nmanager-checklist\tMK\t2026-03-03\t5.00\nmanager-checklist\tMK\t2026-03-03\t5.00\nmanager-checklist\tMK\t2026-03-03\t5.00\nmanager-checklist\tMK\t2026-03-03\t5.00\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import {
+  getReportsByDateRange,
   listWebhooks, getWebhookById, createWebhook, updateWebhook, deleteWebhook,
   listAlertRules, createAlertRule, updateAlertRule, deleteAlertRule,
   listAlertHistory, createAlertHistoryEntry,
@@ -1333,6 +1334,22 @@ export const appRouter = router({
           totalExpenses: Object.values(sections).reduce((a, b) => a + b, 0),
           byCategory: Object.values(byCategory).sort((a, b) => b.total - a.total),
         };
+      }),
+  }),
+
+  // ─── Scorecard ───
+  scorecard: router({
+    getData: protectedProcedure
+      .input(
+        z.object({
+          fromDate: z.string(),
+          toDate: z.string(),
+        })
+      )
+      .query(async ({ input }) => {
+        const { getReportsByDateRange } = await import("./db");
+        const reports = await getReportsByDateRange(input.fromDate, input.toDate);
+        return reports;
       }),
   }),
 

@@ -416,3 +416,34 @@
 - [x] Send by Email button (opens mailto: with formatted report)
 - [x] Updated both DirectChecklist (dashboard) and ChecklistViewer (public) versions
 - [x] All 50 tests passing
+
+---
+
+# Operations Scorecard Dashboard
+
+## Backend
+- [x] Create tRPC endpoint (scorecard.getData) to query checklist submissions by date range and store
+- [x] Compute Day Score per store (average of all checklist scores submitted that day)
+- [x] Compute Week Score per store (average of all checklist scores for Mon-Sun week)
+- [x] Return alert data: missing weekly audits (Ops. Mgr Weekly Audit not submitted)
+- [x] getReportsByDateRange db helper in server/db.ts
+
+## Frontend
+- [x] Create Scorecard dashboard page (OperationsScorecard.tsx) under Reports & Checklists
+- [x] Date range filter with 3 modes: Single Day, Date Range, Week Range (Mon-Sun)
+- [x] Week Range always starts Monday, ends Sunday
+- [x] Per-store score cards with ring chart showing Day/Weekly Score
+- [x] Red highlighting when score is too low (below 60% threshold)
+- [x] Amber highlighting for scores between 60-80%
+- [x] Green for scores above 80%
+- [x] Alerts tab with red text, shield icon, and alert badges
+- [x] Alert: Ops. Manager hasn't done the weekly audit → CRITICAL red alert
+- [x] Alert: Low scores → WARNING amber alert
+- [x] Alert: No submissions → WARNING amber alert
+- [x] Daily Score Breakdown table for range/week views
+- [x] Add sidebar nav item under Reports & Checklists section
+- [x] Add route to App.tsx
+
+## Tests
+- [x] Write vitest tests for scorecard logic (14 new tests in scorecard.test.ts)
+- [x] All 64 tests passing across 8 test files

@@ -28,6 +28,7 @@ import InventoryCount from "@/pages/InventoryCount";
 import ReportHistory from "@/pages/ReportHistory";
 import ExternalTools from "@/pages/ExternalTools";
 import AdminPanel from "@/pages/AdminPanel";
+import OperationsScorecard from "@/pages/OperationsScorecard";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -53,6 +54,7 @@ function Router() {
       {/* Reports & Checklists — each checklist type has its own route */}
       <Route path="/checklists" component={Checklists} />
       <Route path="/checklists/:type" component={DirectChecklist} />
+      <Route path="/reports/scorecard" component={OperationsScorecard} />
       <Route path="/reports/history" component={ReportHistory} />
 
       {/* Integrations */}

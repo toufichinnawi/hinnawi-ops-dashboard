@@ -1,0 +1,108 @@
+{
+  "query": "SELECT reportType, location, reportDate, totalScore, status FROM report_submissions ORDER BY createdAt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT reportType, location, reportDate, totalScore, status FROM report_submissions ORDER BY createdAt DESC LIMIT 20;",
+  "rows": [
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    },
+    {
+      "reportType": "Manager Checklist",
+      "location": "PK",
+      "reportDate": "2026-03-03",
+      "totalScore": "4.49",
+      "status": "submitted"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    },
+    {
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted"
+    }
+  ],
+  "messages": [],
+  "stdout": "reportType\tlocation\treportDate\ttotalScore\tstatus\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\nManager Checklist\tPK\t2026-03-03\t4.49\tsubmitted\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\nmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

@@ -1,0 +1,136 @@
+{
+  "query": "SELECT id, reportType, location, reportDate, totalScore, status, createdAt FROM report_submissions ORDER BY createdAt DESC LIMIT 20",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, reportType, location, reportDate, totalScore, status, createdAt FROM report_submissions ORDER BY createdAt DESC LIMIT 20",
+  "rows": [
+    {
+      "id": "30001",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 19:47:33"
+    },
+    {
+      "id": "13",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 19:00:09"
+    },
+    {
+      "id": "12",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 18:29:05"
+    },
+    {
+      "id": "11",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 17:56:14"
+    },
+    {
+      "id": "10",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 17:35:53"
+    },
+    {
+      "id": "9",
+      "reportType": "Manager Checklist",
+      "location": "PK",
+      "reportDate": "2026-03-03",
+      "totalScore": "4.49",
+      "status": "submitted",
+      "createdAt": "2026-03-03 17:03:55"
+    },
+    {
+      "id": "8",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 16:47:16"
+    },
+    {
+      "id": "7",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 16:46:39"
+    },
+    {
+      "id": "6",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 16:46:15"
+    },
+    {
+      "id": "5",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 16:45:07"
+    },
+    {
+      "id": "4",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 15:58:12"
+    },
+    {
+      "id": "3",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 15:44:59"
+    },
+    {
+      "id": "2",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 15:28:21"
+    },
+    {
+      "id": "1",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-03 15:27:50"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\treportType\tlocation\treportDate\ttotalScore\tstatus\tcreatedAt\n30001\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 19:47:33\n13\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 19:00:09\n12\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 18:29:05\n11\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 17:56:14\n10\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 17:35:53\n9\tManager Checklist\tPK\t2026-03-03\t4.49\tsubmitted\t2026-03-03 17:03:55\n8\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 16:47:16\n7\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 16:46:39\n6\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 16:46:15\n5\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 16:45:07\n4\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 15:58:12\n3\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 15:44:59\n2\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 15:28:21\n1\tmanager-checklist\tMK\t2026-03-03\t5.00\tsubmitted\t2026-03-03 15:27:50\n",
+  "stderr": "",
+  "execution_time_ms": 64
+}

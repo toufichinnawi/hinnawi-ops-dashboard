@@ -1,0 +1,580 @@
+// Operations Scorecard — Per-store scores from completed checklists
+// Day Score, Weekly Score, date range filter, alerts for missed audits
+import { useState, useMemo } from "react";
+import { format, startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isEqual, isSameDay } from "date-fns";
+import { CalendarIcon, ChevronDown, Check, AlertTriangle, ShieldAlert, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import { stores } from "@/lib/data";
+import { trpc } from "@/lib/trpc";
+import DashboardLayout from "@/components/DashboardLayout";
+import type { DateRange } from "react-day-picker";
+
+// ─── Types ───────────────────────────────────────────────────────
+
+type FilterMode = "single" | "range" | "week";
+
+interface FilterValue {
+  mode: FilterMode;
+  from: Date;
+  to: Date;
+  label: string;
+}
+
+// Report types that have numeric scores (out of 5)
+const SCORED_TYPES = ["manager-checklist", "Manager Checklist", "ops-manager-checklist", "performance-evaluation"];
+const WEEKLY_AUDIT_TYPE = "ops-manager-checklist";
+
+// Store codes used in submissions
+const STORE_CODES = ["PK", "MK", "ON", "TN"] as const;
+
+function getStoreInfo(code: string) {
+  const s = stores.find((s) => s.shortName === code || s.id === code.toLowerCase());
+  return s || { shortName: code, name: code, color: "#888" };
+}
+
+// ─── Score Helpers ───────────────────────────────────────────────
+
+function parseScore(totalScore: string | null): number | null {
+  if (!totalScore) return null;
+  const n = parseFloat(totalScore);
+  return isNaN(n) ? null : n;
+}
+
+function getScoreColor(score: number, max: number = 5): string {
+  const pct = score / max;
+  if (pct >= 0.8) return "text-emerald-600";
+  if (pct >= 0.6) return "text-amber-600";
+  return "text-red-600";
+}
+
+function getScoreBg(score: number, max: number = 5): string {
+  const pct = score / max;
+  if (pct >= 0.8) return "bg-emerald-50 border-emerald-200";
+  if (pct >= 0.6) return "bg-amber-50 border-amber-200";
+  return "bg-red-50 border-red-200";
+}
+
+function getScoreRingColor(score: number, max: number = 5): string {
+  const pct = score / max;
+  if (pct >= 0.8) return "#10B981";
+  if (pct >= 0.6) return "#F59E0B";
+  return "#EF4444";
+}
+
+// ─── Score Ring SVG ──────────────────────────────────────────────
+
+function ScoreRing({ score, max = 5, size = 80 }: { score: number; max?: number; size?: number }) {
+  const pct = Math.min(score / max, 1);
+  const r = (size - 8) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - pct);
+  const color = getScoreRingColor(score, max);
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={4} className="text-border/40" />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none"
+          stroke={color} strokeWidth={4} strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={offset}
+          className="transition-all duration-700"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-lg font-mono font-bold" style={{ color }}>{score.toFixed(1)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Date Filter (enhanced with Week mode) ───────────────────────
+
+const today = startOfDay(new Date());
+const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+const thisWeekEnd = endOfWeek(today, { weekStartsOn: 1 }); // Sunday
+const lastWeekStart = subDays(thisWeekStart, 7);
+const lastWeekEnd = subDays(thisWeekStart, 1);
+
+const PRESETS = [
+  { label: "Today", getValue: (): FilterValue => ({ mode: "single", from: today, to: endOfDay(today), label: "Today" }) },
+  { label: "Yesterday", getValue: (): FilterValue => { const d = subDays(today, 1); return { mode: "single", from: startOfDay(d), to: endOfDay(d), label: "Yesterday" }; } },
+  { label: "This Week", getValue: (): FilterValue => ({ mode: "week", from: thisWeekStart, to: endOfDay(thisWeekEnd > today ? today : thisWeekEnd), label: "This Week" }) },
+  { label: "Last Week", getValue: (): FilterValue => ({ mode: "week", from: lastWeekStart, to: endOfDay(lastWeekEnd), label: "Last Week" }) },
+  { label: "Last 7 Days", getValue: (): FilterValue => ({ mode: "range", from: startOfDay(subDays(today, 6)), to: endOfDay(today), label: "Last 7 Days" }) },
+  { label: "Last 30 Days", getValue: (): FilterValue => ({ mode: "range", from: startOfDay(subDays(today, 29)), to: endOfDay(today), label: "Last 30 Days" }) },
+];
+
+function ScorecardDateFilter({ value, onChange }: { value: FilterValue; onChange: (v: FilterValue) => void }) {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<FilterMode>(value.mode);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(value.from);
+  const [stagedRange, setStagedRange] = useState<DateRange | undefined>({ from: value.from, to: value.to });
+
+  const displayText = useMemo(() => {
+    if (value.label && value.label !== "Custom") return value.label;
+    if (value.mode === "single") return format(value.from, "MMM d, yyyy");
+    if (value.mode === "week") return `Week of ${format(value.from, "MMM d")}`;
+    return `${format(value.from, "MMM d")} – ${format(value.to, "MMM d, yyyy")}`;
+  }, [value]);
+
+  const rangeComplete = !!(stagedRange?.from && stagedRange?.to);
+
+  function handlePreset(preset: (typeof PRESETS)[number]) {
+    const val = preset.getValue();
+    onChange(val);
+    setMode(val.mode);
+    setOpen(false);
+  }
+
+  function handleSingleSelect(date: Date | undefined) {
+    if (!date) return;
+    setSelectedDate(date);
+    onChange({
+      mode: "single",
+      from: startOfDay(date),
+      to: endOfDay(date),
+      label: isSameDay(date, today) ? "Today" : isSameDay(date, subDays(today, 1)) ? "Yesterday" : format(date, "MMM d, yyyy"),
+    });
+    setOpen(false);
+  }
+
+  function handleWeekSelect(date: Date | undefined) {
+    if (!date) return;
+    const ws = startOfWeek(date, { weekStartsOn: 1 });
+    const we = endOfWeek(date, { weekStartsOn: 1 });
+    onChange({
+      mode: "week",
+      from: ws,
+      to: endOfDay(we > today ? today : we),
+      label: `Week of ${format(ws, "MMM d")}`,
+    });
+    setOpen(false);
+  }
+
+  function handleApplyRange() {
+    if (!stagedRange?.from || !stagedRange?.to) return;
+    onChange({
+      mode: "range",
+      from: startOfDay(stagedRange.from),
+      to: endOfDay(stagedRange.to),
+      label: "Custom",
+    });
+    setOpen(false);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="h-9 px-3 gap-2 text-sm font-normal bg-card border-border/60 hover:bg-accent/50">
+          <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />
+          <span>{displayText}</span>
+          <ChevronDown className="w-3 h-3 text-muted-foreground ml-auto" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="end" sideOffset={8}>
+        <div className="flex">
+          <div className="border-r border-border p-2 space-y-0.5 min-w-[140px]">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-2 py-1.5 font-medium">Quick Select</p>
+            {PRESETS.map((preset) => (
+              <button key={preset.label} onClick={() => handlePreset(preset)}
+                className={cn("w-full text-left text-sm px-2 py-1.5 rounded-md transition-colors",
+                  value.label === preset.label ? "bg-[#D4A853]/10 text-[#D4A853] font-medium" : "text-foreground hover:bg-accent"
+                )}
+              >{preset.label}</button>
+            ))}
+            <div className="border-t border-border my-2" />
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-2 py-1.5 font-medium">Mode</p>
+            {(["single", "week", "range"] as FilterMode[]).map((m) => (
+              <button key={m} onClick={() => setMode(m)}
+                className={cn("w-full text-left text-sm px-2 py-1.5 rounded-md transition-colors capitalize",
+                  mode === m ? "bg-[#D4A853]/10 text-[#D4A853] font-medium" : "text-foreground hover:bg-accent"
+                )}
+              >{m === "single" ? "Single Day" : m === "week" ? "Week (Mon–Sun)" : "Date Range"}</button>
+            ))}
+          </div>
+          <div className="p-2">
+            {mode === "single" ? (
+              <Calendar mode="single" selected={selectedDate} onSelect={handleSingleSelect} disabled={{ after: new Date() }} defaultMonth={selectedDate} />
+            ) : mode === "week" ? (
+              <Calendar mode="single" selected={value.from} onSelect={handleWeekSelect} disabled={{ after: new Date() }} defaultMonth={value.from} />
+            ) : (
+              <>
+                <Calendar mode="range" selected={stagedRange} onSelect={setStagedRange} disabled={{ after: new Date() }} defaultMonth={stagedRange?.from} numberOfMonths={1} />
+                <div className="border-t border-border mt-1 pt-2 px-1 space-y-2">
+                  <p className="text-xs text-muted-foreground text-center">
+                    {!stagedRange?.from ? "Select start date" : !stagedRange?.to ? `${format(stagedRange.from, "MMM d")} → Select end date` : `${format(stagedRange.from, "MMM d")} – ${format(stagedRange.to, "MMM d, yyyy")}`}
+                  </p>
+                  <Button size="sm" onClick={handleApplyRange} disabled={!rangeComplete}
+                    className={cn("w-full gap-1.5", rangeComplete ? "bg-[#D4A853] hover:bg-[#C49A48] text-white" : "")}
+                  ><Check className="w-3.5 h-3.5" />Apply Filter</Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────
+
+export default function OperationsScorecard() {
+  const [filter, setFilter] = useState<FilterValue>(PRESETS[2].getValue()); // This Week
+
+  const fromStr = format(filter.from, "yyyy-MM-dd");
+  const toStr = format(filter.to, "yyyy-MM-dd");
+
+  const { data: reports, isLoading } = trpc.scorecard.getData.useQuery({ fromDate: fromStr, toDate: toStr });
+
+  // ─── Compute scores per store ──────────────────────────────────
+
+  const storeScores = useMemo(() => {
+    if (!reports) return [];
+
+    return STORE_CODES.map((code) => {
+      const storeInfo = getStoreInfo(code);
+      const storeReports = reports.filter(
+        (r) => r.location === code || r.location === code.toLowerCase() || r.location === storeInfo.name
+      );
+
+      // Filter to scored report types only
+      const scored = storeReports.filter((r) => SCORED_TYPES.includes(r.reportType) && r.totalScore);
+
+      const scores = scored.map((r) => parseScore(r.totalScore)).filter((s): s is number => s !== null);
+      const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+
+      // Count by type
+      const managerChecklists = storeReports.filter((r) => r.reportType === "manager-checklist" || r.reportType === "Manager Checklist").length;
+      const weeklyAudits = storeReports.filter((r) => r.reportType === WEEKLY_AUDIT_TYPE).length;
+      const totalSubmissions = storeReports.length;
+
+      // Check if weekly audit was done this period
+      const hasWeeklyAudit = weeklyAudits > 0;
+
+      return {
+        code,
+        storeInfo,
+        avgScore,
+        scores,
+        managerChecklists,
+        weeklyAudits,
+        totalSubmissions,
+        hasWeeklyAudit,
+      };
+    });
+  }, [reports]);
+
+  // ─── Alerts ────────────────────────────────────────────────────
+
+  const alerts = useMemo(() => {
+    const alertList: { store: string; storeColor: string; message: string; severity: "critical" | "warning" }[] = [];
+
+    storeScores.forEach((s) => {
+      // Missing weekly audit alert
+      if (!s.hasWeeklyAudit && (filter.mode === "week" || (filter.mode === "range" && filter.label !== "Today" && filter.label !== "Yesterday"))) {
+        alertList.push({
+          store: s.code,
+          storeColor: s.storeInfo.color,
+          message: "Operations Manager has NOT completed the Weekly Store Audit",
+          severity: "critical",
+        });
+      }
+
+      // Low score alert
+      if (s.avgScore !== null && s.avgScore < 3) {
+        alertList.push({
+          store: s.code,
+          storeColor: s.storeInfo.color,
+          message: `Average score is critically low: ${s.avgScore.toFixed(1)}/5`,
+          severity: "critical",
+        });
+      } else if (s.avgScore !== null && s.avgScore < 4) {
+        alertList.push({
+          store: s.code,
+          storeColor: s.storeInfo.color,
+          message: `Average score needs improvement: ${s.avgScore.toFixed(1)}/5`,
+          severity: "warning",
+        });
+      }
+
+      // No submissions at all
+      if (s.totalSubmissions === 0 && filter.mode !== "single") {
+        alertList.push({
+          store: s.code,
+          storeColor: s.storeInfo.color,
+          message: "No checklists submitted during this period",
+          severity: "warning",
+        });
+      }
+    });
+
+    return alertList;
+  }, [storeScores, filter]);
+
+  // ─── Daily breakdown for the period ────────────────────────────
+
+  const dailyBreakdown = useMemo(() => {
+    if (!reports || filter.mode === "single") return null;
+
+    const days = eachDayOfInterval({ start: filter.from, end: filter.to > today ? today : filter.to });
+
+    return days.map((day) => {
+      const dayStr = format(day, "yyyy-MM-dd");
+      const dayReports = reports.filter((r) => r.reportDate === dayStr);
+
+      const byStore = STORE_CODES.map((code) => {
+        const storeInfo = getStoreInfo(code);
+        const storeDay = dayReports.filter(
+          (r) => r.location === code || r.location === code.toLowerCase() || r.location === storeInfo.name
+        );
+        const scored = storeDay.filter((r) => SCORED_TYPES.includes(r.reportType) && r.totalScore);
+        const scores = scored.map((r) => parseScore(r.totalScore)).filter((s): s is number => s !== null);
+        const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+        return { code, avg, count: storeDay.length };
+      });
+
+      return { date: day, dateStr: dayStr, byStore };
+    });
+  }, [reports, filter]);
+
+  return (
+    <DashboardLayout>
+      <div className="p-6 lg:p-8 space-y-6 max-w-[1400px]">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-serif text-foreground">Operations Scorecard</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Store performance scores from completed checklists
+            </p>
+          </div>
+          <ScorecardDateFilter value={filter} onChange={setFilter} />
+        </div>
+
+        {/* Tabs: Scores | Alerts */}
+        <Tabs defaultValue="scores" className="space-y-4">
+          <TabsList className="bg-card border border-border/60">
+            <TabsTrigger value="scores" className="data-[state=active]:bg-[#D4A853]/10 data-[state=active]:text-[#D4A853]">
+              Scores
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="data-[state=active]:bg-red-500/10 data-[state=active]:text-red-600 gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Alerts
+              {alerts.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-red-500 text-white">
+                  {alerts.length}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ─── Scores Tab ─────────────────────────────────────── */}
+          <TabsContent value="scores" className="space-y-6">
+            {isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {STORE_CODES.map((c) => (
+                  <div key={c} className="rounded-xl border border-border/60 bg-card p-6 animate-pulse">
+                    <div className="h-4 bg-muted rounded w-20 mb-4" />
+                    <div className="h-20 bg-muted rounded-full w-20 mx-auto mb-4" />
+                    <div className="h-3 bg-muted rounded w-32 mx-auto" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                {/* Store Score Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {storeScores.map((s) => (
+                    <div
+                      key={s.code}
+                      className={cn(
+                        "relative overflow-hidden rounded-xl border bg-card p-5 transition-shadow duration-300 hover:shadow-lg",
+                        s.avgScore !== null && s.avgScore < 3 ? "border-red-300 hover:shadow-red-500/10" : "border-border/60 hover:shadow-[#D4A853]/5"
+                      )}
+                    >
+                      {/* Top accent */}
+                      <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ backgroundColor: s.storeInfo.color }} />
+
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: s.storeInfo.color }}>{s.code}</p>
+                          <p className="text-xs text-muted-foreground">{s.storeInfo.name}</p>
+                        </div>
+                        {!s.hasWeeklyAudit && filter.mode !== "single" && (
+                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-medium">
+                            <ShieldAlert className="w-3 h-3" />
+                            No Audit
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex justify-center mb-3">
+                        {s.avgScore !== null ? (
+                          <ScoreRing score={s.avgScore} />
+                        ) : (
+                          <div className="w-20 h-20 rounded-full border-4 border-dashed border-border/40 flex items-center justify-center">
+                            <Minus className="w-5 h-5 text-muted-foreground/50" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">
+                          {s.avgScore !== null ? (
+                            <span className={getScoreColor(s.avgScore)}>
+                              {s.avgScore >= 4 ? "Good" : s.avgScore >= 3 ? "Needs Improvement" : "Critical"}
+                            </span>
+                          ) : (
+                            "No scored checklists"
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-border/40 grid grid-cols-3 gap-2 text-center">
+                        <div>
+                          <p className="text-lg font-mono font-semibold">{s.totalSubmissions}</p>
+                          <p className="text-[10px] text-muted-foreground">Total</p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-mono font-semibold">{s.managerChecklists}</p>
+                          <p className="text-[10px] text-muted-foreground">Daily</p>
+                        </div>
+                        <div>
+                          <p className={cn("text-lg font-mono font-semibold", s.weeklyAudits === 0 && filter.mode !== "single" ? "text-red-500" : "")}>
+                            {s.weeklyAudits}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">Audits</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Daily Breakdown Table (for range/week modes) */}
+                {dailyBreakdown && dailyBreakdown.length > 0 && (
+                  <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+                    <div className="px-5 py-4 border-b border-border/40">
+                      <h3 className="font-serif text-lg">Daily Score Breakdown</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Average checklist scores per store per day</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border/40 bg-muted/30">
+                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
+                            {STORE_CODES.map((code) => {
+                              const info = getStoreInfo(code);
+                              return (
+                                <th key={code} className="text-center px-4 py-3 font-medium" style={{ color: info.color }}>
+                                  {code}
+                                </th>
+                              );
+                            })}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dailyBreakdown.map((day) => (
+                            <tr key={day.dateStr} className="border-b border-border/20 last:border-0 hover:bg-muted/20 transition-colors">
+                              <td className="px-4 py-3 text-muted-foreground">
+                                <span className="font-medium text-foreground">{format(day.date, "EEE")}</span>
+                                <span className="ml-1.5">{format(day.date, "MMM d")}</span>
+                              </td>
+                              {day.byStore.map((s) => (
+                                <td key={s.code} className="text-center px-4 py-3">
+                                  {s.avg !== null ? (
+                                    <span className={cn("font-mono font-semibold", getScoreColor(s.avg))}>
+                                      {s.avg.toFixed(1)}
+                                    </span>
+                                  ) : s.count > 0 ? (
+                                    <span className="text-muted-foreground text-xs">N/S</span>
+                                  ) : (
+                                    <span className="text-muted-foreground/40">—</span>
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+
+          {/* ─── Alerts Tab ──────────────────────────────────────── */}
+          <TabsContent value="alerts" className="space-y-4">
+            {alerts.length === 0 ? (
+              <div className="rounded-xl border border-border/60 bg-card p-12 text-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-4">
+                  <Check className="w-8 h-8 text-emerald-500" />
+                </div>
+                <h3 className="font-serif text-lg mb-1">All Clear</h3>
+                <p className="text-sm text-muted-foreground">No alerts for the selected period. All stores are on track.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 px-1">
+                  <ShieldAlert className="w-5 h-5 text-red-500" />
+                  <h3 className="font-serif text-lg text-red-600">
+                    {alerts.length} Alert{alerts.length !== 1 ? "s" : ""} Detected
+                  </h3>
+                </div>
+
+                {alerts.map((alert, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "rounded-xl border p-4 flex items-start gap-3",
+                      alert.severity === "critical" ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5",
+                      alert.severity === "critical" ? "bg-red-100" : "bg-amber-100"
+                    )}>
+                      {alert.severity === "critical" ? (
+                        <ShieldAlert className="w-4 h-4 text-red-600" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className="px-2 py-0.5 rounded-full text-xs font-bold text-white"
+                          style={{ backgroundColor: alert.storeColor }}
+                        >
+                          {alert.store}
+                        </span>
+                        <span className={cn(
+                          "text-xs font-semibold uppercase tracking-wider",
+                          alert.severity === "critical" ? "text-red-600" : "text-amber-600"
+                        )}>
+                          {alert.severity === "critical" ? "⚠ CRITICAL" : "⚠ WARNING"}
+                        </span>
+                      </div>
+                      <p className={cn(
+                        "text-sm font-medium",
+                        alert.severity === "critical" ? "text-red-800" : "text-amber-800"
+                      )}>
+                        {alert.message}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
+  );
+}

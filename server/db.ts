@@ -565,6 +565,31 @@ export async function getAllReports(limit = 200) {
   return rows;
 }
 
+// ─── Scorecard Queries ────────────────────────────────────────────
+
+export async function getReportsByDateRange(fromDate: string, toDate: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: reportSubmissions.id,
+      reportType: reportSubmissions.reportType,
+      location: reportSubmissions.location,
+      reportDate: reportSubmissions.reportDate,
+      totalScore: reportSubmissions.totalScore,
+      status: reportSubmissions.status,
+      createdAt: reportSubmissions.createdAt,
+    })
+    .from(reportSubmissions)
+    .where(
+      and(
+        gte(reportSubmissions.reportDate, fromDate),
+        lte(reportSubmissions.reportDate, toDate)
+      )
+    )
+    .orderBy(desc(reportSubmissions.createdAt));
+}
+
 // ─── Store PINs ───────────────────────────────────────────────────
 
 export async function getAllStorePins() {
