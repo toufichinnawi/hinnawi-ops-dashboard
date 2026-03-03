@@ -285,7 +285,7 @@ export const reportSubmissions: ReportSubmission[] = [
   },
   {
     id: "11",
-    type: "Store Manager Checklist",
+    type: "Store Mgr Daily Checklist",
     store: "pk",
     submittedBy: "Maria Santos",
     role: "Store Manager",
@@ -294,7 +294,7 @@ export const reportSubmissions: ReportSubmission[] = [
   },
   {
     id: "12",
-    type: "Store Manager Checklist",
+    type: "Store Mgr Daily Checklist",
     store: "mk",
     submittedBy: "Ahmed Hassan",
     role: "Store Manager",

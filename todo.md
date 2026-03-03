@@ -480,3 +480,49 @@
 - [x] Add totalScore computation to all forms for scorecard integration
 - [x] Verify all checklist submissions appear on Operations Scorecard
 - [x] All 64 tests passing
+
+---
+
+# Scorecard: Green "Audited" Badge
+
+- [x] Change red "No Audit" badge to green "Audited" badge when Ops Mgr Weekly Audit exists for that store/period
+- [x] Keep red "No Audit" only when audit is truly missing
+
+---
+
+# Rename: Store Manager Checklist → Store Manager Daily Checklist
+
+- [x] Update sidebar label
+- [x] Update DirectChecklist slug-to-label mapping
+- [x] Update form title and success messages
+- [x] Update Checklists page, positionChecklists.ts, and all references
+
+---
+
+# Checklists by Position Page (Shareable)
+
+- [x] Create new page: Checklists by Position (/checklists/positions)
+- [x] Add "Copy Link" button at the top to share the page URL
+- [x] 4 position buttons: Operations Manager, Store Manager, Assistant Manager, Staff
+- [x] Clicking a position shows its designated checklists with links to each form
+- [x] Operations Manager: Ops. Mgr Weekly Audit
+- [x] Store Manager: Store Manager Daily Checklist, Weekly Scorecard, Performance Evaluation, Bagel Orders
+- [x] Assistant Manager: Equipment & Maintenance, Training Evaluation
+- [x] Staff: Leftovers & Waste
+- [x] Each checklist has a "Copy Link" button for direct sharing
+- [x] Add sidebar nav item under Reports & Checklists
+
+---
+
+# Reports Page (Upgrade from Report History)
+
+- [x] Rename "Report History" → "Reports" in sidebar
+- [x] Build full Reports page with filtering capabilities
+- [x] Filter by Store (PK, MK, ON, TN)
+- [x] Filter by Date / Date Range (with presets: Today, Yesterday, Last 7 Days, Last 30 Days, custom range)
+- [x] Filter by Position (Operations Manager, Store Manager, Assistant Manager, Staff)
+- [x] Filter by Checklist Type (auto-scoped to selected position)
+- [x] Each report row shows: Store, Date, Position, Checklist Name, Submitter, Score, Submitted timestamp
+- [x] Professional table layout with click-to-view detail dialog
+- [x] Sidebar nav item updated: "Reports" under Reports & Checklists
+

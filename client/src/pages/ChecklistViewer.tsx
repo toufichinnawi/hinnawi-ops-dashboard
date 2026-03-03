@@ -369,7 +369,7 @@ function DashboardChecklistForm({
         <SectionChecklistForm
           title="Store Evaluation Checklist"
           sections={STORE_MGR_SECTIONS}
-          reportType="Store Manager Checklist"
+          reportType="manager-checklist"
           storeCode={storeCode}
           storeName={storeName}
           positionLabel={positionLabel}

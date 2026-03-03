@@ -26,6 +26,7 @@ import CogsTargets from "@/pages/CogsTargets";
 import InventoryItems from "@/pages/InventoryItems";
 import InventoryCount from "@/pages/InventoryCount";
 import ReportHistory from "@/pages/ReportHistory";
+import ChecklistsByPosition from "@/pages/ChecklistsByPosition";
 import ExternalTools from "@/pages/ExternalTools";
 import AdminPanel from "@/pages/AdminPanel";
 import OperationsScorecard from "@/pages/OperationsScorecard";
@@ -53,6 +54,7 @@ function Router() {
 
       {/* Reports & Checklists — each checklist type has its own route */}
       <Route path="/checklists" component={Checklists} />
+      <Route path="/checklists/positions" component={ChecklistsByPosition} />
       <Route path="/checklists/:type" component={DirectChecklist} />
       <Route path="/reports/scorecard" component={OperationsScorecard} />
       <Route path="/reports/history" component={ReportHistory} />

@@ -27,14 +27,14 @@ export interface ChecklistInfo {
 export const ALL_CHECKLISTS: Record<ChecklistType, ChecklistInfo> = {
   "manager-checklist": {
     type: "manager-checklist",
-    label: "Manager Checklist",
+    label: "Store Mgr Daily Checklist",
     description:
       "Rate store operations across key areas (bilingual EN/FR)",
     icon: "📋",
   },
   "ops-manager-checklist": {
     type: "ops-manager-checklist",
-    label: "Operations Manager Checklist (Weekly Audit)",
+    label: "Ops. Mgr Weekly Audit",
     description:
       "Audit exterior, display, bathroom, equipment, product & service",
     icon: "🔍",
@@ -107,16 +107,23 @@ export interface PositionConfig {
   checklists: ChecklistType[];
 }
 
+/**
+ * Position → Checklist assignments (updated per user request)
+ *
+ * Operations Manager: Ops. Mgr Weekly Audit
+ * Store Manager: Store Mgr Daily Checklist, Weekly Scorecard, Performance Evaluation, Bagel Orders
+ * Assistant Manager: Equipment & Maintenance, Training Evaluation
+ * Staff: Leftovers & Waste
+ */
 export const POSITION_CHECKLISTS: Record<
   string,
   PositionConfig
 > = {
-  "operational-manager": {
-    slug: "operational-manager",
-    label: "Operational Manager",
+  "operations-manager": {
+    slug: "operations-manager",
+    label: "Operations Manager",
     checklists: [
       "ops-manager-checklist",
-      "manager-checklist",
     ],
   },
   "store-manager": {
@@ -125,36 +132,21 @@ export const POSITION_CHECKLISTS: Record<
     checklists: [
       "manager-checklist",
       "weekly-scorecard",
-      "store-manager-checklist",
-      "weekly-deep-cleaning",
+      "performance-evaluation",
+      "bagel-orders",
     ],
   },
   "assistant-manager": {
     slug: "assistant-manager",
     label: "Assistant Manager",
     checklists: [
-      "assistant-manager-checklist",
       "equipment-maintenance",
+      "training-evaluation",
     ],
   },
-  "shift-lead": {
-    slug: "shift-lead",
-    label: "Shift Lead",
-    checklists: ["waste-report", "training-evaluation"],
-  },
-  cashier: {
-    slug: "cashier",
-    label: "Cashier",
-    checklists: ["manager-checklist"],
-  },
-  barista: {
-    slug: "barista",
-    label: "Barista",
-    checklists: ["manager-checklist"],
-  },
-  cook: {
-    slug: "cook",
-    label: "Cook",
+  "staff": {
+    slug: "staff",
+    label: "Staff",
     checklists: ["waste-report"],
   },
 };

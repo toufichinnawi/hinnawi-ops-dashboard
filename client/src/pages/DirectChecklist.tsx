@@ -147,7 +147,7 @@ const SLUG_TO_CHECKLIST: Record<string, ChecklistType> = {
 };
 
 const SLUG_TO_LABEL: Record<string, string> = {
-  "operations": "Store Manager Checklist",
+  "operations": "Store Mgr Daily Checklist",
   "weekly-audit": "Ops. Mgr Weekly Audit",
   "weekly-scorecard": "Weekly Scorecard",
   "performance": "Performance Evaluation",
@@ -183,7 +183,7 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
       <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
       <h3 className="text-xl font-serif">Submitted Successfully</h3>
-      <p className="text-muted-foreground">Store Manager Checklist for {currentStoreName}</p>
+      <p className="text-muted-foreground">Store Mgr Daily Checklist for {currentStoreName}</p>
       <Button onClick={onBack} variant="outline">Back</Button>
     </motion.div>
   );

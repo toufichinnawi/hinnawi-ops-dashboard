@@ -679,11 +679,18 @@ export default function OperationsScorecard() {
                           <p className="text-sm font-semibold" style={{ color: s.storeInfo.color }}>{s.code}</p>
                           <p className="text-xs text-muted-foreground">{s.storeInfo.name}</p>
                         </div>
-                        {!s.hasWeeklyAudit && filter.mode !== "single" && (
-                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-medium">
-                            <ShieldAlert className="w-3 h-3" />
-                            No Audit
-                          </span>
+                        {filter.mode !== "single" && (
+                          s.hasWeeklyAudit ? (
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] font-medium">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Audited
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-medium">
+                              <ShieldAlert className="w-3 h-3" />
+                              No Audit
+                            </span>
+                          )
                         )}
                       </div>
 

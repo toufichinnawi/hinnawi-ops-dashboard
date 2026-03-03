@@ -81,7 +81,8 @@ const navSections: NavSection[] = [
     title: "Reports & Checklists",
     items: [
       { path: "/reports/scorecard", label: "Operations Scorecard", icon: BarChart3 },
-      { path: "/checklists/operations", label: "Store Manager Checklist", icon: ClipboardCheck },
+      { path: "/checklists/positions", label: "Checklists by Position", icon: Users },
+      { path: "/checklists/operations", label: "Store Mgr Daily Checklist", icon: ClipboardCheck },
       { path: "/checklists/weekly-audit", label: "Ops. Mgr Weekly Audit", icon: ClipboardCheck },
       { path: "/checklists/weekly-scorecard", label: "Weekly Scorecard", icon: BarChart3 },
       { path: "/checklists/performance", label: "Performance Evaluation", icon: Star },
@@ -89,7 +90,7 @@ const navSections: NavSection[] = [
       { path: "/checklists/equipment", label: "Equipment & Maintenance", icon: Wrench },
       { path: "/checklists/training", label: "Training Evaluation", icon: GraduationCap },
       { path: "/checklists/bagel-orders", label: "Bagel Orders", icon: CircleDot },
-      { path: "/reports/history", label: "Report History", icon: History },
+      { path: "/reports/history", label: "Reports", icon: History },
     ],
   },
   {
