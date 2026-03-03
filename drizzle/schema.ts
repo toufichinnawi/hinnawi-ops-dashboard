@@ -269,3 +269,102 @@ export const storePins = mysqlTable("store_pins", {
 
 export type StorePin = typeof storePins.$inferSelect;
 export type InsertStorePin = typeof storePins.$inferInsert;
+
+// ─── Expense Categories ───
+
+export const expenseCategories = mysqlTable("expense_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  pnlSection: mysqlEnum("pnlSection", ["cogs", "operating", "labour", "other"]).default("other").notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ExpenseCategory = typeof expenseCategories.$inferSelect;
+export type InsertExpenseCategory = typeof expenseCategories.$inferInsert;
+
+// ─── Vendors & Suppliers ───
+
+export const vendors = mysqlTable("vendors", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  contactRole: varchar("contactRole", { length: 255 }),
+  description: text("description"),
+  phone: varchar("phone", { length: 50 }),
+  email: varchar("email", { length: 320 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Vendor = typeof vendors.$inferSelect;
+export type InsertVendor = typeof vendors.$inferInsert;
+
+// ─── Expenses ───
+
+export const expenses = mysqlTable("expenses", {
+  id: int("id").autoincrement().primaryKey(),
+  storeCode: varchar("storeCode", { length: 10 }).notNull(),
+  categoryId: int("categoryId").notNull(),
+  vendorId: int("vendorId"),
+  amount: float("amount").notNull(),
+  description: text("description"),
+  expenseDate: varchar("expenseDate", { length: 10 }).notNull(), // YYYY-MM-DD
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  receiptUrl: text("receiptUrl"),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Expense = typeof expenses.$inferSelect;
+export type InsertExpense = typeof expenses.$inferInsert;
+
+// ─── COGS Targets ───
+
+export const cogsTargets = mysqlTable("cogs_targets", {
+  id: int("id").autoincrement().primaryKey(),
+  storeCode: varchar("storeCode", { length: 10 }).notNull(),
+  month: int("month").notNull(), // 1-12
+  year: int("year").notNull(),
+  targetAmount: float("targetAmount").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CogsTarget = typeof cogsTargets.$inferSelect;
+export type InsertCogsTarget = typeof cogsTargets.$inferInsert;
+
+// ─── Inventory Items ───
+
+export const inventoryItems = mysqlTable("inventory_items", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  category: varchar("category", { length: 100 }),
+  unit: varchar("unit", { length: 50 }).default("each").notNull(),
+  parLevel: float("parLevel"),
+  cost: float("cost"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type InventoryItem = typeof inventoryItems.$inferSelect;
+export type InsertInventoryItem = typeof inventoryItems.$inferInsert;
+
+// ─── Inventory Counts ───
+
+export const inventoryCounts = mysqlTable("inventory_counts", {
+  id: int("id").autoincrement().primaryKey(),
+  itemId: int("itemId").notNull(),
+  storeCode: varchar("storeCode", { length: 10 }).notNull(),
+  countDate: varchar("countDate", { length: 10 }).notNull(), // YYYY-MM-DD
+  quantity: float("quantity").notNull(),
+  countedBy: varchar("countedBy", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type InventoryCount = typeof inventoryCounts.$inferSelect;
+export type InsertInventoryCount = typeof inventoryCounts.$inferInsert;

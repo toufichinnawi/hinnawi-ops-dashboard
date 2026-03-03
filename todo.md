@@ -289,3 +289,53 @@
 - [x] Store dropdown added inside each form component (all 8 form types updated)
 - [x] No separate checklist results dashboard yet (will do later)
 - [x] All 38 tests passing
+
+---
+
+# Merge hinnawiops features into hinnawidash
+
+## Database Schema
+- [x] Add expenses table
+- [x] Add vendors table
+- [x] Add expenseCategories table
+- [x] Add cogsTargets table
+- [x] Add inventoryItems table
+- [x] Add inventoryCounts table
+- [x] Run pnpm db:push — all 17 tables migrated successfully
+
+## Backend (db helpers + tRPC routes)
+- [x] Expense CRUD db helpers
+- [x] Vendor CRUD db helpers
+- [x] Expense Category CRUD db helpers
+- [x] COGS Target CRUD db helpers
+- [x] Inventory Item CRUD db helpers
+- [x] Inventory Count CRUD db helpers
+- [x] Admin user management db helpers
+- [x] tRPC routes for all features (expenseCategories, vendors, expenses, cogsTargets, inventoryItems, inventoryCounts, pnl, admin)
+- [x] Report History query route (uses existing reports.list)
+- [x] P&L computation route (aggregates expenses by category/section)
+
+## Frontend Pages
+- [ ] Profit & Loss page (/accounting/pnl)
+- [ ] Expense Entry page (/accounting/expenses)
+- [ ] Vendors & Suppliers page (/accounting/vendors)
+- [ ] Expense Categories page (/accounting/categories)
+- [ ] COGS Targets page (/accounting/cogs-targets)
+- [ ] Inventory Items page (/inventory/items)
+- [ ] Inventory Count page (/inventory/count)
+- [ ] Report History page (/reports/history)
+- [ ] Admin Panel page (/admin)
+
+## Sidebar & Navigation
+- [ ] Reorganize sidebar into sections: Analytics, Accounting, Inventory, Reports & Checklists, External Tools, Settings
+- [ ] Add External Tools links (Clover POS, 7shifts, Job Descriptions, Contracts, Employee Manuals, Recipes, Evaluations)
+- [ ] Add all new routes to App.tsx
+
+## Data Seeding
+- [ ] Seed 9 vendors from hinnawiops
+- [ ] Seed 21 expense categories from hinnawiops
+
+## DO NOT TOUCH
+- Overview page
+- Labour Monitor page
+- Store Performance page

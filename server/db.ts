@@ -1,4 +1,4 @@
-import { eq, desc, and, gte, lte } from "drizzle-orm";
+import { eq, desc, and, gte, lte, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -15,6 +15,12 @@ import {
   excelSyncMeta, InsertExcelSyncMeta, ExcelSyncMeta,
   reportSubmissions, InsertReportSubmission, ReportSubmission,
   storePins, InsertStorePin, StorePin,
+  expenseCategories, InsertExpenseCategory, ExpenseCategory,
+  vendors, InsertVendor, Vendor,
+  expenses, InsertExpense, Expense,
+  cogsTargets, InsertCogsTarget, CogsTarget,
+  inventoryItems, InsertInventoryItem, InventoryItem,
+  inventoryCounts, InsertInventoryCount, InventoryCount,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -632,4 +638,219 @@ export async function getActiveStorePinsPublic() {
     .from(storePins)
     .where(eq(storePins.isActive, "yes"))
     .orderBy(storePins.storeName);
+}
+
+
+// ─── Expense Categories ───
+
+export async function getExpenseCategories() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(expenseCategories).orderBy(expenseCategories.pnlSection, expenseCategories.sortOrder);
+}
+
+export async function createExpenseCategory(data: InsertExpenseCategory) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [result] = await db.insert(expenseCategories).values(data).$returningId();
+  return result;
+}
+
+export async function updateExpenseCategory(id: number, data: Partial<InsertExpenseCategory>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(expenseCategories).set(data).where(eq(expenseCategories.id, id));
+}
+
+export async function deleteExpenseCategory(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.delete(expenseCategories).where(eq(expenseCategories.id, id));
+}
+
+// ─── Vendors ───
+
+export async function getVendors() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(vendors).orderBy(vendors.name);
+}
+
+export async function createVendor(data: InsertVendor) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [result] = await db.insert(vendors).values(data).$returningId();
+  return result;
+}
+
+export async function updateVendor(id: number, data: Partial<InsertVendor>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(vendors).set(data).where(eq(vendors.id, id));
+}
+
+export async function deleteVendor(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.delete(vendors).where(eq(vendors.id, id));
+}
+
+// ─── Expenses ───
+
+export async function getExpenses(filters?: { storeCode?: string; startDate?: string; endDate?: string; status?: string; categoryId?: number }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions: any[] = [];
+  if (filters?.storeCode) conditions.push(eq(expenses.storeCode, filters.storeCode));
+  if (filters?.status) conditions.push(eq(expenses.status, filters.status as any));
+  if (filters?.categoryId) conditions.push(eq(expenses.categoryId, filters.categoryId));
+  if (filters?.startDate) conditions.push(gte(expenses.expenseDate, filters.startDate));
+  if (filters?.endDate) conditions.push(lte(expenses.expenseDate, filters.endDate));
+
+  if (conditions.length > 0) {
+    return db.select().from(expenses).where(and(...conditions)).orderBy(desc(expenses.expenseDate));
+  }
+  return db.select().from(expenses).orderBy(desc(expenses.expenseDate));
+}
+
+export async function createExpense(data: InsertExpense) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [result] = await db.insert(expenses).values(data).$returningId();
+  return result;
+}
+
+export async function updateExpense(id: number, data: Partial<InsertExpense>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(expenses).set(data).where(eq(expenses.id, id));
+}
+
+export async function deleteExpense(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.delete(expenses).where(eq(expenses.id, id));
+}
+
+export async function getExpensesByMonth(month: number, year: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+  const endMonth = month === 12 ? 1 : month + 1;
+  const endYear = month === 12 ? year + 1 : year;
+  const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
+  return db.select().from(expenses)
+    .where(and(gte(expenses.expenseDate, startDate), lt(expenses.expenseDate, endDate)))
+    .orderBy(desc(expenses.expenseDate));
+}
+
+// ─── COGS Targets ───
+
+export async function getCogsTargets(month: number, year: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(cogsTargets)
+    .where(and(eq(cogsTargets.month, month), eq(cogsTargets.year, year)));
+}
+
+export async function upsertCogsTarget(data: InsertCogsTarget) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const existing = await db.select().from(cogsTargets)
+    .where(and(
+      eq(cogsTargets.storeCode, data.storeCode),
+      eq(cogsTargets.month, data.month),
+      eq(cogsTargets.year, data.year)
+    ));
+  if (existing.length > 0) {
+    await db.update(cogsTargets).set({ targetAmount: data.targetAmount }).where(eq(cogsTargets.id, existing[0].id));
+    return existing[0];
+  }
+  const [result] = await db.insert(cogsTargets).values(data).$returningId();
+  return result;
+}
+
+// ─── Inventory Items ───
+
+export async function getInventoryItems(category?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (category) {
+    return db.select().from(inventoryItems)
+      .where(and(eq(inventoryItems.category, category), eq(inventoryItems.isActive, true)))
+      .orderBy(inventoryItems.name);
+  }
+  return db.select().from(inventoryItems)
+    .where(eq(inventoryItems.isActive, true))
+    .orderBy(inventoryItems.name);
+}
+
+export async function createInventoryItem(data: InsertInventoryItem) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [result] = await db.insert(inventoryItems).values(data).$returningId();
+  return result;
+}
+
+export async function updateInventoryItem(id: number, data: Partial<InsertInventoryItem>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(inventoryItems).set(data).where(eq(inventoryItems.id, id));
+}
+
+export async function deleteInventoryItem(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(inventoryItems).set({ isActive: false }).where(eq(inventoryItems.id, id));
+}
+
+// ─── Inventory Counts ───
+
+export async function getInventoryCounts(storeCode: string, countDate: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(inventoryCounts)
+    .where(and(eq(inventoryCounts.storeCode, storeCode), eq(inventoryCounts.countDate, countDate)))
+    .orderBy(inventoryCounts.itemId);
+}
+
+export async function upsertInventoryCount(data: InsertInventoryCount) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const existing = await db.select().from(inventoryCounts)
+    .where(and(
+      eq(inventoryCounts.itemId, data.itemId),
+      eq(inventoryCounts.storeCode, data.storeCode),
+      eq(inventoryCounts.countDate, data.countDate)
+    ));
+  if (existing.length > 0) {
+    await db.update(inventoryCounts)
+      .set({ quantity: data.quantity, countedBy: data.countedBy })
+      .where(eq(inventoryCounts.id, existing[0].id));
+    return existing[0];
+  }
+  const [result] = await db.insert(inventoryCounts).values(data).$returningId();
+  return result;
+}
+
+export async function bulkUpsertInventoryCounts(counts: InsertInventoryCount[]) {
+  const results = [];
+  for (const c of counts) {
+    results.push(await upsertInventoryCount(c));
+  }
+  return results;
+}
+
+// ─── Admin: User Management ───
+
+export async function getAllUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users).orderBy(users.name);
+}
+
+export async function updateUserRole(userId: number, role: "user" | "admin") {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(users).set({ role }).where(eq(users.id, userId));
 }

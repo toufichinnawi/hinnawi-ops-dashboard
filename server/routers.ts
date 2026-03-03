@@ -20,6 +20,13 @@ import {
   getLatestExcelSyncMeta, createExcelSyncMeta,
   createReportSubmission, getReportsByUser, getAllReports,
   getAllStorePins, upsertStorePin, verifyStorePin, getActiveStorePinsPublic,
+  getExpenseCategories, createExpenseCategory, updateExpenseCategory, deleteExpenseCategory,
+  getVendors, createVendor, updateVendor, deleteVendor,
+  getExpenses, createExpense, updateExpense, deleteExpense, getExpensesByMonth,
+  getCogsTargets, upsertCogsTarget,
+  getInventoryItems, createInventoryItem, updateInventoryItem, deleteInventoryItem,
+  getInventoryCounts, bulkUpsertInventoryCounts,
+  getAllUsers, updateUserRole,
 } from "./db";
 import { parseExcelBuffer } from "./excelParser";
 import { sendTeamsNotification } from "./teamsNotify";
@@ -1080,6 +1087,268 @@ export const appRouter = router({
           input.pin
         );
         return { valid };
+      }),
+  }),
+
+  // ─── Expense Categories ───
+  expenseCategories: router({
+    list: protectedProcedure.query(async () => {
+      return getExpenseCategories();
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        description: z.string().optional(),
+        pnlSection: z.enum(["cogs", "operating", "labour", "other"]).default("other"),
+        sortOrder: z.number().default(0),
+      }))
+      .mutation(async ({ input }) => {
+        return createExpenseCategory(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).optional(),
+        description: z.string().optional(),
+        pnlSection: z.enum(["cogs", "operating", "labour", "other"]).optional(),
+        sortOrder: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateExpenseCategory(id, data);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteExpenseCategory(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Vendors ───
+  vendors: router({
+    list: protectedProcedure.query(async () => {
+      return getVendors();
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        contactRole: z.string().optional(),
+        description: z.string().optional(),
+        phone: z.string().optional(),
+        email: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return createVendor(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).optional(),
+        contactRole: z.string().optional(),
+        description: z.string().optional(),
+        phone: z.string().optional(),
+        email: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateVendor(id, data);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteVendor(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Expenses ───
+  expenses: router({
+    list: protectedProcedure
+      .input(z.object({
+        storeCode: z.string().optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        status: z.string().optional(),
+        categoryId: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return getExpenses(input ?? undefined);
+      }),
+    byMonth: protectedProcedure
+      .input(z.object({ month: z.number(), year: z.number() }))
+      .query(async ({ input }) => {
+        return getExpensesByMonth(input.month, input.year);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        storeCode: z.string(),
+        categoryId: z.number(),
+        vendorId: z.number().optional(),
+        amount: z.number(),
+        description: z.string().optional(),
+        expenseDate: z.string(),
+        status: z.enum(["pending", "approved", "rejected"]).default("pending"),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        return createExpense({ ...input, createdBy: ctx.user?.id });
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        storeCode: z.string().optional(),
+        categoryId: z.number().optional(),
+        vendorId: z.number().optional(),
+        amount: z.number().optional(),
+        description: z.string().optional(),
+        expenseDate: z.string().optional(),
+        status: z.enum(["pending", "approved", "rejected"]).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateExpense(id, data);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteExpense(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ─── COGS Targets ───
+  cogsTargets: router({
+    list: protectedProcedure
+      .input(z.object({ month: z.number(), year: z.number() }))
+      .query(async ({ input }) => {
+        return getCogsTargets(input.month, input.year);
+      }),
+    upsert: protectedProcedure
+      .input(z.object({
+        storeCode: z.string(),
+        month: z.number(),
+        year: z.number(),
+        targetAmount: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        return upsertCogsTarget(input);
+      }),
+  }),
+
+  // ─── Inventory Items ───
+  inventoryItems: router({
+    list: protectedProcedure
+      .input(z.object({ category: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return getInventoryItems(input?.category);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        category: z.string().optional(),
+        unit: z.string().default("each"),
+        parLevel: z.number().optional(),
+        cost: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return createInventoryItem(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).optional(),
+        category: z.string().optional(),
+        unit: z.string().optional(),
+        parLevel: z.number().optional(),
+        cost: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateInventoryItem(id, data);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteInventoryItem(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Inventory Counts ───
+  inventoryCounts: router({
+    list: protectedProcedure
+      .input(z.object({ storeCode: z.string(), countDate: z.string() }))
+      .query(async ({ input }) => {
+        return getInventoryCounts(input.storeCode, input.countDate);
+      }),
+    bulkUpsert: protectedProcedure
+      .input(z.object({
+        counts: z.array(z.object({
+          itemId: z.number(),
+          storeCode: z.string(),
+          countDate: z.string(),
+          quantity: z.number(),
+          countedBy: z.string().optional(),
+        })),
+      }))
+      .mutation(async ({ input }) => {
+        return bulkUpsertInventoryCounts(input.counts);
+      }),
+  }),
+
+  // ─── P&L ───
+  pnl: router({
+    summary: protectedProcedure
+      .input(z.object({ month: z.number(), year: z.number() }))
+      .query(async ({ input }) => {
+        const monthExpenses = await getExpensesByMonth(input.month, input.year);
+        const categories = await getExpenseCategories();
+        const catMap = new Map(categories.map(c => [c.id, c]));
+
+        const sections: Record<string, number> = { cogs: 0, operating: 0, labour: 0, other: 0 };
+        const byCategory: Record<string, { name: string; section: string; total: number }> = {};
+
+        for (const exp of monthExpenses) {
+          const cat = catMap.get(exp.categoryId);
+          const section = cat?.pnlSection ?? "other";
+          sections[section] += exp.amount;
+          const catName = cat?.name ?? "Uncategorized";
+          if (!byCategory[catName]) byCategory[catName] = { name: catName, section, total: 0 };
+          byCategory[catName].total += exp.amount;
+        }
+
+        return {
+          month: input.month,
+          year: input.year,
+          cogs: sections.cogs,
+          operatingExpenses: sections.operating,
+          labourExpenses: sections.labour,
+          otherExpenses: sections.other,
+          totalExpenses: Object.values(sections).reduce((a, b) => a + b, 0),
+          byCategory: Object.values(byCategory).sort((a, b) => b.total - a.total),
+        };
+      }),
+  }),
+
+  // ─── Admin ───
+  admin: router({
+    users: adminProcedure.query(async () => {
+      return getAllUsers();
+    }),
+    updateRole: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        role: z.enum(["user", "admin"]),
+      }))
+      .mutation(async ({ input }) => {
+        await updateUserRole(input.userId, input.role);
+        return { success: true };
       }),
   }),
 });
