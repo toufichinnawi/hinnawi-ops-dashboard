@@ -279,3 +279,13 @@
 - [x] All 11 checklist forms render inside DashboardLayout
 - [x] Add /checklists/:position route to App.tsx
 - [x] All 38 tests passing
+
+---
+
+# Fix: Simplify Checklist Flow (No Store Selector)
+
+- [x] Remove store selector step from ChecklistViewer
+- [x] Flow: Checklists page → Click position → See checklist list → Click checklist → Opens form directly
+- [x] Store dropdown added inside each form component (all 8 form types updated)
+- [x] No separate checklist results dashboard yet (will do later)
+- [x] All 38 tests passing

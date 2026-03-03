@@ -199,8 +199,6 @@ export default function ChecklistViewer() {
   const positionSlug = params.position || "";
   const config = getPositionConfig(positionSlug);
 
-  const [storeCode, setStoreCode] = useState<string | null>(null);
-  const [storeName, setStoreName] = useState("");
   const [activeChecklist, setActiveChecklist] = useState<ChecklistType | null>(
     null
   );
@@ -226,15 +224,15 @@ export default function ChecklistViewer() {
     );
   }
 
-  // If a checklist is active and store is selected, show the form
-  if (activeChecklist && storeCode) {
+  // If a checklist is active, show the form directly (store selected inside form)
+  if (activeChecklist) {
     return (
       <DashboardLayout>
         <div className="p-6 lg:p-8 max-w-[900px]">
           <DashboardChecklistForm
             type={activeChecklist}
-            storeCode={storeCode}
-            storeName={storeName}
+            storeCode=""
+            storeName=""
             positionLabel={config.label}
             onBack={() => setActiveChecklist(null)}
           />
@@ -243,6 +241,7 @@ export default function ChecklistViewer() {
     );
   }
 
+  // Show checklist list directly (no store selector)
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 space-y-6 max-w-[1400px]">
@@ -264,78 +263,37 @@ export default function ChecklistViewer() {
           </div>
         </div>
 
-        {/* Store Selector */}
-        {!storeCode && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-card rounded-xl border border-border/60 p-6"
-          >
-            <StoreSelector
-              selectedStore={storeCode}
-              onSelect={(code, name) => {
-                setStoreCode(code);
-                setStoreName(name);
-              }}
-            />
-          </motion.div>
-        )}
-
-        {/* Store Badge + Checklist List */}
-        {storeCode && (
-          <>
-            <div className="flex items-center gap-3">
-              <Badge
-                variant="outline"
-                className="border-[#D4A853]/30 text-[#D4A853] bg-[#D4A853]/10 px-3 py-1"
+        {/* Checklist List — shown directly */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-3"
+        >
+          <h3 className="font-serif text-lg text-foreground">
+            Select a Checklist
+          </h3>
+          {config.checklists.map((type) => {
+            const info = getChecklistInfo(type);
+            return (
+              <div
+                key={type}
+                onClick={() => setActiveChecklist(type)}
+                className="bg-card rounded-xl border border-border/60 p-5 flex items-center gap-4 cursor-pointer hover:border-[#D4A853]/40 hover:bg-muted/30 transition-all"
               >
-                <StoreIcon className="w-3 h-3 mr-1.5" />
-                {storeName} ({storeCode})
-              </Badge>
-              <button
-                onClick={() => {
-                  setStoreCode(null);
-                  setStoreName("");
-                  setActiveChecklist(null);
-                }}
-                className="text-xs text-muted-foreground hover:text-foreground underline"
-              >
-                Change store
-              </button>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-3"
-            >
-              <h3 className="font-serif text-lg text-foreground">
-                Select a Checklist
-              </h3>
-              {config.checklists.map((type) => {
-                const info = getChecklistInfo(type);
-                return (
-                  <div
-                    key={type}
-                    onClick={() => setActiveChecklist(type)}
-                    className="bg-card rounded-xl border border-border/60 p-5 flex items-center gap-4 cursor-pointer hover:border-[#D4A853]/40 hover:bg-muted/30 transition-all"
-                  >
-                    <span className="text-3xl">{info.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-foreground">
-                        {info.label}
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        {info.description}
-                      </p>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                );
-              })}
-            </motion.div>
-          </>
-        )}
+                <span className="text-3xl">{info.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-foreground">
+                    {info.label}
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    {info.description}
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            );
+          })}
+        </motion.div>
       </div>
     </DashboardLayout>
   );
@@ -552,6 +510,43 @@ async function submitReport(data: {
   return res.json();
 }
 
+// ─── Store Dropdown (inside forms) ───
+
+function StoreDropdown({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (code: string) => void;
+}) {
+  return (
+    <div className="bg-card rounded-xl border border-border/60 p-5">
+      <Label className="text-sm font-medium">Store</Label>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5">
+        {stores.map((store) => (
+          <button
+            key={store.id}
+            type="button"
+            onClick={() => onChange(store.shortName)}
+            className={cn(
+              "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+              value === store.shortName
+                ? "border-[#D4A853] bg-[#D4A853]/10 text-[#D4A853]"
+                : "border-border/60 bg-background hover:border-[#D4A853]/40 text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
+              <span>{store.shortName}</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{store.name}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Manager Checklist (Star Rating) ───
 
 interface FormProps {
@@ -562,16 +557,18 @@ interface FormProps {
 }
 
 function ManagerChecklistForm({
-  storeCode,
-  storeName,
+  storeCode: initialStoreCode,
+  storeName: _storeName,
   positionLabel,
   onBack,
 }: FormProps) {
+  const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
   const [ratings, setRatings] = useState<Record<number, number>>({});
   const [notes, setNotes] = useState("");
   const [submitterName, setSubmitterName] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
 
   const totalRated = Object.keys(ratings).length;
   const avgScore =
@@ -586,6 +583,10 @@ function ManagerChecklistForm({
       toast.error("Please enter your name");
       return;
     }
+    if (!selectedStore) {
+      toast.error("Please select a store");
+      return;
+    }
     if (totalRated < OPS_TASKS.length) {
       toast.error(`Please rate all ${OPS_TASKS.length} items`);
       return;
@@ -595,7 +596,7 @@ function ManagerChecklistForm({
       await submitReport({
         submitterName,
         reportType: "Manager Checklist",
-        location: storeCode,
+        location: selectedStore,
         reportDate: new Date().toISOString().split("T")[0],
         data: { ratings, notes, tasks: OPS_TASKS },
         totalScore: avgScore,
@@ -611,7 +612,7 @@ function ManagerChecklistForm({
   if (submitted) {
     return (
       <SuccessCard
-        message={`Manager Checklist submitted for ${storeName} with score ${avgScore}/5`}
+        message={`Manager Checklist submitted for ${currentStoreName} with score ${avgScore}/5`}
         onNew={() => {
           setRatings({});
           setNotes("");
@@ -626,11 +627,13 @@ function ManagerChecklistForm({
     <div>
       <FormHeader
         title="Manager Checklist"
-        subtitle={`${storeName} (${storeCode}) — ${positionLabel}`}
+        subtitle={`${positionLabel}`}
         onBack={onBack}
       />
 
       <div className="space-y-4">
+        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
+
         <div className="bg-card rounded-xl border border-border/60 p-5">
           <Label className="text-sm font-medium">Your Name</Label>
           <Input
@@ -712,18 +715,20 @@ function SectionChecklistForm({
   title,
   sections,
   reportType,
-  storeCode,
-  storeName,
+  storeCode: initialStoreCode,
+  storeName: _storeName2,
   positionLabel,
   onBack,
   useRating,
 }: SectionFormProps) {
+  const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState("");
   const [submitterName, setSubmitterName] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
 
   const allItems = sections.flatMap((s) => s.items);
   const totalItems = allItems.length;
@@ -745,12 +750,16 @@ function SectionChecklistForm({
       toast.error("Please enter your name");
       return;
     }
+    if (!selectedStore) {
+      toast.error("Please select a store");
+      return;
+    }
     setSubmitting(true);
     try {
       await submitReport({
         submitterName,
         reportType,
-        location: storeCode,
+        location: selectedStore,
         reportDate: new Date().toISOString().split("T")[0],
         data: useRating
           ? { ratings, notes, sections }
@@ -768,7 +777,7 @@ function SectionChecklistForm({
   if (submitted) {
     return (
       <SuccessCard
-        message={`${title} submitted for ${storeName}${avgScore ? ` with score ${avgScore}/5` : ""}`}
+        message={`${title} submitted for ${currentStoreName}${avgScore ? ` with score ${avgScore}/5` : ""}`}
         onNew={() => {
           setChecked({});
           setRatings({});
@@ -784,11 +793,13 @@ function SectionChecklistForm({
     <div>
       <FormHeader
         title={title}
-        subtitle={`${storeName} (${storeCode}) — ${positionLabel}`}
+        subtitle={`${positionLabel}`}
         onBack={onBack}
       />
 
       <div className="space-y-4">
+        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
+
         <div className="bg-card rounded-xl border border-border/60 p-5">
           <Label className="text-sm font-medium">Your Name</Label>
           <Input
@@ -878,7 +889,9 @@ function SectionChecklistForm({
 
 // ─── Waste Report ───
 
-function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: FormProps) {
+function WasteReportForm({ storeCode: initialStoreCode, storeName: _sn3, positionLabel, onBack }: FormProps) {
+  const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
+  const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
   const [bagelLeftovers, setBagelLeftovers] = useState<Record<string, string>>({});
   const [pastryLeftovers, setPastryLeftovers] = useState<Record<string, string>>({});
@@ -889,12 +902,13 @@ function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: FormPr
 
   const handleSubmit = async () => {
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
+    if (!selectedStore) { toast.error("Please select a store"); return; }
     setSubmitting(true);
     try {
       await submitReport({
         submitterName,
         reportType: "Leftovers & Waste Report",
-        location: storeCode,
+        location: selectedStore,
         reportDate: new Date().toISOString().split("T")[0],
         data: { bagelLeftovers, pastryLeftovers, ckLeftovers, notes },
       });
@@ -903,12 +917,13 @@ function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: FormPr
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Waste Report submitted for ${storeName}`} onNew={() => { setBagelLeftovers({}); setPastryLeftovers({}); setCkLeftovers({}); setNotes(""); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Waste Report submitted for ${currentStoreName}`} onNew={() => { setBagelLeftovers({}); setPastryLeftovers({}); setCkLeftovers({}); setNotes(""); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
-      <FormHeader title="Leftovers & Waste Report" subtitle={`${storeName} (${storeCode}) — ${positionLabel}`} onBack={onBack} />
+      <FormHeader title="Leftovers & Waste Report" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
+        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="bg-card rounded-xl border border-border/60 p-5">
           <Label className="text-sm font-medium">Your Name</Label>
           <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
@@ -965,7 +980,9 @@ function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: FormPr
 
 // ─── Equipment Maintenance ───
 
-function EquipmentMaintenanceForm({ storeCode, storeName, positionLabel, onBack }: FormProps) {
+function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4, positionLabel, onBack }: FormProps) {
+  const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
+  const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
   const [dailyChecks, setDailyChecks] = useState<Record<string, boolean>>({});
   const [weeklyChecks, setWeeklyChecks] = useState<Record<string, boolean>>({});
@@ -976,12 +993,13 @@ function EquipmentMaintenanceForm({ storeCode, storeName, positionLabel, onBack 
 
   const handleSubmit = async () => {
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
+    if (!selectedStore) { toast.error("Please select a store"); return; }
     setSubmitting(true);
     try {
       await submitReport({
         submitterName,
         reportType: "Equipment & Maintenance",
-        location: storeCode,
+        location: selectedStore,
         reportDate: new Date().toISOString().split("T")[0],
         data: { dailyChecks, weeklyChecks, monthlyChecks, notes },
       });
@@ -990,7 +1008,7 @@ function EquipmentMaintenanceForm({ storeCode, storeName, positionLabel, onBack 
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Equipment Maintenance submitted for ${storeName}`} onNew={() => { setDailyChecks({}); setWeeklyChecks({}); setMonthlyChecks({}); setNotes(""); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Equipment Maintenance submitted for ${currentStoreName}`} onNew={() => { setDailyChecks({}); setWeeklyChecks({}); setMonthlyChecks({}); setNotes(""); setSubmitted(false); }} onBack={onBack} />;
 
   const renderEquipTable = (title: string, items: typeof EQUIP_DAILY, state: Record<string, boolean>, setState: (fn: (prev: Record<string, boolean>) => Record<string, boolean>) => void) => (
     <div className="bg-card rounded-xl border border-border/60 p-5">
@@ -1014,8 +1032,9 @@ function EquipmentMaintenanceForm({ storeCode, storeName, positionLabel, onBack 
 
   return (
     <div>
-      <FormHeader title="Equipment & Maintenance" subtitle={`${storeName} (${storeCode}) — ${positionLabel}`} onBack={onBack} />
+      <FormHeader title="Equipment & Maintenance" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
+        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="bg-card rounded-xl border border-border/60 p-5">
           <Label className="text-sm font-medium">Your Name</Label>
           <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
@@ -1037,7 +1056,9 @@ function EquipmentMaintenanceForm({ storeCode, storeName, positionLabel, onBack 
 
 // ─── Weekly Scorecard ───
 
-function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: FormProps) {
+function WeeklyScorecardForm({ storeCode: initialStoreCode, storeName: _sn5, positionLabel, onBack }: FormProps) {
+  const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
+  const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
   const [salesData, setSalesData] = useState<Record<string, string>>({});
   const [laborData, setLaborData] = useState<Record<string, string>>({});
@@ -1047,12 +1068,13 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: Fo
 
   const handleSubmit = async () => {
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
+    if (!selectedStore) { toast.error("Please select a store"); return; }
     setSubmitting(true);
     try {
       await submitReport({
         submitterName,
         reportType: "Weekly Scorecard",
-        location: storeCode,
+        location: selectedStore,
         reportDate: new Date().toISOString().split("T")[0],
         data: { salesData, laborData, notes },
       });
@@ -1061,12 +1083,13 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: Fo
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Weekly Scorecard submitted for ${storeName}`} onNew={() => { setSalesData({}); setLaborData({}); setNotes(""); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Weekly Scorecard submitted for ${currentStoreName}`} onNew={() => { setSalesData({}); setLaborData({}); setNotes(""); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
-      <FormHeader title="Weekly Scorecard" subtitle={`${storeName} (${storeCode}) — ${positionLabel}`} onBack={onBack} />
+      <FormHeader title="Weekly Scorecard" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
+        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="bg-card rounded-xl border border-border/60 p-5">
           <Label className="text-sm font-medium">Your Name</Label>
           <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
@@ -1107,7 +1130,9 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: Fo
 
 // ─── Training Evaluation ───
 
-function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack }: FormProps) {
+function TrainingEvaluationForm({ storeCode: initialStoreCode, storeName: _sn6, positionLabel, onBack }: FormProps) {
+  const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
+  const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
   const [traineeName, setTraineeName] = useState("");
   const [ratings, setRatings] = useState<Record<string, number>>({});
@@ -1121,12 +1146,13 @@ function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack }:
 
   const handleSubmit = async () => {
     if (!submitterName.trim() || !traineeName.trim()) { toast.error("Please enter both names"); return; }
+    if (!selectedStore) { toast.error("Please select a store"); return; }
     setSubmitting(true);
     try {
       await submitReport({
         submitterName,
         reportType: "Training Evaluation",
-        location: storeCode,
+        location: selectedStore,
         reportDate: new Date().toISOString().split("T")[0],
         data: { traineeName, ratings, notes, areas: TRAINING_AREAS },
         totalScore: avgScore,
@@ -1140,8 +1166,9 @@ function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack }:
 
   return (
     <div>
-      <FormHeader title="Training Evaluation" subtitle={`${storeName} (${storeCode}) — ${positionLabel}`} onBack={onBack} />
+      <FormHeader title="Training Evaluation" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
+        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
           <div>
             <Label className="text-sm font-medium">Your Name (Evaluator)</Label>
@@ -1189,7 +1216,9 @@ function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack }:
 
 // ─── Bagel Orders ───
 
-function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: FormProps) {
+function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positionLabel, onBack }: FormProps) {
+  const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
+  const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
@@ -1200,13 +1229,14 @@ function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: FormPr
 
   const handleSubmit = async () => {
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
+    if (!selectedStore) { toast.error("Please select a store"); return; }
     if (totalBagels === 0) { toast.error("Please enter at least one bagel quantity"); return; }
     setSubmitting(true);
     try {
       await submitReport({
         submitterName,
         reportType: "Bagel Orders",
-        location: storeCode,
+        location: selectedStore,
         reportDate: new Date().toISOString().split("T")[0],
         data: { quantities, notes, totalBagels },
       });
@@ -1215,12 +1245,13 @@ function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: FormPr
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Bagel order (${totalBagels} total) submitted for ${storeName}`} onNew={() => { setQuantities({}); setNotes(""); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Bagel order (${totalBagels} total) submitted for ${currentStoreName}`} onNew={() => { setQuantities({}); setNotes(""); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
-      <FormHeader title="Bagel Orders" subtitle={`${storeName} (${storeCode}) — ${positionLabel}`} onBack={onBack} />
+      <FormHeader title="Bagel Orders" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
+        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="bg-card rounded-xl border border-border/60 p-5">
           <Label className="text-sm font-medium">Your Name</Label>
           <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
@@ -1253,7 +1284,9 @@ function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: FormPr
 
 // ─── Performance Evaluation ───
 
-function PerformanceEvaluationForm({ storeCode, storeName, positionLabel, onBack }: FormProps) {
+function PerformanceEvaluationForm({ storeCode: initialStoreCode, storeName: _sn8, positionLabel, onBack }: FormProps) {
+  const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
+  const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
   const [employeeName, setEmployeeName] = useState("");
   const [ratings, setRatings] = useState<Record<string, number>>({});
@@ -1273,12 +1306,13 @@ function PerformanceEvaluationForm({ storeCode, storeName, positionLabel, onBack
 
   const handleSubmit = async () => {
     if (!submitterName.trim() || !employeeName.trim()) { toast.error("Please enter both names"); return; }
+    if (!selectedStore) { toast.error("Please select a store"); return; }
     setSubmitting(true);
     try {
       await submitReport({
         submitterName,
         reportType: "Performance Evaluation",
-        location: storeCode,
+        location: selectedStore,
         reportDate: new Date().toISOString().split("T")[0],
         data: { employeeName, ratings, notes, competencies },
         totalScore: avgScore,
@@ -1292,8 +1326,9 @@ function PerformanceEvaluationForm({ storeCode, storeName, positionLabel, onBack
 
   return (
     <div>
-      <FormHeader title="Performance Evaluation" subtitle={`${storeName} (${storeCode}) — ${positionLabel}`} onBack={onBack} />
+      <FormHeader title="Performance Evaluation" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
+        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
           <div>
             <Label className="text-sm font-medium">Your Name (Evaluator)</Label>
