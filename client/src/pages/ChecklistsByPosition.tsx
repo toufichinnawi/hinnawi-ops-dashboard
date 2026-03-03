@@ -203,12 +203,11 @@ export default function ChecklistsByPosition() {
               className="grid grid-cols-1 sm:grid-cols-2 gap-4"
             >
               {positions.map((pos, i) => (
-                <motion.button
+                <motion.div
                   key={pos.slug}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.08 }}
-                  onClick={() => setSelectedPosition(pos.slug)}
                   className={cn(
                     "relative overflow-hidden rounded-xl border p-6 text-left transition-all duration-300 hover:shadow-lg group",
                     pos.style.bg,
@@ -240,7 +239,7 @@ export default function ChecklistsByPosition() {
                       <div className="flex items-center gap-2 mt-0.5">
                         <Lock className="w-3 h-3 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">
-                          PIN-secured &middot; {pos.checklists.length} checklist
+                          {pos.slug === "staff" ? "Open access" : "PIN-secured"} &middot; {pos.checklists.length} checklist
                           {pos.checklists.length !== 1 ? "s" : ""}
                         </p>
                       </div>
@@ -257,7 +256,25 @@ export default function ChecklistsByPosition() {
                       </div>
                     </div>
                   </div>
-                </motion.button>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/30">
+                    <CopyLinkButton
+                      url={pos.publicUrl}
+                      label={pos.label}
+                      variant="large"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedPosition(pos.slug)}
+                      className="gap-1.5 text-muted-foreground hover:text-foreground"
+                    >
+                      View Details
+                      <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
+                    </Button>
+                  </div>
+                </motion.div>
               ))}
             </motion.div>
           ) : (

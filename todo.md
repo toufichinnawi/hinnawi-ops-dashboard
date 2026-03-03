@@ -539,3 +539,10 @@
 - [x] Public links only show the checklists for that specific position
 - [x] Copy Link buttons in Portal page generate correct public URLs (/public/:position)
 - [x] Tested end-to-end: open public link → PIN entry → store select → see only checklists
+
+---
+
+# Portal: Add Copy Link buttons for secured public URLs
+
+- [x] Add "Copy Portal Link" button on each position card in the grid view (copies /public/:position URL)
+- [x] Make the copy link prominent and easy to find on the main portal page
