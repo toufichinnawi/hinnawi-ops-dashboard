@@ -21,6 +21,7 @@ import {
   getLatestExcelSyncMeta, createExcelSyncMeta,
   createReportSubmission, getReportsByUser, getAllReports,
   getAllStorePins, upsertStorePin, verifyStorePin, getActiveStorePinsPublic,
+  getAllPositionPins, upsertPositionPin, verifyPositionPin, getActivePositionPinsPublic, seedDefaultPositionPins,
   getExpenseCategories, createExpenseCategory, updateExpenseCategory, deleteExpenseCategory,
   getVendors, createVendor, updateVendor, deleteVendor,
   getExpenses, createExpense, updateExpense, deleteExpense, getExpensesByMonth,
@@ -1085,6 +1086,53 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const valid = await verifyStorePin(
           input.storeCode,
+          input.pin
+        );
+        return { valid };
+      }),
+  }),
+
+  // ─── Position PINs ────────────────────────────────────────────────
+  positionPins: router({
+    list: adminProcedure.query(async () => {
+      return getAllPositionPins();
+    }),
+
+    upsert: adminProcedure
+      .input(
+        z.object({
+          positionSlug: z.string().min(1),
+          positionLabel: z.string().min(1),
+          pin: z.string().min(4).max(10),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return upsertPositionPin({
+          ...input,
+          updatedBy: ctx.user.id,
+        });
+      }),
+
+    // Public: list positions (no PINs exposed)
+    positions: publicProcedure.query(async () => {
+      // Seed defaults on first access
+      await seedDefaultPositionPins();
+      return getActivePositionPinsPublic();
+    }),
+
+    // Public: verify a position PIN
+    verify: publicProcedure
+      .input(
+        z.object({
+          positionSlug: z.string(),
+          pin: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        // Seed defaults if table is empty
+        await seedDefaultPositionPins();
+        const valid = await verifyPositionPin(
+          input.positionSlug,
           input.pin
         );
         return { valid };

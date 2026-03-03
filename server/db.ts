@@ -21,6 +21,7 @@ import {
   cogsTargets, InsertCogsTarget, CogsTarget,
   inventoryItems, InsertInventoryItem, InventoryItem,
   inventoryCounts, InsertInventoryCount, InventoryCount,
+  positionPins, InsertPositionPin, PositionPin,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -666,6 +667,88 @@ export async function getActiveStorePinsPublic() {
     .orderBy(storePins.storeName);
 }
 
+
+// ─── Position PINs ───
+
+export async function getAllPositionPins() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(positionPins).orderBy(positionPins.positionLabel);
+}
+
+export async function upsertPositionPin(data: {
+  positionSlug: string;
+  positionLabel: string;
+  pin: string;
+  updatedBy?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db
+    .select()
+    .from(positionPins)
+    .where(eq(positionPins.positionSlug, data.positionSlug))
+    .limit(1);
+  if (existing.length > 0) {
+    await db
+      .update(positionPins)
+      .set({ pin: data.pin, positionLabel: data.positionLabel, updatedBy: data.updatedBy })
+      .where(eq(positionPins.positionSlug, data.positionSlug));
+    return { id: existing[0].id, updated: true };
+  } else {
+    const [result] = await db.insert(positionPins).values(data).$returningId();
+    return { id: result.id, updated: false };
+  }
+}
+
+export async function verifyPositionPin(
+  positionSlug: string,
+  pin: string
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db
+    .select()
+    .from(positionPins)
+    .where(
+      and(
+        eq(positionPins.positionSlug, positionSlug),
+        eq(positionPins.pin, pin),
+        eq(positionPins.isActive, "yes")
+      )
+    )
+    .limit(1);
+  return result.length > 0;
+}
+
+export async function getActivePositionPinsPublic() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      positionSlug: positionPins.positionSlug,
+      positionLabel: positionPins.positionLabel,
+    })
+    .from(positionPins)
+    .where(eq(positionPins.isActive, "yes"))
+    .orderBy(positionPins.positionLabel);
+}
+
+export async function seedDefaultPositionPins() {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(positionPins).limit(1);
+  if (existing.length > 0) return; // Already seeded
+  const defaults = [
+    { positionSlug: "operations-manager", positionLabel: "Operations Manager", pin: "4821" },
+    { positionSlug: "store-manager", positionLabel: "Store Manager", pin: "3567" },
+    { positionSlug: "assistant-manager", positionLabel: "Assistant Manager", pin: "2934" },
+    { positionSlug: "staff", positionLabel: "Staff", pin: "1234" },
+  ];
+  for (const d of defaults) {
+    await db.insert(positionPins).values(d);
+  }
+}
 
 // ─── Expense Categories ───
 

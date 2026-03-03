@@ -526,3 +526,16 @@
 - [x] Professional table layout with click-to-view detail dialog
 - [x] Sidebar nav item updated: "Reports" under Reports & Checklists
 
+
+---
+
+# Hinnawi Checklist Portal — Rename, Secure Links, Position PINs
+
+- [x] Rename "Checklists by Position" → "Hinnawi Checklist Portal" in sidebar, page header, routes
+- [x] Generate unique 4-digit PINs per position: Ops Manager (4821), Store Manager (3597), Asst. Manager (6143)
+- [x] Store position PINs in database (position_pins table) with auto-seed on startup
+- [x] Public links secured — require position PIN before showing checklists
+- [x] Public links do NOT show any dashboard content (no sidebar, no nav, no analytics)
+- [x] Public links only show the checklists for that specific position
+- [x] Copy Link buttons in Portal page generate correct public URLs (/public/:position)
+- [x] Tested end-to-end: open public link → PIN entry → store select → see only checklists

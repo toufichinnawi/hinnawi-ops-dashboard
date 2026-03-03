@@ -1,6 +1,5 @@
-// Shareable "Checklists by Position" page
-// Designed to be shared with managers, ops managers, and staff
-// Clean, public-facing layout with position buttons and copy-link functionality
+// "Hinnawi Checklist Portal" — admin view
+// Shows position cards with shareable public links (PIN-secured per position)
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,6 +14,7 @@ import {
   Store,
   UserCheck,
   Users,
+  Lock,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
@@ -121,7 +121,7 @@ function CopyLinkButton({
           </>
         ) : (
           <>
-            <Copy className="w-4 h-4" /> Copy Link
+            <Copy className="w-4 h-4" /> Copy Portal Link
           </>
         )}
       </Button>
@@ -139,7 +139,7 @@ function CopyLinkButton({
       )}
     >
       {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-      {copied ? "Copied" : "Copy"}
+      {copied ? "Copied" : "Copy Link"}
     </button>
   );
 }
@@ -148,7 +148,6 @@ function CopyLinkButton({
 export default function ChecklistsByPosition() {
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const pageUrl = `${baseUrl}/checklists/positions`;
 
   const positions = useMemo(
     () =>
@@ -156,10 +155,10 @@ export default function ChecklistsByPosition() {
         ...config,
         slug,
         style: getStyle(slug),
+        publicUrl: `${baseUrl}/public/${slug}`,
         checklists: config.checklists.map((type) => ({
           ...ALL_CHECKLISTS[type],
           publicUrl: `${baseUrl}/public/${slug}`,
-          dashboardUrl: `/checklists/${slug}`,
         })),
       })),
     [baseUrl]
@@ -170,7 +169,7 @@ export default function ChecklistsByPosition() {
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 space-y-8 max-w-[1200px]">
-        {/* Header with page-level copy link */}
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -180,18 +179,17 @@ export default function ChecklistsByPosition() {
             <div className="flex items-center gap-2 mb-1">
               <Link2 className="w-4 h-4 text-[#D4A853]" />
               <p className="text-xs text-[#D4A853] uppercase tracking-[0.2em] font-medium">
-                Shareable Page
+                Checklist Portal
               </p>
             </div>
             <h1 className="text-2xl font-serif text-foreground">
-              Checklists by Position
+              Hinnawi Checklist Portal
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Select a position to view assigned checklists. Share this page or
-              individual checklist links with your team.
+              Share position-specific checklist links with your team. Each position
+              is secured with a unique 4-digit PIN.
             </p>
           </div>
-          <CopyLinkButton url={pageUrl} label="this page" variant="large" />
         </motion.div>
 
         {/* Position Buttons Grid */}
@@ -239,10 +237,13 @@ export default function ChecklistsByPosition() {
                       <h3 className={cn("text-lg font-semibold", pos.style.color)}>
                         {pos.label}
                       </h3>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {pos.checklists.length} checklist
-                        {pos.checklists.length !== 1 ? "s" : ""} assigned
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Lock className="w-3 h-3 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          PIN-secured &middot; {pos.checklists.length} checklist
+                          {pos.checklists.length !== 1 ? "s" : ""}
+                        </p>
+                      </div>
                       <div className="flex flex-wrap gap-1.5 mt-3">
                         {pos.checklists.map((cl) => (
                           <span
@@ -296,6 +297,32 @@ export default function ChecklistsByPosition() {
                 )}
               </div>
 
+              {/* Share link card */}
+              {selectedPos && (
+                <div className={cn(
+                  "rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center gap-3",
+                  selectedPos.style.bg,
+                  selectedPos.style.border
+                )}>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        Shareable Link for {selectedPos.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5 break-all">
+                        {selectedPos.publicUrl}
+                      </p>
+                    </div>
+                  </div>
+                  <CopyLinkButton
+                    url={selectedPos.publicUrl}
+                    label={selectedPos.label}
+                    variant="large"
+                  />
+                </div>
+              )}
+
               {/* Checklist cards */}
               {selectedPos && (
                 <div className="space-y-3">
@@ -316,21 +343,6 @@ export default function ChecklistsByPosition() {
                           {cl.description}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <CopyLinkButton
-                          url={cl.publicUrl}
-                          label={cl.label}
-                        />
-                        <a
-                          href={cl.publicUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 rounded-lg hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
-                          title="Open public link"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      </div>
                     </motion.div>
                   ))}
                 </div>
@@ -342,11 +354,14 @@ export default function ChecklistsByPosition() {
                   How to Share
                 </h4>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Click <strong>Copy</strong> next to any checklist to copy its
-                  public link. Send it via WhatsApp, email, or Teams. The team
-                  member will select their store, enter the 4-digit PIN (default:
-                  1234), and fill out the checklist. Submissions appear
-                  automatically on the Operations Scorecard and Reports page.
+                  Click <strong>Copy Link</strong> above to copy the public link for this position.
+                  Send it via WhatsApp, email, or Teams. The team member will enter the
+                  position PIN, select their store, and fill out the checklist.
+                  Submissions appear automatically on the Operations Scorecard and Reports page.
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed mt-2">
+                  <strong>Note:</strong> Each position has a unique 4-digit PIN. The link does
+                  NOT give access to the dashboard — only the assigned checklists.
                 </p>
               </div>
             </motion.div>

@@ -168,6 +168,7 @@ export default function PositionChecklists() {
     return (
       <PinGate
         positionLabel={config.label}
+        positionSlug={positionSlug}
         onVerified={(code, name) => {
           setStoreCode(code);
           setStoreName(name);
@@ -197,7 +198,7 @@ export default function PositionChecklists() {
             <ClipboardCheck className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1">
-            <h1 className="font-bold text-lg leading-tight">Hinnawi Operations</h1>
+            <h1 className="font-bold text-lg leading-tight">Hinnawi Checklist Portal</h1>
             <p className="text-xs text-muted-foreground">{config.label} — {storeName}</p>
           </div>
         </div>

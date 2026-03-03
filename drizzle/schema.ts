@@ -270,6 +270,22 @@ export const storePins = mysqlTable("store_pins", {
 export type StorePin = typeof storePins.$inferSelect;
 export type InsertStorePin = typeof storePins.$inferInsert;
 
+// ─── Position PINs for Public Checklist Portal ───
+
+export const positionPins = mysqlTable("position_pins", {
+  id: int("id").autoincrement().primaryKey(),
+  positionSlug: varchar("positionSlug", { length: 50 }).notNull().unique(),
+  positionLabel: varchar("positionLabel", { length: 100 }).notNull(),
+  pin: varchar("pin", { length: 10 }).notNull(),
+  isActive: mysqlEnum("isActive", ["yes", "no"]).default("yes").notNull(),
+  updatedBy: int("updatedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PositionPin = typeof positionPins.$inferSelect;
+export type InsertPositionPin = typeof positionPins.$inferInsert;
+
 // ─── Expense Categories ───
 
 export const expenseCategories = mysqlTable("expense_categories", {

@@ -54,7 +54,7 @@ function Router() {
 
       {/* Reports & Checklists — each checklist type has its own route */}
       <Route path="/checklists" component={Checklists} />
-      <Route path="/checklists/positions" component={ChecklistsByPosition} />
+      <Route path="/checklists/portal" component={ChecklistsByPosition} />
       <Route path="/checklists/:type" component={DirectChecklist} />
       <Route path="/reports/scorecard" component={OperationsScorecard} />
       <Route path="/reports/history" component={ReportHistory} />
