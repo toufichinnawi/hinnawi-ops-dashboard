@@ -355,3 +355,10 @@
 - [x] Created DirectChecklist.tsx page with slug-to-checklist-type mapping
 - [x] Updated App.tsx with /checklists/:type route
 - [x] All 49 tests passing
+
+---
+
+# Bug Fix: /checklists route 404
+
+- [x] Add /checklists route back (Checklists landing page with position cards, copy links, open buttons)
+- [x] Verified: /checklists now loads the Checklists management page

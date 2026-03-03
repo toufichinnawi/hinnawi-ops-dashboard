@@ -17,6 +17,7 @@ import CloverIntegration from "./pages/CloverIntegration";
 import SevenShiftsIntegration from "./pages/SevenShiftsIntegration";
 import PositionChecklists from "@/pages/public/PositionChecklists";
 import DirectChecklist from "@/pages/DirectChecklist";
+import Checklists from "@/pages/Checklists";
 import ProfitLoss from "@/pages/ProfitLoss";
 import ExpenseEntry from "@/pages/ExpenseEntry";
 import Vendors from "@/pages/Vendors";
@@ -50,6 +51,7 @@ function Router() {
       <Route path="/inventory/count" component={InventoryCount} />
 
       {/* Reports & Checklists — each checklist type has its own route */}
+      <Route path="/checklists" component={Checklists} />
       <Route path="/checklists/:type" component={DirectChecklist} />
       <Route path="/reports/history" component={ReportHistory} />
 
