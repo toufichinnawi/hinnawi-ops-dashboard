@@ -17,6 +17,7 @@ import CloverIntegration from "./pages/CloverIntegration";
 import SevenShiftsIntegration from "./pages/SevenShiftsIntegration";
 import PositionChecklists from "@/pages/public/PositionChecklists";
 import Checklists from "@/pages/Checklists";
+import ChecklistViewer from "@/pages/ChecklistViewer";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/clover" component={CloverIntegration} />
       <Route path="/7shifts" component={SevenShiftsIntegration} />
       <Route path="/checklists" component={Checklists} />
+      <Route path="/checklists/:position" component={ChecklistViewer} />
       <Route path="/teams" component={TeamsIntegration} />
       <Route path="/public/:position" component={PositionChecklists} />
       <Route path="/404" component={NotFound} />

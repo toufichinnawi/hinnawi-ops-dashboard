@@ -10,12 +10,14 @@ import {
   Users,
   ChevronRight,
   Shield,
+  Eye,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { POSITION_CHECKLISTS, ALL_CHECKLISTS } from "@/lib/positionChecklists";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { useLocation } from "wouter";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -87,6 +89,7 @@ function CopyLinkButton({ url, label }: { url: string; label: string }) {
 
 export default function Checklists() {
   const [expandedPosition, setExpandedPosition] = useState<string | null>(null);
+  const [, navigate] = useLocation();
 
   // Get recent report submissions from the database
   const { data: recentReports } = trpc.reports.allReports.useQuery(undefined, {
@@ -216,6 +219,17 @@ export default function Checklists() {
                       {position.checklists.length !== 1 ? "s" : ""} assigned
                     </p>
                   </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/checklists/${position.slug}`);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#D4A853] text-white hover:bg-[#c49843] transition-all duration-200"
+                    title="Open checklist in dashboard"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    Open
+                  </button>
                   <CopyLinkButton url={position.url} label={position.label} />
                   <a
                     href={position.url}
@@ -223,7 +237,7 @@ export default function Checklists() {
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className="p-2 rounded-lg hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
-                    title="Open in new tab"
+                    title="Open public link in new tab"
                   >
                     <ExternalLink className="w-4 h-4" />
                   </a>

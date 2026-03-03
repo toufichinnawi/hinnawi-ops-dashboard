@@ -261,3 +261,21 @@
 - [x] Step 14: Write vitest tests for reports + storePins (9 tests, all passing)
 - [x] Step 15: Add Checklists nav item to sidebar and route in App.tsx
 - [x] All 38 tests passing (Reports + StorePins + Excel + Clover + 7shifts + Teams + Auth)
+
+---
+
+# Bug Fix: Checklist page not opening
+
+- [x] Investigated — user wanted to open checklists from within the dashboard (not just public link)
+- [x] Built dashboard ChecklistViewer with store selector and all 11 checklist forms
+- [x] Verified: Open button → store selector → checklist form all work inside dashboard
+
+---
+
+# Dashboard Checklist Preview (Admin)
+
+- [x] Add "Open" button on each position card in Checklists dashboard page
+- [x] Create ChecklistViewer.tsx page with store selector (no PIN gate)
+- [x] All 11 checklist forms render inside DashboardLayout
+- [x] Add /checklists/:position route to App.tsx
+- [x] All 38 tests passing
