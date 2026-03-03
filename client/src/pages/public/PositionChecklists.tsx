@@ -198,7 +198,7 @@ export default function PositionChecklists() {
             <ClipboardCheck className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1">
-            <h1 className="font-bold text-lg leading-tight">Hinnawi Checklist Portal</h1>
+            <h1 className="font-bold text-lg leading-tight">Hinnawi Portal</h1>
             <p className="text-xs text-muted-foreground">{config.label} — {storeName}</p>
           </div>
         </div>
@@ -234,7 +234,7 @@ export default function PositionChecklists() {
 
 // ─── Checklist Form Router ───
 
-interface ChecklistFormProps {
+export interface ChecklistFormProps {
   type: ChecklistType;
   storeCode: string;
   storeName: string;
@@ -242,7 +242,7 @@ interface ChecklistFormProps {
   onBack: () => void;
 }
 
-function ChecklistForm({ type, storeCode, storeName, positionLabel, onBack }: ChecklistFormProps) {
+export function ChecklistForm({ type, storeCode, storeName, positionLabel, onBack }: ChecklistFormProps) {
   switch (type) {
     case "manager-checklist":
       return <ManagerChecklistForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;

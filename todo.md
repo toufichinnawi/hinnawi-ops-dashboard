@@ -555,3 +555,38 @@
 - [x] Fixed database: updated Store Manager to 3597 and Assistant Manager to 6143
 - [x] Fixed seed function defaults to match correct PINs
 - [x] Verified Store Manager PIN 3597 works end-to-end
+
+---
+
+# Portal Redesign: Single Link + Role-Scoped Sidebar + Waste Metrics
+
+## Operations Scorecard: Waste Metrics
+- [x] Add Leftovers & Waste section at bottom of Operations Scorecard
+- [x] Show waste metrics per store (quantities, categories, W/L breakdown)
+- [x] Add alerts if waste exceeds thresholds (>15 critical, >8 warning, missing report)
+
+## Rename & Redesign Admin Portal Page
+- [x] Rename "Hinnawi Checklist Portal" → "Hinnawi Portal" everywhere (sidebar, PinGate, PositionChecklists, admin page)
+- [x] Replace 4 separate copy-link buttons with ONE single "Copy Link" button
+- [x] Single link goes to /portal
+
+## New Public Portal Flow
+- [x] Landing shows 4 position cards (Ops Manager, Store Manager, Asst Manager, Staff)
+- [x] User selects position → selects store → enters PIN (staff no PIN)
+- [x] Store is LOCKED after selection — cannot switch stores
+- [x] After auth, show role-scoped sidebar with designated pages
+
+## Role-Scoped Sidebar Tabs
+- [x] Operations Manager: Operations Scorecard, Store Performance, Ops. Mgr Weekly Audit, Bagel Orders
+- [x] Store Manager: Store Performance (own store only), Store Manager Daily Checklist, Weekly Scorecard, Performance & Evaluation, Leftovers & Waste, Equipment & Maintenance, Training Evaluation, Bagel Orders
+- [x] Assistant Manager: Equipment & Maintenance, Training Evaluation, Bagel Orders
+- [x] Staff: Leftovers & Waste
+
+## Store Lock-In
+- [x] Once store is selected, all forms auto-fill that store and lock the dropdown
+- [x] Store Performance for Store Manager shows only their store data
+- [x] Cannot change store without going back to portal entry
+
+## Verified
+- [x] All 64 tests passing
+- [x] Tested Store Manager flow end-to-end: position → store → PIN → sidebar with checklists

@@ -151,7 +151,7 @@ export default function PinGate({
             <Lock className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Hinnawi Checklist Portal
+            Hinnawi Portal
           </h1>
           <p className="text-sm text-muted-foreground">
             {positionLabel} Checklists

@@ -30,6 +30,7 @@ import ChecklistsByPosition from "@/pages/ChecklistsByPosition";
 import ExternalTools from "@/pages/ExternalTools";
 import AdminPanel from "@/pages/AdminPanel";
 import OperationsScorecard from "@/pages/OperationsScorecard";
+import Portal from "@/pages/public/Portal";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -71,6 +72,7 @@ function Router() {
       <Route path="/admin" component={AdminPanel} />
 
       {/* Public (no auth) — PIN-gated for employees */}
+      <Route path="/portal" component={Portal} />
       <Route path="/public/:position" component={PositionChecklists} />
 
       <Route path="/404" component={NotFound} />

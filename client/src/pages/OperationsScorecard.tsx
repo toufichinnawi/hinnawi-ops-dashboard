@@ -14,6 +14,7 @@ import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { ALL_CHECKLISTS, type ChecklistType } from "@/lib/positionChecklists";
 import type { DateRange } from "react-day-picker";
+import { Trash2, Package } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -520,6 +521,9 @@ export default function OperationsScorecard() {
       // Check if weekly audit was done this period
       const hasWeeklyAudit = weeklyAudits > 0;
 
+      // Waste reports for this store
+      const wasteReports = storeReports.filter((r) => r.reportType === "waste-report");
+
       return {
         code,
         storeInfo,
@@ -530,9 +534,49 @@ export default function OperationsScorecard() {
         totalSubmissions,
         hasWeeklyAudit,
         storeReports,
+        wasteReports,
       };
     });
   }, [normalizedReports]);
+
+  // ─── Waste Metrics ────────────────────────────────────────────
+
+  const wasteMetrics = useMemo(() => {
+    return storeScores.map((s) => {
+      const wasteReports = s.wasteReports;
+      let totalItems = 0;
+      let totalWasteEntries = 0;
+      let totalLeftoverEntries = 0;
+      const categoryBreakdown: Record<string, { waste: number; leftover: number }> = {};
+
+      wasteReports.forEach((r: any) => {
+        const data = r.data as any;
+        if (!data) return;
+        const sections = ["bagels", "pastries", "ckItems"];
+        sections.forEach((section) => {
+          const items = data[section];
+          if (!Array.isArray(items)) return;
+          items.forEach((item: any) => {
+            totalItems++;
+            const cat = section === "ckItems" ? "CK Items" : section.charAt(0).toUpperCase() + section.slice(1);
+            if (!categoryBreakdown[cat]) categoryBreakdown[cat] = { waste: 0, leftover: 0 };
+            if (item.waste) { totalWasteEntries++; categoryBreakdown[cat].waste++; }
+            if (item.leftover) { totalLeftoverEntries++; categoryBreakdown[cat].leftover++; }
+          });
+        });
+      });
+
+      return {
+        code: s.code,
+        storeInfo: s.storeInfo,
+        reportCount: wasteReports.length,
+        totalItems,
+        totalWasteEntries,
+        totalLeftoverEntries,
+        categoryBreakdown,
+      };
+    });
+  }, [storeScores]);
 
   // ─── Alerts ────────────────────────────────────────────────────
 
@@ -576,10 +620,38 @@ export default function OperationsScorecard() {
           severity: "warning",
         });
       }
+
+      // High waste alerts
+      const wm = wasteMetrics.find((w) => w.code === s.code);
+      if (wm && wm.totalWasteEntries > 15) {
+        alertList.push({
+          store: s.code,
+          storeColor: s.storeInfo.color,
+          message: `High waste reported: ${wm.totalWasteEntries} waste entries across ${wm.reportCount} report(s)`,
+          severity: "critical",
+        });
+      } else if (wm && wm.totalWasteEntries > 8) {
+        alertList.push({
+          store: s.code,
+          storeColor: s.storeInfo.color,
+          message: `Elevated waste: ${wm.totalWasteEntries} waste entries across ${wm.reportCount} report(s)`,
+          severity: "warning",
+        });
+      }
+
+      // No waste report submitted
+      if (wm && wm.reportCount === 0 && filter.mode !== "single") {
+        alertList.push({
+          store: s.code,
+          storeColor: s.storeInfo.color,
+          message: "No Leftovers & Waste report submitted during this period",
+          severity: "warning",
+        });
+      }
     });
 
     return alertList;
-  }, [storeScores, filter]);
+  }, [storeScores, filter, wasteMetrics]);
 
   // ─── Daily breakdown for the period ────────────────────────────
 
@@ -788,11 +860,98 @@ export default function OperationsScorecard() {
                     </div>
                   </div>
                 )}
+
+                {/* ─── Leftovers & Waste Section ────────────────── */}
+                <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+                  <div className="px-5 py-4 border-b border-border/40 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                      <Trash2 className="w-4 h-4 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-serif text-lg">Leftovers & Waste</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Waste and leftover tracking across all stores</p>
+                    </div>
+                  </div>
+
+                  {wasteMetrics.some((w) => w.reportCount > 0) ? (
+                    <div className="p-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {wasteMetrics.map((wm) => (
+                          <div key={wm.code} className="rounded-xl border border-border/40 bg-card p-4 relative overflow-hidden">
+                            <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ backgroundColor: wm.storeInfo.color }} />
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <p className="text-sm font-semibold" style={{ color: wm.storeInfo.color }}>{wm.code}</p>
+                                <p className="text-[10px] text-muted-foreground">{wm.reportCount} report{wm.reportCount !== 1 ? "s" : ""}</p>
+                              </div>
+                              {wm.totalWasteEntries > 15 ? (
+                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-medium">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  High
+                                </span>
+                              ) : wm.totalWasteEntries > 8 ? (
+                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-600 text-[10px] font-medium">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  Elevated
+                                </span>
+                              ) : wm.reportCount > 0 ? (
+                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] font-medium">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Normal
+                                </span>
+                              ) : null}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div className="text-center p-2 rounded-lg bg-orange-50 border border-orange-200/50">
+                                <p className="text-lg font-mono font-bold text-orange-600">{wm.totalWasteEntries}</p>
+                                <p className="text-[10px] text-orange-600/70">Waste Items</p>
+                              </div>
+                              <div className="text-center p-2 rounded-lg bg-blue-50 border border-blue-200/50">
+                                <p className="text-lg font-mono font-bold text-blue-600">{wm.totalLeftoverEntries}</p>
+                                <p className="text-[10px] text-blue-600/70">Leftovers</p>
+                              </div>
+                            </div>
+
+                            {Object.keys(wm.categoryBreakdown).length > 0 && (
+                              <div className="space-y-1.5">
+                                {Object.entries(wm.categoryBreakdown).map(([cat, data]) => (
+                                  <div key={cat} className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground flex items-center gap-1.5">
+                                      <Package className="w-3 h-3" />
+                                      {cat}
+                                    </span>
+                                    <div className="flex gap-2">
+                                      {data.waste > 0 && (
+                                        <span className="text-orange-600 font-medium">{data.waste}W</span>
+                                      )}
+                                      {data.leftover > 0 && (
+                                        <span className="text-blue-600 font-medium">{data.leftover}L</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center">
+                      <div className="w-12 h-12 rounded-full bg-muted/50 border border-border/40 flex items-center justify-center mx-auto mb-3">
+                        <Trash2 className="w-5 h-5 text-muted-foreground/50" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">No waste reports submitted during this period</p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">Waste reports will appear here once staff submit them</p>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </TabsContent>
 
-          {/* ─── Alerts Tab ──────────────────────────────────────── */}
+          {/* ─── Alerts Tab ────────────────────────────────────────── */}
           <TabsContent value="alerts" className="space-y-4">
             {alerts.length === 0 ? (
               <div className="rounded-xl border border-border/60 bg-card p-12 text-center">

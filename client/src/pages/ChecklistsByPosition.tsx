@@ -1,27 +1,23 @@
-// "Hinnawi Checklist Portal" — admin view
-// Shows position cards with shareable public links (PIN-secured per position)
+// "Hinnawi Portal" — admin view
+// Shows a single shareable portal link + position overview
 import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Copy,
   Check,
-  ExternalLink,
-  ClipboardCheck,
-  ArrowLeft,
   Link2,
   Shield,
-  Briefcase,
   Store,
   UserCheck,
   Users,
   Lock,
+  ExternalLink,
+  ClipboardCheck,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   POSITION_CHECKLISTS,
   ALL_CHECKLISTS,
-  type PositionConfig,
-  type ChecklistType,
 } from "@/lib/positionChecklists";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -33,28 +29,28 @@ const POSITION_STYLES: Record<
   { icon: React.ReactNode; color: string; bg: string; border: string; gradient: string }
 > = {
   "operations-manager": {
-    icon: <Shield className="w-6 h-6" />,
+    icon: <Shield className="w-5 h-5" />,
     color: "text-indigo-700",
     bg: "bg-indigo-50",
     border: "border-indigo-200",
     gradient: "from-indigo-500 to-indigo-600",
   },
   "store-manager": {
-    icon: <Store className="w-6 h-6" />,
+    icon: <Store className="w-5 h-5" />,
     color: "text-[#D4A853]",
     bg: "bg-[#D4A853]/5",
     border: "border-[#D4A853]/30",
     gradient: "from-[#D4A853] to-[#c49843]",
   },
   "assistant-manager": {
-    icon: <UserCheck className="w-6 h-6" />,
+    icon: <UserCheck className="w-5 h-5" />,
     color: "text-emerald-700",
     bg: "bg-emerald-50",
     border: "border-emerald-200",
     gradient: "from-emerald-500 to-emerald-600",
   },
   staff: {
-    icon: <Users className="w-6 h-6" />,
+    icon: <Users className="w-5 h-5" />,
     color: "text-sky-700",
     bg: "bg-sky-50",
     border: "border-sky-200",
@@ -65,7 +61,7 @@ const POSITION_STYLES: Record<
 function getStyle(slug: string) {
   return (
     POSITION_STYLES[slug] || {
-      icon: <ClipboardCheck className="w-6 h-6" />,
+      icon: <ClipboardCheck className="w-5 h-5" />,
       color: "text-gray-700",
       bg: "bg-gray-50",
       border: "border-gray-200",
@@ -74,80 +70,11 @@ function getStyle(slug: string) {
   );
 }
 
-// ─── Copy Link Button ───────────────────────────────────────────
-function CopyLinkButton({
-  url,
-  label,
-  variant = "small",
-}: {
-  url: string;
-  label: string;
-  variant?: "small" | "large";
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = url;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    }
-    setCopied(true);
-    toast.success(`Link copied for ${label}`);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  if (variant === "large") {
-    return (
-      <Button
-        onClick={handleCopy}
-        variant="outline"
-        className={cn(
-          "gap-2 transition-all",
-          copied
-            ? "bg-emerald-50 border-emerald-300 text-emerald-700"
-            : "border-border/60 hover:bg-accent/50"
-        )}
-      >
-        {copied ? (
-          <>
-            <Check className="w-4 h-4" /> Copied!
-          </>
-        ) : (
-          <>
-            <Copy className="w-4 h-4" /> Copy Portal Link
-          </>
-        )}
-      </Button>
-    );
-  }
-
-  return (
-    <button
-      onClick={handleCopy}
-      className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all",
-        copied
-          ? "bg-emerald-100 text-emerald-700"
-          : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-      )}
-    >
-      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-      {copied ? "Copied" : "Copy Link"}
-    </button>
-  );
-}
-
 // ─── Main Component ─────────────────────────────────────────────
 export default function ChecklistsByPosition() {
-  const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const portalUrl = `${baseUrl}/portal`;
 
   const positions = useMemo(
     () =>
@@ -155,16 +82,26 @@ export default function ChecklistsByPosition() {
         ...config,
         slug,
         style: getStyle(slug),
-        publicUrl: `${baseUrl}/public/${slug}`,
-        checklists: config.checklists.map((type) => ({
-          ...ALL_CHECKLISTS[type],
-          publicUrl: `${baseUrl}/public/${slug}`,
-        })),
+        checklists: config.checklists.map((type) => ALL_CHECKLISTS[type]),
       })),
-    [baseUrl]
+    []
   );
 
-  const selectedPos = positions.find((p) => p.slug === selectedPosition);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(portalUrl);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = portalUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    toast.success("Portal link copied to clipboard!");
+    setTimeout(() => setCopied(false), 2500);
+  };
 
   return (
     <DashboardLayout>
@@ -173,217 +110,162 @@ export default function ChecklistsByPosition() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
         >
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Link2 className="w-4 h-4 text-[#D4A853]" />
-              <p className="text-xs text-[#D4A853] uppercase tracking-[0.2em] font-medium">
-                Checklist Portal
+          <div className="flex items-center gap-2 mb-1">
+            <Link2 className="w-4 h-4 text-[#D4A853]" />
+            <p className="text-xs text-[#D4A853] uppercase tracking-[0.2em] font-medium">
+              Team Portal
+            </p>
+          </div>
+          <h1 className="text-2xl font-serif text-foreground">
+            Hinnawi Portal
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 max-w-lg">
+            Share this single link with your entire team. They will select their
+            position, enter their PIN, and choose their store to access their
+            designated checklists.
+          </p>
+        </motion.div>
+
+        {/* Copy Link Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="rounded-2xl border-2 border-[#D4A853]/30 bg-gradient-to-r from-[#D4A853]/5 to-transparent p-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-[#D4A853]/15 flex items-center justify-center">
+                  <Link2 className="w-4 h-4 text-[#D4A853]" />
+                </div>
+                <h3 className="font-semibold text-foreground">Portal Link</h3>
+              </div>
+              <p className="text-sm text-muted-foreground break-all font-mono bg-background/60 rounded-lg px-3 py-2 border border-border/40">
+                {portalUrl}
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Send this link via WhatsApp, email, or Teams. Works on mobile and desktop.
               </p>
             </div>
-            <h1 className="text-2xl font-serif text-foreground">
-              Hinnawi Checklist Portal
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Share position-specific checklist links with your team. Each position
-              is secured with a unique 4-digit PIN.
-            </p>
+            <div className="flex flex-col gap-2 sm:items-end shrink-0">
+              <Button
+                onClick={handleCopy}
+                size="lg"
+                className={cn(
+                  "gap-2 transition-all min-w-[180px]",
+                  copied
+                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    : "bg-[#D4A853] hover:bg-[#c49843] text-white"
+                )}
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4" /> Link Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" /> Copy Portal Link
+                  </>
+                )}
+              </Button>
+              <a
+                href="/portal"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-[#D4A853] transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Open in new tab
+              </a>
+            </div>
           </div>
         </motion.div>
 
-        {/* Position Buttons Grid */}
-        <AnimatePresence mode="wait">
-          {!selectedPosition ? (
-            <motion.div
-              key="grid"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-            >
-              {positions.map((pos, i) => (
-                <motion.div
-                  key={pos.slug}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.08 }}
-                  className={cn(
-                    "relative overflow-hidden rounded-xl border p-6 text-left transition-all duration-300 hover:shadow-lg group",
-                    pos.style.bg,
-                    pos.style.border
-                  )}
-                >
-                  {/* Gradient accent top */}
-                  <div
-                    className={cn(
-                      "absolute top-0 left-0 right-0 h-1 bg-gradient-to-r",
-                      pos.style.gradient
-                    )}
-                  />
+        {/* Position Overview */}
+        <div>
+          <h2 className="text-lg font-serif text-foreground mb-1">Position Access Overview</h2>
+          <p className="text-xs text-muted-foreground mb-4">
+            Each position sees only their assigned checklists after entering their PIN.
+          </p>
 
-                  <div className="flex items-start gap-4">
-                    <div
-                      className={cn(
-                        "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-                        pos.style.bg,
-                        pos.style.color
-                      )}
-                    >
-                      {pos.style.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className={cn("text-lg font-semibold", pos.style.color)}>
-                        {pos.label}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <Lock className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">
-                          {pos.slug === "staff" ? "Open access" : "PIN-secured"} &middot; {pos.checklists.length} checklist
-                          {pos.checklists.length !== 1 ? "s" : ""}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {pos.checklists.map((cl) => (
-                          <span
-                            key={cl.type}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/80 text-xs text-muted-foreground border border-border/40"
-                          >
-                            <span>{cl.icon}</span>
-                            {cl.label}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/30">
-                    <CopyLinkButton
-                      url={pos.publicUrl}
-                      label={pos.label}
-                      variant="large"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedPosition(pos.slug)}
-                      className="gap-1.5 text-muted-foreground hover:text-foreground"
-                    >
-                      View Details
-                      <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
-                    </Button>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          ) : (
-            <motion.div
-              key="detail"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4"
-            >
-              {/* Back button + position header */}
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedPosition(null)}
-                  className="gap-1.5"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  Back
-                </Button>
-                {selectedPos && (
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center",
-                        selectedPos.style.bg,
-                        selectedPos.style.color
-                      )}
-                    >
-                      {selectedPos.style.icon}
-                    </div>
-                    <h2 className={cn("text-xl font-serif", selectedPos.style.color)}>
-                      {selectedPos.label}
-                    </h2>
-                  </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {positions.map((pos, i) => (
+              <motion.div
+                key={pos.slug}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 + i * 0.08 }}
+                className={cn(
+                  "relative overflow-hidden rounded-xl border p-5",
+                  pos.style.bg,
+                  pos.style.border
                 )}
-              </div>
+              >
+                <div className={cn("absolute top-0 left-0 right-0 h-1 bg-gradient-to-r", pos.style.gradient)} />
 
-              {/* Share link card */}
-              {selectedPos && (
-                <div className={cn(
-                  "rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center gap-3",
-                  selectedPos.style.bg,
-                  selectedPos.style.border
-                )}>
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        Shareable Link for {selectedPos.label}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5 break-all">
-                        {selectedPos.publicUrl}
+                <div className="flex items-start gap-3">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", pos.style.bg, pos.style.color)}>
+                    {pos.style.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className={cn("text-base font-semibold", pos.style.color)}>
+                      {pos.label}
+                    </h3>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Lock className="w-3 h-3 text-muted-foreground" />
+                      <p className="text-xs text-muted-foreground">
+                        {pos.slug === "staff" ? "Open access (no PIN)" : "PIN-secured"}
                       </p>
                     </div>
                   </div>
-                  <CopyLinkButton
-                    url={selectedPos.publicUrl}
-                    label={selectedPos.label}
-                    variant="large"
-                  />
                 </div>
-              )}
 
-              {/* Checklist cards */}
-              {selectedPos && (
-                <div className="space-y-3">
-                  {selectedPos.checklists.map((cl, i) => (
-                    <motion.div
-                      key={cl.type}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.06 }}
-                      className="rounded-xl border border-border/60 bg-card p-5 flex items-center gap-4 hover:shadow-md transition-shadow"
-                    >
-                      <span className="text-2xl shrink-0">{cl.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-foreground">
-                          {cl.label}
-                        </h4>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {cl.description}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
+                {/* Assigned checklists */}
+                <div className="mt-3 pt-3 border-t border-border/30">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2">
+                    Assigned Checklists ({pos.checklists.length})
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {pos.checklists.map((cl) => (
+                      <span
+                        key={cl.type}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/80 text-xs text-muted-foreground border border-border/40"
+                      >
+                        <span>{cl.icon}</span>
+                        {cl.label}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              )}
+              </motion.div>
+            ))}
+          </div>
+        </div>
 
-              {/* How to share */}
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-5 mt-6">
-                <h4 className="font-medium text-sm text-foreground mb-2">
-                  How to Share
-                </h4>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Click <strong>Copy Link</strong> above to copy the public link for this position.
-                  Send it via WhatsApp, email, or Teams. The team member will enter the
-                  position PIN, select their store, and fill out the checklist.
-                  Submissions appear automatically on the Operations Scorecard and Reports page.
-                </p>
-                <p className="text-xs text-muted-foreground leading-relaxed mt-2">
-                  <strong>Note:</strong> Each position has a unique 4-digit PIN. The link does
-                  NOT give access to the dashboard — only the assigned checklists.
-                </p>
+        {/* How it works */}
+        <div className="rounded-xl border border-border/60 bg-muted/20 p-5">
+          <h4 className="font-medium text-sm text-foreground mb-3">How It Works</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            {[
+              { step: "1", title: "Open Link", desc: "Team member opens the shared portal link" },
+              { step: "2", title: "Select Position", desc: "Choose their role from 4 options" },
+              { step: "3", title: "Enter PIN & Store", desc: "Enter position PIN and select their store" },
+              { step: "4", title: "Access Checklists", desc: "View and complete assigned checklists" },
+            ].map((s) => (
+              <div key={s.step} className="flex gap-3">
+                <div className="w-7 h-7 rounded-full bg-[#D4A853]/15 text-[#D4A853] flex items-center justify-center text-xs font-bold shrink-0">
+                  {s.step}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{s.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
+                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            ))}
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );
