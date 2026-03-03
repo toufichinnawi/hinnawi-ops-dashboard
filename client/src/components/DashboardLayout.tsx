@@ -18,6 +18,16 @@ import {
   Clock,
   Shield,
   ClipboardCheck,
+  DollarSign,
+  Receipt,
+  Building2,
+  Tag,
+  Target,
+  Package,
+  ClipboardList,
+  History,
+  ExternalLink,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useData } from "@/contexts/DataContext";
@@ -30,18 +40,63 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
-const navItems: NavItem[] = [
-  { path: "/", label: "Overview", icon: LayoutDashboard },
-  { path: "/labour", label: "Labour Monitor", icon: Users },
-  { path: "/reports", label: "Report Tracker", icon: FileText },
-  { path: "/stores", label: "Store Performance", icon: Store },
-  { path: "/maintenance", label: "Maintenance", icon: Wrench },
-  { path: "/alerts", label: "Alerts", icon: Bell },
-  { path: "/data", label: "Data Management", icon: Database },
-  { path: "/clover", label: "Clover POS", icon: CreditCard },
-  { path: "/7shifts", label: "7shifts", icon: Clock },
-  { path: "/checklists", label: "Checklists", icon: ClipboardCheck },
-  { path: "/teams", label: "Teams Integration", icon: MessageSquare, adminOnly: true },
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const navSections: NavSection[] = [
+  {
+    title: "Analytics",
+    items: [
+      { path: "/", label: "Overview", icon: LayoutDashboard },
+      { path: "/labour", label: "Labour Monitor", icon: Users },
+      { path: "/stores", label: "Store Performance", icon: Store },
+      { path: "/alerts", label: "Alerts", icon: Bell },
+    ],
+  },
+  {
+    title: "Accounting",
+    items: [
+      { path: "/accounting/pnl", label: "Profit & Loss", icon: DollarSign },
+      { path: "/accounting/expenses", label: "Expense Entry", icon: Receipt },
+      { path: "/accounting/vendors", label: "Vendors & Suppliers", icon: Building2 },
+      { path: "/accounting/categories", label: "Expense Categories", icon: Tag },
+      { path: "/accounting/cogs", label: "COGS Targets", icon: Target },
+    ],
+  },
+  {
+    title: "Inventory",
+    items: [
+      { path: "/inventory/items", label: "Inventory Items", icon: Package },
+      { path: "/inventory/count", label: "Inventory Count", icon: ClipboardList },
+    ],
+  },
+  {
+    title: "Reports & Checklists",
+    items: [
+      { path: "/reports", label: "Report Tracker", icon: FileText },
+      { path: "/checklists", label: "Checklists", icon: ClipboardCheck },
+      { path: "/reports/history", label: "Report History", icon: History },
+    ],
+  },
+  {
+    title: "Integrations",
+    items: [
+      { path: "/data", label: "Data Management", icon: Database },
+      { path: "/clover", label: "Clover POS", icon: CreditCard },
+      { path: "/7shifts", label: "7shifts", icon: Clock },
+      { path: "/teams", label: "Teams Integration", icon: MessageSquare, adminOnly: true },
+      { path: "/tools", label: "External Tools", icon: ExternalLink },
+    ],
+  },
+  {
+    title: "Settings",
+    items: [
+      { path: "/maintenance", label: "Maintenance", icon: Wrench },
+      { path: "/admin", label: "Admin Panel", icon: Shield, adminOnly: true },
+    ],
+  },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -50,8 +105,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { hasLiveData, lastUpdated } = useData();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-
-  const visibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -84,33 +137,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-          {visibleNavItems.map((item) => {
-            const isActive = location === item.path;
-            const isDataPage = item.path === "/data";
+        <nav className="flex-1 py-3 px-2 overflow-y-auto space-y-1">
+          {navSections.map((section) => {
+            const visibleItems = section.items.filter(item => !item.adminOnly || isAdmin);
+            if (visibleItems.length === 0) return null;
             return (
-              <Link key={item.path} href={item.path}>
-                <div
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
-                    isActive
-                      ? "bg-[#D4A853]/15 text-[#D4A853]"
-                      : "text-[#A8A29E] hover:text-[#FFF8ED] hover:bg-white/5"
-                  )}
-                >
-                  {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[#D4A853]" />
-                  )}
-                  <item.icon className={cn("w-[18px] h-[18px] shrink-0", isActive && "text-[#D4A853]")} />
-                  {!collapsed && (
-                    <span className="text-sm font-medium truncate">{item.label}</span>
-                  )}
-                  {/* Live data indicator on Data Management nav */}
-                  {isDataPage && hasLiveData && !collapsed && (
-                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  )}
+              <div key={section.title} className="mb-1">
+                {!collapsed && (
+                  <p className="px-3 pt-3 pb-1.5 text-[10px] text-[#78716C] uppercase tracking-[0.15em] font-medium">
+                    {section.title}
+                  </p>
+                )}
+                {collapsed && <div className="h-2" />}
+                <div className="space-y-0.5">
+                  {visibleItems.map((item) => {
+                    const isActive = location === item.path ||
+                      (item.path !== "/" && location.startsWith(item.path));
+                    const isDataPage = item.path === "/data";
+                    return (
+                      <Link key={item.path} href={item.path}>
+                        <div
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
+                            isActive
+                              ? "bg-[#D4A853]/15 text-[#D4A853]"
+                              : "text-[#A8A29E] hover:text-[#FFF8ED] hover:bg-white/5"
+                          )}
+                        >
+                          {isActive && (
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[#D4A853]" />
+                          )}
+                          <item.icon className={cn("w-[18px] h-[18px] shrink-0", isActive && "text-[#D4A853]")} />
+                          {!collapsed && (
+                            <span className="text-[13px] font-medium truncate">{item.label}</span>
+                          )}
+                          {isDataPage && hasLiveData && !collapsed && (
+                            <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
-              </Link>
+              </div>
             );
           })}
         </nav>

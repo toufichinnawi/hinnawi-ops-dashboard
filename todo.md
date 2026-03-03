@@ -316,24 +316,29 @@
 - [x] P&L computation route (aggregates expenses by category/section)
 
 ## Frontend Pages
-- [ ] Profit & Loss page (/accounting/pnl)
-- [ ] Expense Entry page (/accounting/expenses)
-- [ ] Vendors & Suppliers page (/accounting/vendors)
-- [ ] Expense Categories page (/accounting/categories)
-- [ ] COGS Targets page (/accounting/cogs-targets)
-- [ ] Inventory Items page (/inventory/items)
-- [ ] Inventory Count page (/inventory/count)
-- [ ] Report History page (/reports/history)
-- [ ] Admin Panel page (/admin)
+- [x] Profit & Loss page (/accounting/pnl)
+- [x] Expense Entry page (/accounting/expenses)
+- [x] Vendors & Suppliers page (/accounting/vendors)
+- [x] Expense Categories page (/accounting/categories)
+- [x] COGS Targets page (/accounting/cogs)
+- [x] Inventory Items page (/inventory/items)
+- [x] Inventory Count page (/inventory/count)
+- [x] Report History page (/reports/history)
+- [x] Admin Panel page (/admin)
+- [x] External Tools page (/tools)
 
 ## Sidebar & Navigation
-- [ ] Reorganize sidebar into sections: Analytics, Accounting, Inventory, Reports & Checklists, External Tools, Settings
-- [ ] Add External Tools links (Clover POS, 7shifts, Job Descriptions, Contracts, Employee Manuals, Recipes, Evaluations)
-- [ ] Add all new routes to App.tsx
+- [x] Reorganize sidebar into 6 sections: Analytics, Accounting, Inventory, Reports & Checklists, Integrations, Settings
+- [x] Add External Tools page with SharePoint links (Job Descriptions, Contracts, Manuals, Recipes, Evaluations)
+- [x] Add all new routes to App.tsx (11 new routes)
 
 ## Data Seeding
-- [ ] Seed 9 vendors from hinnawiops
-- [ ] Seed 21 expense categories from hinnawiops
+- [x] Seed 9 vendors from hinnawiops
+- [x] Seed 21 expense categories from hinnawiops
+
+## Tests
+- [x] 11 new tests for merge features (categories, vendors, expenses, COGS, inventory, P&L, admin)
+- [x] All 49 tests passing across 7 test files
 
 ## DO NOT TOUCH
 - Overview page

@@ -749,6 +749,9 @@ export async function getExpensesByMonth(month: number, year: number) {
 export async function getCogsTargets(month: number, year: number) {
   const db = await getDb();
   if (!db) return [];
+  if (month === 0) {
+    return db.select().from(cogsTargets).where(eq(cogsTargets.year, year));
+  }
   return db.select().from(cogsTargets)
     .where(and(eq(cogsTargets.month, month), eq(cogsTargets.year, year)));
 }
