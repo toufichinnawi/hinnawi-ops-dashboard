@@ -235,6 +235,14 @@ function parseDate(value: any): string | null {
     return `${usMatch[3]}-${usMatch[1].padStart(2, "0")}-${usMatch[2].padStart(2, "0")}`;
   }
 
+  // Try M/D/YY or MM/DD/YY format (2-digit year)
+  const usMatch2 = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if (usMatch2) {
+    const yy = parseInt(usMatch2[3]);
+    const fullYear = yy >= 0 && yy <= 50 ? 2000 + yy : 1900 + yy;
+    return `${fullYear}-${usMatch2[1].padStart(2, "0")}-${usMatch2[2].padStart(2, "0")}`;
+  }
+
   // Try Excel serial number
   const num = parseFloat(str);
   if (!isNaN(num) && num > 40000 && num < 60000) {

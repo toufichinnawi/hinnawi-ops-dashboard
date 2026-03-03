@@ -1,0 +1,185 @@
+{
+  "query": "SELECT date, storeId, netSales, labourCost, labourPercent FROM excel_labour_data ORDER BY date DESC LIMIT 30;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT date, storeId, netSales, labourCost, labourPercent FROM excel_labour_data ORDER BY date DESC LIMIT 30;",
+  "rows": [
+    {
+      "date": "2026-03-01",
+      "storeId": "pk",
+      "netSales": "1442",
+      "labourCost": "473",
+      "labourPercent": "32.8"
+    },
+    {
+      "date": "2026-03-01",
+      "storeId": "ontario",
+      "netSales": "638.42",
+      "labourCost": "164.7",
+      "labourPercent": "25.8"
+    },
+    {
+      "date": "2026-03-01",
+      "storeId": "mk",
+      "netSales": "1334.7",
+      "labourCost": "288.47",
+      "labourPercent": "21.6"
+    },
+    {
+      "date": "2026-02-28",
+      "storeId": "ontario",
+      "netSales": "581.61",
+      "labourCost": "153.43",
+      "labourPercent": "26.4"
+    },
+    {
+      "date": "2026-02-28",
+      "storeId": "mk",
+      "netSales": "1255.32",
+      "labourCost": "300.85",
+      "labourPercent": "24"
+    },
+    {
+      "date": "2026-02-28",
+      "storeId": "pk",
+      "netSales": "1054",
+      "labourCost": "401",
+      "labourPercent": "38"
+    },
+    {
+      "date": "2026-02-27",
+      "storeId": "pk",
+      "netSales": "2735",
+      "labourCost": "466",
+      "labourPercent": "17"
+    },
+    {
+      "date": "2026-02-27",
+      "storeId": "mk",
+      "netSales": "1811.23",
+      "labourCost": "401.66",
+      "labourPercent": "22.2"
+    },
+    {
+      "date": "2026-02-27",
+      "storeId": "ontario",
+      "netSales": "638.83",
+      "labourCost": "137.16",
+      "labourPercent": "21.5"
+    },
+    {
+      "date": "2026-02-26",
+      "storeId": "mk",
+      "netSales": "2095.39",
+      "labourCost": "457.81",
+      "labourPercent": "21.8"
+    },
+    {
+      "date": "2026-02-26",
+      "storeId": "tunnel",
+      "netSales": "1973.34",
+      "labourCost": "355.96",
+      "labourPercent": "18"
+    },
+    {
+      "date": "2026-02-26",
+      "storeId": "ontario",
+      "netSales": "592.71",
+      "labourCost": "151.35",
+      "labourPercent": "25.5"
+    },
+    {
+      "date": "2026-02-26",
+      "storeId": "pk",
+      "netSales": "3192",
+      "labourCost": "716",
+      "labourPercent": "22.4"
+    },
+    {
+      "date": "2026-02-25",
+      "storeId": "pk",
+      "netSales": "2844",
+      "labourCost": "510",
+      "labourPercent": "17.9"
+    },
+    {
+      "date": "2026-02-25",
+      "storeId": "mk",
+      "netSales": "2054.96",
+      "labourCost": "458.97",
+      "labourPercent": "22.3"
+    },
+    {
+      "date": "2026-02-25",
+      "storeId": "tunnel",
+      "netSales": "1075.29",
+      "labourCost": "328.06",
+      "labourPercent": "30.5"
+    },
+    {
+      "date": "2026-02-25",
+      "storeId": "ontario",
+      "netSales": "342.55",
+      "labourCost": "143.63",
+      "labourPercent": "41.9"
+    },
+    {
+      "date": "2026-02-24",
+      "storeId": "tunnel",
+      "netSales": "916.25",
+      "labourCost": "323.15",
+      "labourPercent": "35.3"
+    },
+    {
+      "date": "2026-02-24",
+      "storeId": "mk",
+      "netSales": "1999.03",
+      "labourCost": "435.9",
+      "labourPercent": "21.8"
+    },
+    {
+      "date": "2026-02-24",
+      "storeId": "ontario",
+      "netSales": "303.93",
+      "labourCost": "182",
+      "labourPercent": "59.9"
+    },
+    {
+      "date": "2026-02-24",
+      "storeId": "pk",
+      "netSales": "3077",
+      "labourCost": "698",
+      "labourPercent": "22.7"
+    },
+    {
+      "date": "2026-02-23",
+      "storeId": "mk",
+      "netSales": "1982.09",
+      "labourCost": "420.66",
+      "labourPercent": "21.2"
+    },
+    {
+      "date": "2026-02-23",
+      "storeId": "tunnel",
+      "netSales": "879.67",
+      "labourCost": "325.91",
+      "labourPercent": "37"
+    },
+    {
+      "date": "2026-02-23",
+      "storeId": "pk",
+      "netSales": "2317",
+      "labourCost": "650",
+      "labourPercent": "28.1"
+    },
+    {
+      "date": "2026-02-23",
+      "storeId": "ontario",
+      "netSales": "408",
+      "labourCost": "206",
+      "labourPercent": "50.5"
+    }
+  ],
+  "messages": [],
+  "stdout": "date\tstoreId\tnetSales\tlabourCost\tlabourPercent\n2026-03-01\tpk\t1442\t473\t32.8\n2026-03-01\tontario\t638.42\t164.7\t25.8\n2026-03-01\tmk\t1334.7\t288.47\t21.6\n2026-02-28\tontario\t581.61\t153.43\t26.4\n2026-02-28\tmk\t1255.32\t300.85\t24\n2026-02-28\tpk\t1054\t401\t38\n2026-02-27\tpk\t2735\t466\t17\n2026-02-27\tmk\t1811.23\t401.66\t22.2\n2026-02-27\tontario\t638.83\t137.16\t21.5\n2026-02-26\tmk\t2095.39\t457.81\t21.8\n2026-02-26\ttunnel\t1973.34\t355.96\t18\n2026-02-26\tontario\t592.71\t151.35\t25.5\n2026-02-26\tpk\t3192\t716\t22.4\n2026-02-25\tpk\t2844\t510\t17.9\n2026-02-25\tmk\t2054.96\t458.97\t22.3\n2026-02-25\ttunnel\t1075.29\t328.06\t30.5\n2026-02-25\tontario\t342.55\t143.63\t41.9\n2026-02-24\ttunnel\t916.25\t323.15\t35.3\n2026-02-24\tmk\t1999.03\t435.9\t21.8\n2026-02-24\tontario\t303.93\t182\t59.9\n2026-02-24\tpk\t3077\t698\t22.7\n2026-02-23\tmk\t1982.09\t420.66\t21.2\n2026-02-23\ttunnel\t879.67\t325.91\t37\n2026-02-23\tpk\t2317\t650\t28.1\n2026-02-23\tontario\t408\t206\t50.5\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

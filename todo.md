@@ -369,3 +369,14 @@
 
 - [x] Rename "Operations Checklist" → "Store Manager Checklist"
 - [x] Rename "Weekly Store Audit" → "Ops. Mgr Weekly Audit"
+
+---
+
+# Bug Fix: Yesterday's Labour Only Shows 7shifts Data
+
+- [x] Investigate why yesterday's labour data only shows 7shifts (Ontario) and not Excel data for MK, PK, TN
+- [x] Check Excel labour data in database for yesterday's date — data only goes to Mar 1
+- [x] Check the scheduled SharePoint sync — was failing due to 2-digit year date format
+- [x] Check how useFilteredCloverData merges Excel labour with Clover sales — logic is correct
+- [x] Fix the root cause: added M/D/YY (2-digit year) parsing to excelParser.ts
+- [x] Added vitest test for 2-digit year parsing (50 tests passing)

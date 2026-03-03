@@ -20,6 +20,30 @@ describe("parseExcelBuffer", () => {
   });
 });
 
+describe("parseExcelBuffer — 2-digit year dates", () => {
+  it("parses M/D/YY format dates correctly", async () => {
+    // Build a minimal Excel file with 2-digit year dates
+    const XLSX = await import("xlsx");
+    const wb = XLSX.utils.book_new();
+    const wsData = [
+      ["Id", "Business Date", "Store", "Net Sales", "Labour"],
+      [1, "2/23/26", "Mackay", 1500, 350],
+      [2, "3/2/26", "President Kennedy", 2000, 500],
+      [3, "12/15/26", "Tunnel", 900, 200],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+    const result = parseExcelBuffer(buffer);
+    expect(result.success).toBe(true);
+    expect(result.rows).toHaveLength(3);
+    expect(result.rows[0].date).toBe("2026-02-23");
+    expect(result.rows[1].date).toBe("2026-03-02");
+    expect(result.rows[2].date).toBe("2026-12-15");
+  });
+});
+
 // ─── Integration Tests for tRPC Endpoints ──────────────────────
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
