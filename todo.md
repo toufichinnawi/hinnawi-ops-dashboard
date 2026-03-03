@@ -402,3 +402,17 @@
 - [x] Add "Copy Link" button to each checklist card on the Checklists page
 - [x] Button copies the direct public URL for that checklist to clipboard
 - [x] Show toast/feedback when link is copied
+
+---
+
+# Leftovers & Waste Page Rebuild
+
+- [x] Rebuild Leftovers & Waste page to match new design
+- [x] Date picker and Location selector at top
+- [x] Items grouped by category: Bagels, Pastries, CK Items
+- [x] Each item row: toggle, Leftover qty, Qty Type dropdown, Waste qty, Qty Type dropdown, Comment
+- [x] Pre-populated item list per category (Sesame Bagel, Poppy Bagel, Croissant, Cream Cheese, etc.)
+- [x] Submit Report button to save to database
+- [x] Send by Email button (opens mailto: with formatted report)
+- [x] Updated both DirectChecklist (dashboard) and ChecklistViewer (public) versions
+- [x] All 50 tests passing

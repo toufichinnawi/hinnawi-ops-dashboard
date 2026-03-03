@@ -889,90 +889,213 @@ function SectionChecklistForm({
 
 // ─── Waste Report ───
 
+// ─── Waste Item Data (Public version) ───
+
+const WASTE_BAGELS_PUB = [
+  "Sesame Bagel", "Poppy Bagel", "Everything Bagel", "Plain Bagel", "Whole Wheat Bagel",
+  "Blueberry Bagel", "Cinnamon Raisin Bagel", "Jalape\u00f1o Bagel", "Multigrain Bagel", "Onion Bagel",
+];
+const WASTE_PASTRIES_PUB = [
+  "Croissant", "Pain au Chocolat", "Muffin", "Cookie", "Brownie", "Danish", "Scone", "Cinnamon Roll",
+];
+const WASTE_CK_PUB = [
+  "Cream Cheese", "Hummus", "Butter", "Salmon", "Turkey", "Ham",
+  "Avocado", "Tomato", "Lettuce", "Onion",
+];
+
+const QTY_TYPES_PUB = ["bag", "box", "unit", "kg", "lb", "tub", "pack", "tray"];
+
+interface WasteRow {
+  enabled: boolean;
+  leftover: string;
+  leftoverQty: string;
+  waste: string;
+  wasteQty: string;
+  comment: string;
+}
+
+function initWasteRows(items: string[]): Record<string, WasteRow> {
+  const rows: Record<string, WasteRow> = {};
+  items.forEach((item) => {
+    rows[item] = { enabled: true, leftover: "", leftoverQty: "bag", waste: "", wasteQty: "bag", comment: "" };
+  });
+  return rows;
+}
+
+function WasteTable({ title, items, rows, onChange }: {
+  title: string;
+  items: string[];
+  rows: Record<string, WasteRow>;
+  onChange: (rows: Record<string, WasteRow>) => void;
+}) {
+  const updateRow = (item: string, field: keyof WasteRow, value: string | boolean) => {
+    onChange({ ...rows, [item]: { ...rows[item], [field]: value } });
+  };
+
+  return (
+    <div className="bg-card rounded-xl border border-border/60 p-5">
+      <h3 className="font-semibold mb-3">{title}</h3>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border/60">
+              <th className="text-left py-2 pr-2 font-medium text-muted-foreground w-[160px]">Item</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[65px]">Leftover</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[80px]">Qty Type</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[65px]">Waste</th>
+              <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[80px]">Qty Type</th>
+              <th className="text-left py-2 pl-2 font-medium text-muted-foreground">Comment</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => {
+              const row = rows[item];
+              if (!row) return null;
+              return (
+                <tr key={item} className={cn("border-b border-border/30 last:border-0", !row.enabled && "opacity-40")}>
+                  <td className="py-2 pr-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => updateRow(item, "enabled", !row.enabled)}
+                        className={cn(
+                          "w-8 h-5 rounded-full transition-colors relative flex-shrink-0",
+                          row.enabled ? "bg-[#D4A853]" : "bg-muted"
+                        )}
+                      >
+                        <span className={cn(
+                          "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+                          row.enabled ? "translate-x-3.5" : "translate-x-0.5"
+                        )} />
+                      </button>
+                      <span className="text-sm font-medium truncate">{item}</span>
+                    </div>
+                  </td>
+                  <td className="py-2 px-2">
+                    <Input type="number" min="0" step="0.1" value={row.leftover} onChange={(e) => updateRow(item, "leftover", e.target.value)} disabled={!row.enabled} className="h-8 w-[60px] text-sm" />
+                  </td>
+                  <td className="py-2 px-2">
+                    <select value={row.leftoverQty} onChange={(e) => updateRow(item, "leftoverQty", e.target.value)} disabled={!row.enabled} className="h-8 w-[75px] text-sm rounded-md border border-border bg-background px-1.5">
+                      {QTY_TYPES_PUB.map((q) => <option key={q} value={q}>{q}</option>)}
+                    </select>
+                  </td>
+                  <td className="py-2 px-2">
+                    <Input type="number" min="0" step="0.1" value={row.waste} onChange={(e) => updateRow(item, "waste", e.target.value)} disabled={!row.enabled} className="h-8 w-[60px] text-sm" />
+                  </td>
+                  <td className="py-2 px-2">
+                    <select value={row.wasteQty} onChange={(e) => updateRow(item, "wasteQty", e.target.value)} disabled={!row.enabled} className="h-8 w-[75px] text-sm rounded-md border border-border bg-background px-1.5">
+                      {QTY_TYPES_PUB.map((q) => <option key={q} value={q}>{q}</option>)}
+                    </select>
+                  </td>
+                  <td className="py-2 pl-2">
+                    <Input value={row.comment} onChange={(e) => updateRow(item, "comment", e.target.value)} disabled={!row.enabled} className="h-8 text-sm" placeholder="..." />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function WasteReportForm({ storeCode: initialStoreCode, storeName: _sn3, positionLabel, onBack }: FormProps) {
   const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
-  const [submitterName, setSubmitterName] = useState("");
-  const [bagelLeftovers, setBagelLeftovers] = useState<Record<string, string>>({});
-  const [pastryLeftovers, setPastryLeftovers] = useState<Record<string, string>>({});
-  const [ckLeftovers, setCkLeftovers] = useState<Record<string, string>>({});
-  const [notes, setNotes] = useState("");
+  const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [bagelRows, setBagelRows] = useState<Record<string, WasteRow>>(() => initWasteRows(WASTE_BAGELS_PUB));
+  const [pastryRows, setPastryRows] = useState<Record<string, WasteRow>>(() => initWasteRows(WASTE_PASTRIES_PUB));
+  const [ckRows, setCkRows] = useState<Record<string, WasteRow>>(() => initWasteRows(WASTE_CK_PUB));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const collectData = () => {
+    const collect = (rows: Record<string, WasteRow>) =>
+      Object.entries(rows)
+        .filter(([, r]) => r.enabled && (r.leftover || r.waste))
+        .map(([item, r]) => ({
+          item,
+          leftover: r.leftover ? `${r.leftover} ${r.leftoverQty}` : "",
+          waste: r.waste ? `${r.waste} ${r.wasteQty}` : "",
+          comment: r.comment,
+        }));
+    return {
+      bagels: collect(bagelRows),
+      pastries: collect(pastryRows),
+      ckItems: collect(ckRows),
+    };
+  };
+
   const handleSubmit = async () => {
-    if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
     if (!selectedStore) { toast.error("Please select a store"); return; }
     setSubmitting(true);
     try {
+      const data = collectData();
       await submitReport({
-        submitterName,
+        submitterName: "Store Staff",
         reportType: "Leftovers & Waste Report",
         location: selectedStore,
-        reportDate: new Date().toISOString().split("T")[0],
-        data: { bagelLeftovers, pastryLeftovers, ckLeftovers, notes },
+        reportDate,
+        data,
       });
       setSubmitted(true);
     } catch { toast.error("Failed to submit"); }
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Waste Report submitted for ${currentStoreName}`} onNew={() => { setBagelLeftovers({}); setPastryLeftovers({}); setCkLeftovers({}); setNotes(""); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Waste Report submitted for ${currentStoreName} on ${reportDate}`} onNew={() => { setBagelRows(initWasteRows(WASTE_BAGELS_PUB)); setPastryRows(initWasteRows(WASTE_PASTRIES_PUB)); setCkRows(initWasteRows(WASTE_CK_PUB)); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
       <FormHeader title="Leftovers & Waste Report" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
-        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Your Name</Label>
-          <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
-        </div>
-
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <h3 className="font-semibold mb-3">🥯 Bagel Leftovers</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {BAGEL_TYPES.map((type) => (
-              <div key={type} className="flex items-center gap-2">
-                <Label className="text-sm flex-1 min-w-0">{type}</Label>
-                <Input type="number" min="0" className="w-20" placeholder="0" value={bagelLeftovers[type] || ""} onChange={(e) => setBagelLeftovers((prev) => ({ ...prev, [type]: e.target.value }))} />
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Date</Label>
+              <Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} className="h-9" />
+            </div>
+            <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
           </div>
         </div>
 
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <h3 className="font-semibold mb-3">🥐 Pastry Leftovers</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {PASTRY_TYPES.map((type) => (
-              <div key={type} className="flex items-center gap-2">
-                <Label className="text-sm flex-1 min-w-0">{type}</Label>
-                <Input type="number" min="0" className="w-20" placeholder="0" value={pastryLeftovers[type] || ""} onChange={(e) => setPastryLeftovers((prev) => ({ ...prev, [type]: e.target.value }))} />
-              </div>
-            ))}
-          </div>
-        </div>
+        <WasteTable title="Bagels" items={WASTE_BAGELS_PUB} rows={bagelRows} onChange={setBagelRows} />
+        <WasteTable title="Pastries" items={WASTE_PASTRIES_PUB} rows={pastryRows} onChange={setPastryRows} />
+        <WasteTable title="CK Items" items={WASTE_CK_PUB} rows={ckRows} onChange={setCkRows} />
 
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <h3 className="font-semibold mb-3">🧀 CK Leftovers</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {CK_ITEMS.map((item) => (
-              <div key={item} className="flex items-center gap-2">
-                <Label className="text-sm flex-1 min-w-0">{item}</Label>
-                <Input type="number" min="0" step="0.1" className="w-20" placeholder="0" value={ckLeftovers[item] || ""} onChange={(e) => setCkLeftovers((prev) => ({ ...prev, [item]: e.target.value }))} />
-              </div>
-            ))}
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white h-11">
+            <CheckCircle2 className="w-4 h-4 mr-2" />
+            {submitting ? "Submitting..." : "Submit Report"}
+          </Button>
+          <Button variant="outline" className="w-full h-11" onClick={() => {
+            const data = collectData();
+            const storeName = stores.find(s => s.shortName === selectedStore)?.name || selectedStore;
+            const lines: string[] = [`Leftovers & Waste Report`, `Date: ${reportDate}`, `Location: ${storeName}`, ""];
+            const formatSection = (title: string, items: { item: string; leftover: string; waste: string; comment: string }[]) => {
+              if (items.length === 0) return;
+              lines.push(`--- ${title} ---`);
+              items.forEach((i) => {
+                const parts = [i.item];
+                if (i.leftover) parts.push(`Leftover: ${i.leftover}`);
+                if (i.waste) parts.push(`Waste: ${i.waste}`);
+                if (i.comment) parts.push(`Note: ${i.comment}`);
+                lines.push(parts.join(" | "));
+              });
+              lines.push("");
+            };
+            formatSection("Bagels", data.bagels);
+            formatSection("Pastries", data.pastries);
+            formatSection("CK Items", data.ckItems);
+            const body = lines.join("\n");
+            const subject = `Leftovers & Waste - ${storeName} - ${reportDate}`;
+            window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
+            toast.info("Opening email client...");
+          }}>
+            Send by Email
+          </Button>
         </div>
-
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Notes (optional)</Label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any additional observations..." className="mt-1.5" rows={3} />
-        </div>
-
-        <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white">
-          {submitting ? "Submitting..." : "Submit Report"}
-        </Button>
       </div>
     </div>
   );

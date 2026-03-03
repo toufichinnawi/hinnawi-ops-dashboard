@@ -4,7 +4,7 @@ import { useParams, useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { ALL_CHECKLISTS, type ChecklistType } from "@/lib/positionChecklists";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Copy, Check, Link as LinkIcon } from "lucide-react";
+import { ArrowLeft, Copy, Check, Link as LinkIcon, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Re-use the DashboardChecklistForm from ChecklistViewer
@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/StarRating";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -360,48 +360,296 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
   );
 }
 
+// ─── Waste Item Data ───
+
+const WASTE_BAGELS = [
+  "Sesame Bagel", "Poppy Bagel", "Everything Bagel", "Plain Bagel", "Whole Wheat Bagel",
+  "Blueberry Bagel", "Cinnamon Raisin Bagel", "Jalapeño Bagel", "Multigrain Bagel", "Onion Bagel",
+];
+const WASTE_PASTRIES = [
+  "Croissant", "Pain au Chocolat", "Muffin", "Cookie", "Brownie", "Danish", "Scone", "Cinnamon Roll",
+];
+const WASTE_CK_ITEMS = [
+  "Cream Cheese", "Hummus", "Butter", "Salmon", "Turkey", "Ham",
+  "Avocado", "Tomato", "Lettuce", "Onion",
+];
+
+const QTY_TYPES = ["bag", "box", "unit", "kg", "lb", "tub", "pack", "tray"];
+
+interface WasteItemRow {
+  enabled: boolean;
+  leftover: string;
+  leftoverQty: string;
+  waste: string;
+  wasteQty: string;
+  comment: string;
+}
+
+function initRows(items: string[]): Record<string, WasteItemRow> {
+  const rows: Record<string, WasteItemRow> = {};
+  items.forEach((item) => {
+    rows[item] = { enabled: true, leftover: "", leftoverQty: "bag", waste: "", wasteQty: "bag", comment: "" };
+  });
+  return rows;
+}
+
+function WasteItemTable({ title, items, rows, onChange }: {
+  title: string;
+  items: string[];
+  rows: Record<string, WasteItemRow>;
+  onChange: (rows: Record<string, WasteItemRow>) => void;
+}) {
+  const updateRow = (item: string, field: keyof WasteItemRow, value: string | boolean) => {
+    onChange({ ...rows, [item]: { ...rows[item], [field]: value } });
+  };
+
+  return (
+    <Card>
+      <CardContent className="pt-5 pb-4">
+        <h3 className="font-serif text-lg mb-4">{title}</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/60">
+                <th className="text-left py-2 pr-2 font-medium text-muted-foreground w-[180px]">Item</th>
+                <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[70px]">Leftover</th>
+                <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[90px]">Qty Type</th>
+                <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[70px]">Waste</th>
+                <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[90px]">Qty Type</th>
+                <th className="text-left py-2 pl-2 font-medium text-muted-foreground">Comment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => {
+                const row = rows[item];
+                if (!row) return null;
+                return (
+                  <tr key={item} className={cn("border-b border-border/30 last:border-0", !row.enabled && "opacity-40")}>
+                    <td className="py-2 pr-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateRow(item, "enabled", !row.enabled)}
+                          className={cn(
+                            "w-8 h-5 rounded-full transition-colors relative flex-shrink-0",
+                            row.enabled ? "bg-[#D4A853]" : "bg-muted"
+                          )}
+                        >
+                          <span className={cn(
+                            "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+                            row.enabled ? "translate-x-3.5" : "translate-x-0.5"
+                          )} />
+                        </button>
+                        <span className="text-sm font-medium truncate">{item}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-2">
+                      <Input
+                        type="number" min="0" step="0.1"
+                        value={row.leftover}
+                        onChange={(e) => updateRow(item, "leftover", e.target.value)}
+                        disabled={!row.enabled}
+                        className="h-8 w-[65px] text-sm"
+                        placeholder=""
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <select
+                        value={row.leftoverQty}
+                        onChange={(e) => updateRow(item, "leftoverQty", e.target.value)}
+                        disabled={!row.enabled}
+                        className="h-8 w-[80px] text-sm rounded-md border border-border bg-background px-1.5"
+                      >
+                        {QTY_TYPES.map((q) => <option key={q} value={q}>{q}</option>)}
+                      </select>
+                    </td>
+                    <td className="py-2 px-2">
+                      <Input
+                        type="number" min="0" step="0.1"
+                        value={row.waste}
+                        onChange={(e) => updateRow(item, "waste", e.target.value)}
+                        disabled={!row.enabled}
+                        className="h-8 w-[65px] text-sm"
+                        placeholder=""
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <select
+                        value={row.wasteQty}
+                        onChange={(e) => updateRow(item, "wasteQty", e.target.value)}
+                        disabled={!row.enabled}
+                        className="h-8 w-[80px] text-sm rounded-md border border-border bg-background px-1.5"
+                      >
+                        {QTY_TYPES.map((q) => <option key={q} value={q}>{q}</option>)}
+                      </select>
+                    </td>
+                    <td className="py-2 pl-2">
+                      <Input
+                        value={row.comment}
+                        onChange={(e) => updateRow(item, "comment", e.target.value)}
+                        disabled={!row.enabled}
+                        className="h-8 text-sm"
+                        placeholder="..."
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function WasteReportForm({ onBack }: { onBack: () => void }) {
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
-  const [reporterName, setReporterName] = useState("");
-  const [bagelLeftovers, setBagelLeftovers] = useState("");
-  const [pastryLeftovers, setPastryLeftovers] = useState("");
-  const [ckLeftovers, setCkLeftovers] = useState("");
-  const [wasteNotes, setWasteNotes] = useState("");
+  const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [bagelRows, setBagelRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_BAGELS));
+  const [pastryRows, setPastryRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_PASTRIES));
+  const [ckRows, setCkRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_CK_ITEMS));
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
-    if (!reporterName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
-    const payload = { type: "waste-report", location: selectedStore, submittedBy: reporterName, data: { bagelLeftovers, pastryLeftovers, ckLeftovers, wasteNotes } };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    setSubmitted(true);
-    toast.success("Waste report submitted!");
+  const collectData = () => {
+    const collect = (rows: Record<string, WasteItemRow>) =>
+      Object.entries(rows)
+        .filter(([, r]) => r.enabled && (r.leftover || r.waste))
+        .map(([item, r]) => ({
+          item,
+          leftover: r.leftover ? `${r.leftover} ${r.leftoverQty}` : "",
+          waste: r.waste ? `${r.waste} ${r.wasteQty}` : "",
+          comment: r.comment,
+        }));
+    return {
+      bagels: collect(bagelRows),
+      pastries: collect(pastryRows),
+      ckItems: collect(ckRows),
+    };
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedStore) { toast.error("Please select a store"); return; }
+    setSubmitting(true);
+    try {
+      const data = collectData();
+      const payload = {
+        submitterName: "Store Staff",
+        reportType: "Leftovers & Waste Report",
+        location: selectedStore,
+        reportDate,
+        data,
+      };
+      const res = await fetch("/api/public/submit-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Submit failed");
+      setSubmitted(true);
+      toast.success("Waste report submitted!");
+    } catch {
+      toast.error("Failed to submit report");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!selectedStore) { toast.error("Please select a store"); return; }
+    const data = collectData();
+    const storeName = stores.find(s => s.id === selectedStore)?.name || selectedStore;
+    const lines: string[] = [`Leftovers & Waste Report`, `Date: ${reportDate}`, `Location: ${storeName}`, ""];
+    const formatSection = (title: string, items: { item: string; leftover: string; waste: string; comment: string }[]) => {
+      if (items.length === 0) return;
+      lines.push(`--- ${title} ---`);
+      items.forEach((i) => {
+        const parts = [i.item];
+        if (i.leftover) parts.push(`Leftover: ${i.leftover}`);
+        if (i.waste) parts.push(`Waste: ${i.waste}`);
+        if (i.comment) parts.push(`Note: ${i.comment}`);
+        lines.push(parts.join(" | "));
+      });
+      lines.push("");
+    };
+    formatSection("Bagels", data.bagels);
+    formatSection("Pastries", data.pastries);
+    formatSection("CK Items", data.ckItems);
+    const body = lines.join("\n");
+    const subject = `Leftovers & Waste - ${storeName} - ${reportDate}`;
+    try {
+      const res = await fetch("/api/trpc/reports.sendWasteEmail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json: { subject, body } }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Report sent by email!");
+    } catch {
+      // Fallback: open mailto
+      const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.open(mailto, "_blank");
+      toast.info("Opening email client...");
+    }
   };
 
   if (submitted) return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
-      <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" /><h3 className="text-xl font-serif">Report Submitted</h3>
-      <p className="text-muted-foreground">Leftovers & Waste for {currentStoreName}</p>
-      <Button onClick={onBack} variant="outline">Back</Button>
+      <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
+      <h3 className="text-xl font-serif">Report Submitted</h3>
+      <p className="text-muted-foreground">Leftovers & Waste for {currentStoreName} on {reportDate}</p>
+      <div className="flex gap-3 justify-center">
+        <Button onClick={() => { setBagelRows(initRows(WASTE_BAGELS)); setPastryRows(initRows(WASTE_PASTRIES)); setCkRows(initRows(WASTE_CK_ITEMS)); setSubmitted(false); }} variant="outline">New Report</Button>
+        <Button onClick={onBack} variant="outline">Back</Button>
+      </div>
     </motion.div>
   );
 
   return (
-    <div className="space-y-6">
-      <Card><CardContent className="pt-6 space-y-4">
-        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
-        <div className="space-y-1.5"><Label>Your Name</Label><Input value={reporterName} onChange={(e) => setReporterName(e.target.value)} placeholder="Enter your name" /></div>
-      </CardContent></Card>
-      <Card><CardContent className="pt-6 space-y-4">
-        <h3 className="font-serif text-lg">Leftovers Count</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-1.5"><Label>Bagels</Label><Input type="number" value={bagelLeftovers} onChange={(e) => setBagelLeftovers(e.target.value)} placeholder="0" /></div>
-          <div className="space-y-1.5"><Label>Pastries</Label><Input type="number" value={pastryLeftovers} onChange={(e) => setPastryLeftovers(e.target.value)} placeholder="0" /></div>
-          <div className="space-y-1.5"><Label>CK Items</Label><Input type="number" value={ckLeftovers} onChange={(e) => setCkLeftovers(e.target.value)} placeholder="0" /></div>
-        </div>
-      </CardContent></Card>
-      <Card><CardContent className="pt-6 space-y-3"><Label>Waste Notes</Label><Textarea value={wasteNotes} onChange={(e) => setWasteNotes(e.target.value)} rows={3} placeholder="Any waste details..." /></CardContent></Card>
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Report</Button></div>
+    <div className="space-y-5">
+      {/* Header row: Date + Location */}
+      <Card>
+        <CardContent className="pt-5 pb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Date</Label>
+              <Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} className="h-9" />
+            </div>
+            <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Bagels */}
+      <WasteItemTable title="Bagels" items={WASTE_BAGELS} rows={bagelRows} onChange={setBagelRows} />
+
+      {/* Pastries */}
+      <WasteItemTable title="Pastries" items={WASTE_PASTRIES} rows={pastryRows} onChange={setPastryRows} />
+
+      {/* CK Items */}
+      <WasteItemTable title="CK Items" items={WASTE_CK_ITEMS} rows={ckRows} onChange={setCkRows} />
+
+      {/* Action buttons */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Button
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48] h-11"
+        >
+          <CheckCircle2 className="w-4 h-4 mr-2" />
+          {submitting ? "Submitting..." : "Submit Report"}
+        </Button>
+        <Button
+          onClick={handleSendEmail}
+          variant="outline"
+          className="h-11"
+        >
+          <Send className="w-4 h-4 mr-2" />
+          Send by Email
+        </Button>
+      </div>
     </div>
   );
 }
