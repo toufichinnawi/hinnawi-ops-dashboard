@@ -16,8 +16,7 @@ import TeamsIntegration from "./pages/TeamsIntegration";
 import CloverIntegration from "./pages/CloverIntegration";
 import SevenShiftsIntegration from "./pages/SevenShiftsIntegration";
 import PositionChecklists from "@/pages/public/PositionChecklists";
-import Checklists from "@/pages/Checklists";
-import ChecklistViewer from "@/pages/ChecklistViewer";
+import DirectChecklist from "@/pages/DirectChecklist";
 import ProfitLoss from "@/pages/ProfitLoss";
 import ExpenseEntry from "@/pages/ExpenseEntry";
 import Vendors from "@/pages/Vendors";
@@ -50,10 +49,8 @@ function Router() {
       <Route path="/inventory/items" component={InventoryItems} />
       <Route path="/inventory/count" component={InventoryCount} />
 
-      {/* Reports & Checklists */}
-      <Route path="/reports" component={Reports} />
-      <Route path="/checklists" component={Checklists} />
-      <Route path="/checklists/:position" component={ChecklistViewer} />
+      {/* Reports & Checklists — each checklist type has its own route */}
+      <Route path="/checklists/:type" component={DirectChecklist} />
       <Route path="/reports/history" component={ReportHistory} />
 
       {/* Integrations */}
@@ -67,7 +64,7 @@ function Router() {
       <Route path="/maintenance" component={Maintenance} />
       <Route path="/admin" component={AdminPanel} />
 
-      {/* Public (no auth) */}
+      {/* Public (no auth) — PIN-gated for employees */}
       <Route path="/public/:position" component={PositionChecklists} />
 
       <Route path="/404" component={NotFound} />

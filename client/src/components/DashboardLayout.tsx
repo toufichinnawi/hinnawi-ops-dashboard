@@ -28,6 +28,11 @@ import {
   History,
   ExternalLink,
   Settings,
+  BarChart3,
+  Star,
+  Trash2,
+  GraduationCap,
+  CircleDot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useData } from "@/contexts/DataContext";
@@ -75,8 +80,14 @@ const navSections: NavSection[] = [
   {
     title: "Reports & Checklists",
     items: [
-      { path: "/reports", label: "Report Tracker", icon: FileText },
-      { path: "/checklists", label: "Checklists", icon: ClipboardCheck },
+      { path: "/checklists/operations", label: "Operations Checklist", icon: ClipboardCheck },
+      { path: "/checklists/weekly-audit", label: "Weekly Store Audit", icon: ClipboardCheck },
+      { path: "/checklists/weekly-scorecard", label: "Weekly Scorecard", icon: BarChart3 },
+      { path: "/checklists/performance", label: "Performance Evaluation", icon: Star },
+      { path: "/checklists/waste", label: "Leftovers & Waste", icon: Trash2 },
+      { path: "/checklists/equipment", label: "Equipment & Maintenance", icon: Wrench },
+      { path: "/checklists/training", label: "Training Evaluation", icon: GraduationCap },
+      { path: "/checklists/bagel-orders", label: "Bagel Orders", icon: CircleDot },
       { path: "/reports/history", label: "Report History", icon: History },
     ],
   },

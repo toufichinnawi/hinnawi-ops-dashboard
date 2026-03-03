@@ -344,3 +344,14 @@
 - Overview page
 - Labour Monitor page
 - Store Performance page
+
+---
+
+# Restructure Reports & Checklists Sidebar (COMPLETED)
+
+- [x] Replace single "Checklists" nav item with 8 individual checklist items + Report History
+- [x] Sidebar items: Operations Checklist, Weekly Store Audit, Weekly Scorecard, Performance Evaluation, Leftovers & Waste, Equipment & Maintenance, Training Evaluation, Bagel Orders, Report History
+- [x] Each sidebar item opens the checklist form directly (with store dropdown inside form)
+- [x] Created DirectChecklist.tsx page with slug-to-checklist-type mapping
+- [x] Updated App.tsx with /checklists/:type route
+- [x] All 49 tests passing
