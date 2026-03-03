@@ -235,3 +235,37 @@ export const excelSyncMeta = mysqlTable("excel_sync_meta", {
 
 export type ExcelSyncMeta = typeof excelSyncMeta.$inferSelect;
 export type InsertExcelSyncMeta = typeof excelSyncMeta.$inferInsert;
+
+// ─── Report Submissions ───
+
+export const reportSubmissions = mysqlTable("report_submissions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  reportType: varchar("reportType", { length: 100 }).notNull(),
+  location: varchar("location", { length: 100 }).notNull(),
+  reportDate: varchar("reportDate", { length: 20 }).notNull(),
+  data: json("data").notNull(),
+  totalScore: varchar("totalScore", { length: 20 }),
+  status: mysqlEnum("status", ["draft", "submitted", "reviewed"]).default("submitted").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ReportSubmission = typeof reportSubmissions.$inferSelect;
+export type InsertReportSubmission = typeof reportSubmissions.$inferInsert;
+
+// ─── Store PINs for Public Checklist Access ───
+
+export const storePins = mysqlTable("store_pins", {
+  id: int("id").autoincrement().primaryKey(),
+  storeCode: varchar("storeCode", { length: 10 }).notNull().unique(),
+  storeName: varchar("storeName", { length: 100 }).notNull(),
+  pin: varchar("pin", { length: 10 }).notNull(),
+  isActive: mysqlEnum("isActive", ["yes", "no"]).default("yes").notNull(),
+  updatedBy: int("updatedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StorePin = typeof storePins.$inferSelect;
+export type InsertStorePin = typeof storePins.$inferInsert;

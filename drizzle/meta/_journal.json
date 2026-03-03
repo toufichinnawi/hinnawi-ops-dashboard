@@ -43,6 +43,13 @@
       "when": 1772480986553,
       "tag": "0005_talented_blazing_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1772550788144,
+      "tag": "0006_shallow_scarecrow",
+      "breakpoints": true
     }
   ]
 }

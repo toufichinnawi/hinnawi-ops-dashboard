@@ -13,6 +13,8 @@ import {
   sevenShiftsDailySales, InsertSevenShiftsDailySales, SevenShiftsDailySales,
   excelLabourData, InsertExcelLabourData, ExcelLabourData,
   excelSyncMeta, InsertExcelSyncMeta, ExcelSyncMeta,
+  reportSubmissions, InsertReportSubmission, ReportSubmission,
+  storePins, InsertStorePin, StorePin,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -501,4 +503,133 @@ export async function createExcelSyncMeta(data: InsertExcelSyncMeta): Promise<vo
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.insert(excelSyncMeta).values(data);
+}
+
+// ─── Report Submissions ───────────────────────────────────────────
+
+export async function createReportSubmission(data: InsertReportSubmission) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(reportSubmissions).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getReportsByUser(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(reportSubmissions)
+    .where(eq(reportSubmissions.userId, userId))
+    .orderBy(desc(reportSubmissions.createdAt))
+    .limit(limit);
+}
+
+export async function getReportsByLocation(location: string, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(reportSubmissions)
+    .where(eq(reportSubmissions.location, location))
+    .orderBy(desc(reportSubmissions.createdAt))
+    .limit(limit);
+}
+
+export async function getAllReports(limit = 200) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      id: reportSubmissions.id,
+      userId: reportSubmissions.userId,
+      reportType: reportSubmissions.reportType,
+      location: reportSubmissions.location,
+      reportDate: reportSubmissions.reportDate,
+      data: reportSubmissions.data,
+      totalScore: reportSubmissions.totalScore,
+      status: reportSubmissions.status,
+      createdAt: reportSubmissions.createdAt,
+      userName: users.name,
+    })
+    .from(reportSubmissions)
+    .leftJoin(users, eq(reportSubmissions.userId, users.id))
+    .orderBy(desc(reportSubmissions.createdAt))
+    .limit(limit);
+  return rows;
+}
+
+// ─── Store PINs ───────────────────────────────────────────────────
+
+export async function getAllStorePins() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(storePins).orderBy(storePins.storeCode);
+}
+
+export async function upsertStorePin(data: {
+  storeCode: string;
+  storeName: string;
+  pin: string;
+  updatedBy?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db
+    .select()
+    .from(storePins)
+    .where(eq(storePins.storeCode, data.storeCode))
+    .limit(1);
+  if (existing.length > 0) {
+    await db
+      .update(storePins)
+      .set({
+        pin: data.pin,
+        storeName: data.storeName,
+        updatedBy: data.updatedBy ?? null,
+      })
+      .where(eq(storePins.storeCode, data.storeCode));
+    return { id: existing[0].id, updated: true };
+  } else {
+    const result = await db.insert(storePins).values({
+      storeCode: data.storeCode,
+      storeName: data.storeName,
+      pin: data.pin,
+      updatedBy: data.updatedBy ?? null,
+    });
+    return { id: result[0].insertId, updated: false };
+  }
+}
+
+export async function verifyStorePin(
+  storeCode: string,
+  pin: string
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db
+    .select()
+    .from(storePins)
+    .where(
+      and(
+        eq(storePins.storeCode, storeCode),
+        eq(storePins.pin, pin),
+        eq(storePins.isActive, "yes")
+      )
+    )
+    .limit(1);
+  return result.length > 0;
+}
+
+export async function getActiveStorePinsPublic() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      storeCode: storePins.storeCode,
+      storeName: storePins.storeName,
+    })
+    .from(storePins)
+    .where(eq(storePins.isActive, "yes"))
+    .orderBy(storePins.storeName);
 }

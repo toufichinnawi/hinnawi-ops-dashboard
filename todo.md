@@ -225,3 +225,39 @@
 - [x] Add weekend closure flag to Tunnel store config
 - [x] Show "Closed Weekends" badge on Tunnel store card
 - [x] Don't flag missing Tunnel weekend data as an issue
+
+---
+
+# Checklists Feature (from handover document)
+
+- [ ] Step 1: Add checklistSubmissions table to database schema
+- [ ] Step 2: Create server/checklist-db.ts with CRUD helpers
+- [ ] Step 3: Create server/routers/checklists.ts tRPC router
+- [ ] Step 4: Register checklist router in server/routers.ts
+- [ ] Step 5: Create shared/checklists.ts with all checklist data definitions
+- [ ] Step 6: Create client/src/components/ChecklistShared.tsx reusable components
+- [ ] Step 7: Create 5 checklist page files (Operations, Deep Cleaning, Assistant Manager, Performance Eval, Equipment Maintenance)
+- [ ] Step 8: Add routes to App.tsx
+- [ ] Step 9: Add CHECKLISTS section to sidebar navigation
+- [ ] Step 10: Run db:push and tests
+
+---
+
+# Reports & Checklists Migration (from hinnawi-reports-migration.md)
+
+- [x] Step 1: Add reportSubmissions + storePins tables to schema, run db:push
+- [x] Step 2: Add report + PIN db helpers to server/db.ts
+- [x] Step 3: Create server/teamsNotify.ts for Teams webhook notifications
+- [x] Step 4: Add reports + storePins tRPC routes to server/routers.ts
+- [x] Step 5: Add public submit endpoint to server/_core/index.ts
+- [x] Step 6: Create client/src/lib/positionChecklists.ts config
+- [x] Step 7: Create client/src/components/StarRating.tsx
+- [x] Step 8: Create client/src/components/PinGate.tsx
+- [x] Step 9: Copy PositionChecklists.tsx to client/src/pages/public/
+- [x] Step 10: Add route to App.tsx
+- [x] Step 11: TEAMS_WEBHOOK_URL skipped for now (notifications will be silent)
+- [x] Step 12: Seed default store PINs (1234 for all 4 stores)
+- [x] Step 13: Add "Copy Link" buttons for each position checklist URL on a Checklists dashboard page
+- [x] Step 14: Write vitest tests for reports + storePins (9 tests, all passing)
+- [x] Step 15: Add Checklists nav item to sidebar and route in App.tsx
+- [x] All 38 tests passing (Reports + StorePins + Excel + Clover + 7shifts + Teams + Auth)

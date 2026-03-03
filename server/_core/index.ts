@@ -38,6 +38,58 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Chat API with streaming and tool calling
   registerChatRoutes(app);
+  // Public API endpoint for report submissions without login
+  app.post("/api/public/submit-report", async (req, res) => {
+    try {
+      const {
+        submitterName,
+        reportType,
+        location,
+        reportDate,
+        data,
+        totalScore,
+      } = req.body;
+      if (!submitterName || !reportType || !location || !reportDate) {
+        return res
+          .status(400)
+          .json({ error: "Missing required fields" });
+      }
+      const { createReportSubmission } = await import("../db");
+      const { sendTeamsNotification } = await import(
+        "../teamsNotify"
+      );
+      const result = await createReportSubmission({
+        userId: null as any,
+        reportType,
+        location,
+        reportDate,
+        data,
+        totalScore: totalScore || null,
+        status: "submitted",
+      });
+      sendTeamsNotification({
+        reportType,
+        location,
+        submittedBy: submitterName,
+        reportDate,
+        totalScore,
+        details:
+          typeof data === "object" ? data : undefined,
+      }).catch((err: any) =>
+        console.error(
+          "[Teams] Public notification error:",
+          err
+        )
+      );
+      res.json({ success: true, id: result });
+    } catch (err) {
+      console.error("[Public API] Submit error:", err);
+      res
+        .status(500)
+        .json({ error: "Internal server error" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

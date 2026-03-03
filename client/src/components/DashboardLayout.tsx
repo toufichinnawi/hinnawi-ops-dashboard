@@ -17,6 +17,7 @@ import {
   CreditCard,
   Clock,
   Shield,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useData } from "@/contexts/DataContext";
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
   { path: "/data", label: "Data Management", icon: Database },
   { path: "/clover", label: "Clover POS", icon: CreditCard },
   { path: "/7shifts", label: "7shifts", icon: Clock },
+  { path: "/checklists", label: "Checklists", icon: ClipboardCheck },
   { path: "/teams", label: "Teams Integration", icon: MessageSquare, adminOnly: true },
 ];
 

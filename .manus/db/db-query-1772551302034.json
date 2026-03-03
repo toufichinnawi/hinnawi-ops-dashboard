@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO store_pins (storeCode, storeName, pin, isActive) VALUES\n('tunnel', 'Tunnel', '1234', 'yes'),\n('ontario', 'Ontario', '1234', 'yes'),\n('mk', 'Mackay', '1234', 'yes'),\n('pk', 'President Kennedy', '1234', 'yes')\nON DUPLICATE KEY UPDATE pin = VALUES(pin), storeName = VALUES(storeName);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute INSERT INTO store_pins (storeCode, storeName, pin, isActive) VALUES\n('tunnel', 'Tunnel', '1234', 'yes'),\n('ontario', 'Ontario', '1234', 'yes'),\n('mk', 'Mackay', '1234', 'yes'),\n('pk', 'President Kennedy', '1234', 'yes')\nON DUPLICATE KEY UPDATE pin = VALUES(pin), storeName = VALUES(storeName);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 391
+}

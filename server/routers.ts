@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import {
   listWebhooks, getWebhookById, createWebhook, updateWebhook, deleteWebhook,
@@ -18,8 +18,11 @@ import {
   bulkUpsertExcelLabourData, getAllExcelLabourData, getExcelLabourByDateRange,
   getExcelLabourByStore, deleteAllExcelLabourData,
   getLatestExcelSyncMeta, createExcelSyncMeta,
+  createReportSubmission, getReportsByUser, getAllReports,
+  getAllStorePins, upsertStorePin, verifyStorePin, getActiveStorePinsPublic,
 } from "./db";
 import { parseExcelBuffer } from "./excelParser";
+import { sendTeamsNotification } from "./teamsNotify";
 import { sendTeamsAlert, testWebhookConnection, buildLabourAlert, buildReportOverdueAlert, buildSalesDropAlert, buildDailySummaryAlert } from "./teams";
 import type { AlertPayload } from "./teams";
 import {
@@ -989,6 +992,96 @@ export const appRouter = router({
 
       return { results, allSuccess: results.every(r => r.success) };
     }),
+
+  // ─── Reports & Checklists ──────────────────────────────────────
+  reports: router({
+    submit: protectedProcedure
+      .input(
+        z.object({
+          reportType: z.string(),
+          location: z.string(),
+          reportDate: z.string(),
+          data: z.any(),
+          totalScore: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const result = await createReportSubmission({
+          userId: ctx.user.id,
+          reportType: input.reportType,
+          location: input.location,
+          reportDate: input.reportDate,
+          data: input.data,
+          totalScore: input.totalScore || null,
+          status: "submitted",
+        });
+
+        sendTeamsNotification({
+          reportType: input.reportType,
+          location: input.location,
+          submittedBy: ctx.user.name || ctx.user.email || "Unknown",
+          reportDate: input.reportDate,
+          totalScore: input.totalScore,
+          details:
+            typeof input.data === "object" ? input.data : undefined,
+        }).catch((err) =>
+          console.error("[Teams] Notification error:", err)
+        );
+
+        return result;
+      }),
+
+    myReports: protectedProcedure.query(async ({ ctx }) => {
+      return getReportsByUser(ctx.user.id);
+    }),
+
+    allReports: adminProcedure.query(async () => {
+      return getAllReports();
+    }),
+  }),
+
+  // ─── Store PINs ───────────────────────────────────────────────
+  storePins: router({
+    list: adminProcedure.query(async () => {
+      return getAllStorePins();
+    }),
+
+    upsert: adminProcedure
+      .input(
+        z.object({
+          storeCode: z.string().min(1),
+          storeName: z.string().min(1),
+          pin: z.string().min(4).max(10),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return upsertStorePin({
+          ...input,
+          updatedBy: ctx.user.id,
+        });
+      }),
+
+    // Public: get list of stores (no PIN exposed)
+    stores: publicProcedure.query(async () => {
+      return getActiveStorePinsPublic();
+    }),
+
+    // Public: verify a PIN
+    verify: publicProcedure
+      .input(
+        z.object({
+          storeCode: z.string(),
+          pin: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const valid = await verifyStorePin(
+          input.storeCode,
+          input.pin
+        );
+        return { valid };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

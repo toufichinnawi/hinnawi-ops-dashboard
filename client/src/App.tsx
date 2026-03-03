@@ -15,6 +15,8 @@ import DataManagement from "./pages/DataManagement";
 import TeamsIntegration from "./pages/TeamsIntegration";
 import CloverIntegration from "./pages/CloverIntegration";
 import SevenShiftsIntegration from "./pages/SevenShiftsIntegration";
+import PositionChecklists from "@/pages/public/PositionChecklists";
+import Checklists from "@/pages/Checklists";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -28,7 +30,9 @@ function Router() {
       <Route path="/data" component={DataManagement} />
       <Route path="/clover" component={CloverIntegration} />
       <Route path="/7shifts" component={SevenShiftsIntegration} />
+      <Route path="/checklists" component={Checklists} />
       <Route path="/teams" component={TeamsIntegration} />
+      <Route path="/public/:position" component={PositionChecklists} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
