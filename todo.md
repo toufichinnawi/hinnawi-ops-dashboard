@@ -447,3 +447,15 @@
 ## Tests
 - [x] Write vitest tests for scorecard logic (14 new tests in scorecard.test.ts)
 - [x] All 64 tests passing across 8 test files
+
+---
+
+# Scorecard Drill-Down View
+
+- [x] Clickable store score cards open a drill-down dialog
+- [x] Show completed checklists divided into two sections: Store Manager and Ops Manager
+- [x] Each completed checklist shows: checklist name, score badge, date/time, submitter name
+- [x] At the bottom: unfinished/missing checklists in red/pink background with "Missing" badges
+- [x] Clear visual separation between completed and unfinished sections
+- [x] Store submitterName in data JSON for future submissions
+- [x] All 64 tests passing

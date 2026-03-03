@@ -1,0 +1,22 @@
+{
+  "query": "SELECT id, reportType, location, SUBSTRING(data, 1, 500) as data_preview FROM report_submissions WHERE location = 'MK' LIMIT 2;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, reportType, location, SUBSTRING(data, 1, 500) as data_preview FROM report_submissions WHERE location = 'MK' LIMIT 2;",
+  "rows": [
+    {
+      "id": "1",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "data_preview": "{\"items\": [{\"label\": \"Test item\", \"rating\": 5}]}"
+    },
+    {
+      "id": "2",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "data_preview": "{\"items\": [{\"label\": \"Test item\", \"rating\": 5}]}"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\treportType\tlocation\tdata_preview\n1\tmanager-checklist\tMK\t{\"items\": [{\"label\": \"Test item\", \"rating\": 5}]}\n2\tmanager-checklist\tMK\t{\"items\": [{\"label\": \"Test item\", \"rating\": 5}]}\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

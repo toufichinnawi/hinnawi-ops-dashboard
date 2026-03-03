@@ -58,12 +58,16 @@ async function startServer() {
       const { sendTeamsNotification } = await import(
         "../teamsNotify"
       );
+      // Embed submitterName into data JSON so it's available for drill-down views
+      const enrichedData = typeof data === "object" && data !== null
+        ? { ...data, submitterName }
+        : { raw: data, submitterName };
       const result = await createReportSubmission({
         userId: null as any,
         reportType,
         location,
         reportDate,
-        data,
+        data: enrichedData,
         totalScore: totalScore || null,
         status: "submitted",
       });

@@ -1,16 +1,18 @@
 // Operations Scorecard — Per-store scores from completed checklists
 // Day Score, Weekly Score, date range filter, alerts for missed audits
 import { useState, useMemo } from "react";
-import { format, startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isEqual, isSameDay } from "date-fns";
-import { CalendarIcon, ChevronDown, Check, AlertTriangle, ShieldAlert, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { format, startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from "date-fns";
+import { CalendarIcon, ChevronDown, Check, AlertTriangle, ShieldAlert, Minus, X, CheckCircle2, Clock, CircleAlert } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { stores } from "@/lib/data";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ALL_CHECKLISTS, type ChecklistType } from "@/lib/positionChecklists";
 import type { DateRange } from "react-day-picker";
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -30,6 +32,31 @@ const WEEKLY_AUDIT_TYPE = "ops-manager-checklist";
 
 // Store codes used in submissions
 const STORE_CODES = ["PK", "MK", "ON", "TN"] as const;
+
+// ─── Checklist role mapping ─────────────────────────────────────
+// Which checklists belong to Store Manager vs Ops Manager
+
+const STORE_MANAGER_CHECKLISTS: ChecklistType[] = [
+  "manager-checklist",
+  "weekly-scorecard",
+  "store-manager-checklist",
+  "weekly-deep-cleaning",
+  "waste-report",
+  "equipment-maintenance",
+  "training-evaluation",
+  "bagel-orders",
+];
+
+const OPS_MANAGER_CHECKLISTS: ChecklistType[] = [
+  "ops-manager-checklist",
+  "performance-evaluation",
+];
+
+// All expected checklists for a store
+const ALL_EXPECTED_CHECKLISTS: ChecklistType[] = [
+  ...STORE_MANAGER_CHECKLISTS,
+  ...OPS_MANAGER_CHECKLISTS,
+];
 
 function getStoreInfo(code: string) {
   const s = stores.find((s) => s.shortName === code || s.id === code.toLowerCase());
@@ -51,18 +78,21 @@ function getScoreColor(score: number, max: number = 5): string {
   return "text-red-600";
 }
 
-function getScoreBg(score: number, max: number = 5): string {
-  const pct = score / max;
-  if (pct >= 0.8) return "bg-emerald-50 border-emerald-200";
-  if (pct >= 0.6) return "bg-amber-50 border-amber-200";
-  return "bg-red-50 border-red-200";
-}
-
 function getScoreRingColor(score: number, max: number = 5): string {
   const pct = score / max;
   if (pct >= 0.8) return "#10B981";
   if (pct >= 0.6) return "#F59E0B";
   return "#EF4444";
+}
+
+function getChecklistLabel(reportType: string): string {
+  const info = ALL_CHECKLISTS[reportType as ChecklistType];
+  return info?.label || reportType;
+}
+
+function getChecklistIcon(reportType: string): string {
+  const info = ALL_CHECKLISTS[reportType as ChecklistType];
+  return info?.icon || "📋";
 }
 
 // ─── Score Ring SVG ──────────────────────────────────────────────
@@ -222,10 +252,201 @@ function ScorecardDateFilter({ value, onChange }: { value: FilterValue; onChange
   );
 }
 
+// ─── Drill-Down Dialog ──────────────────────────────────────────
+
+interface DrillDownProps {
+  open: boolean;
+  onClose: () => void;
+  storeCode: string;
+  storeName: string;
+  storeColor: string;
+  avgScore: number | null;
+  reports: Array<{
+    id: number;
+    reportType: string;
+    location: string;
+    reportDate: string;
+    totalScore: string | null;
+    status: string;
+    data: unknown;
+    createdAt: Date;
+  }>;
+  filterLabel: string;
+}
+
+function DrillDownDialog({ open, onClose, storeCode, storeName, storeColor, avgScore, reports, filterLabel }: DrillDownProps) {
+  // Separate reports by role
+  const storeManagerReports = reports.filter((r) =>
+    STORE_MANAGER_CHECKLISTS.includes(r.reportType as ChecklistType)
+  );
+  const opsManagerReports = reports.filter((r) =>
+    OPS_MANAGER_CHECKLISTS.includes(r.reportType as ChecklistType)
+  );
+
+  // Find unfinished checklists
+  const completedTypes = new Set(reports.map((r) => r.reportType));
+  const unfinishedChecklists = ALL_EXPECTED_CHECKLISTS.filter(
+    (type) => !completedTypes.has(type)
+  );
+
+  // Extract submitter name from report data
+  function getSubmitter(report: { data: unknown }): string {
+    const d = report.data as Record<string, unknown> | null;
+    if (!d) return "Unknown";
+    return (d.submittedBy as string) || (d.managerName as string) || (d.submitterName as string) || "Unknown";
+  }
+
+  function ReportRow({ report }: { report: typeof reports[number] }) {
+    const score = parseScore(report.totalScore);
+    return (
+      <div className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors">
+        <span className="text-lg shrink-0">{getChecklistIcon(report.reportType)}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{getChecklistLabel(report.reportType)}</p>
+          <p className="text-xs text-muted-foreground">
+            {format(new Date(report.createdAt), "MMM d, h:mm a")} · {getSubmitter(report)}
+          </p>
+        </div>
+        {score !== null ? (
+          <div className={cn("flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold",
+            score >= 4 ? "bg-emerald-100 text-emerald-700" :
+            score >= 3 ? "bg-amber-100 text-amber-700" :
+            "bg-red-100 text-red-700"
+          )}>
+            <CheckCircle2 className="w-3 h-3" />
+            {score.toFixed(1)}/5
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+            <CheckCircle2 className="w-3 h-3" />
+            Done
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-card border-b border-border/40 px-6 pt-6 pb-4">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: storeColor }}>
+                {storeCode}
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-serif">{storeName}</DialogTitle>
+                <DialogDescription className="text-xs">
+                  Checklist breakdown · {filterLabel}
+                </DialogDescription>
+              </div>
+              {avgScore !== null && (
+                <div className="ml-auto">
+                  <ScoreRing score={avgScore} size={56} />
+                </div>
+              )}
+            </div>
+          </DialogHeader>
+        </div>
+
+        <div className="px-6 pb-6 space-y-5">
+          {/* ─── Store Manager Section ─────────────────────────── */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-full bg-[#D4A853]/15 flex items-center justify-center">
+                <span className="text-xs">📋</span>
+              </div>
+              <h4 className="text-sm font-semibold text-foreground">Store Manager</h4>
+              <span className="text-xs text-muted-foreground ml-auto">
+                {storeManagerReports.length} completed
+              </span>
+            </div>
+            {storeManagerReports.length > 0 ? (
+              <div className="space-y-0.5 rounded-xl border border-border/40 bg-card overflow-hidden p-1">
+                {storeManagerReports.map((r) => (
+                  <ReportRow key={r.id} report={r} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-4 text-center">
+                <Clock className="w-5 h-5 text-muted-foreground/50 mx-auto mb-1" />
+                <p className="text-xs text-muted-foreground">No store manager checklists submitted</p>
+              </div>
+            )}
+          </div>
+
+          {/* ─── Ops Manager Section ──────────────────────────── */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-full bg-blue-500/15 flex items-center justify-center">
+                <span className="text-xs">🔍</span>
+              </div>
+              <h4 className="text-sm font-semibold text-foreground">Operations Manager</h4>
+              <span className="text-xs text-muted-foreground ml-auto">
+                {opsManagerReports.length} completed
+              </span>
+            </div>
+            {opsManagerReports.length > 0 ? (
+              <div className="space-y-0.5 rounded-xl border border-border/40 bg-card overflow-hidden p-1">
+                {opsManagerReports.map((r) => (
+                  <ReportRow key={r.id} report={r} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-4 text-center">
+                <Clock className="w-5 h-5 text-muted-foreground/50 mx-auto mb-1" />
+                <p className="text-xs text-muted-foreground">No ops manager checklists submitted</p>
+              </div>
+            )}
+          </div>
+
+          {/* ─── Unfinished / Missing Checklists ─────────────── */}
+          {unfinishedChecklists.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded-full bg-red-500/15 flex items-center justify-center">
+                  <CircleAlert className="w-3.5 h-3.5 text-red-500" />
+                </div>
+                <h4 className="text-sm font-semibold text-red-600">Unfinished Checklists</h4>
+                <span className="text-xs font-bold text-red-500 ml-auto">
+                  {unfinishedChecklists.length} missing
+                </span>
+              </div>
+              <div className="space-y-1 rounded-xl border border-red-200 bg-red-50/50 overflow-hidden p-2">
+                {unfinishedChecklists.map((type) => {
+                  const isOps = OPS_MANAGER_CHECKLISTS.includes(type);
+                  return (
+                    <div key={type} className="flex items-center gap-3 py-2 px-3 rounded-lg">
+                      <span className="text-lg shrink-0">{getChecklistIcon(type)}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-red-700">{getChecklistLabel(type)}</p>
+                        <p className="text-xs text-red-500/70">
+                          {isOps ? "Ops Manager" : "Store Manager"} · Not submitted
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-100 text-red-600 text-xs font-bold">
+                        <CircleAlert className="w-3 h-3" />
+                        Missing
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────
 
 export default function OperationsScorecard() {
   const [filter, setFilter] = useState<FilterValue>(PRESETS[2].getValue()); // This Week
+  const [drillDownStore, setDrillDownStore] = useState<string | null>(null);
 
   const fromStr = format(filter.from, "yyyy-MM-dd");
   const toStr = format(filter.to, "yyyy-MM-dd");
@@ -266,6 +487,7 @@ export default function OperationsScorecard() {
         weeklyAudits,
         totalSubmissions,
         hasWeeklyAudit,
+        storeReports,
       };
     });
   }, [reports]);
@@ -343,6 +565,15 @@ export default function OperationsScorecard() {
     });
   }, [reports, filter]);
 
+  // ─── Drill-down data ───────────────────────────────────────────
+
+  const drillDownData = useMemo(() => {
+    if (!drillDownStore || !reports) return null;
+    const s = storeScores.find((ss) => ss.code === drillDownStore);
+    if (!s) return null;
+    return s;
+  }, [drillDownStore, storeScores, reports]);
+
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 space-y-6 max-w-[1400px]">
@@ -388,18 +619,19 @@ export default function OperationsScorecard() {
               </div>
             ) : (
               <>
-                {/* Store Score Cards */}
+                {/* Store Score Cards — now clickable */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {storeScores.map((s) => (
                     <div
                       key={s.code}
+                      onClick={() => setDrillDownStore(s.code)}
                       className={cn(
-                        "relative overflow-hidden rounded-xl border bg-card p-5 transition-shadow duration-300 hover:shadow-lg",
+                        "relative overflow-hidden rounded-xl border bg-card p-5 transition-all duration-300 hover:shadow-lg cursor-pointer group",
                         s.avgScore !== null && s.avgScore < 3 ? "border-red-300 hover:shadow-red-500/10" : "border-border/60 hover:shadow-[#D4A853]/5"
                       )}
                     >
                       {/* Top accent */}
-                      <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ backgroundColor: s.storeInfo.color }} />
+                      <div className="absolute top-0 left-0 right-0 h-[3px] transition-all group-hover:h-[4px]" style={{ backgroundColor: s.storeInfo.color }} />
 
                       <div className="flex items-center justify-between mb-3">
                         <div>
@@ -433,6 +665,9 @@ export default function OperationsScorecard() {
                           ) : (
                             "No scored checklists"
                           )}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-1 group-hover:text-[#D4A853] transition-colors">
+                          Click to view details
                         </p>
                       </div>
 
@@ -575,6 +810,20 @@ export default function OperationsScorecard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* ─── Drill-Down Dialog ──────────────────────────────────── */}
+      {drillDownData && (
+        <DrillDownDialog
+          open={!!drillDownStore}
+          onClose={() => setDrillDownStore(null)}
+          storeCode={drillDownData.code}
+          storeName={drillDownData.storeInfo.name}
+          storeColor={drillDownData.storeInfo.color}
+          avgScore={drillDownData.avgScore}
+          reports={drillDownData.storeReports}
+          filterLabel={filter.label !== "Custom" ? filter.label : `${format(filter.from, "MMM d")} – ${format(filter.to, "MMM d")}`}
+        />
+      )}
     </DashboardLayout>
   );
 }

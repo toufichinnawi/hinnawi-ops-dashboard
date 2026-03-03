@@ -578,6 +578,7 @@ export async function getReportsByDateRange(fromDate: string, toDate: string) {
       reportDate: reportSubmissions.reportDate,
       totalScore: reportSubmissions.totalScore,
       status: reportSubmissions.status,
+      data: reportSubmissions.data,
       createdAt: reportSubmissions.createdAt,
     })
     .from(reportSubmissions)
