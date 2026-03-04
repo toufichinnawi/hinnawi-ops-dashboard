@@ -590,3 +590,37 @@
 ## Verified
 - [x] All 64 tests passing
 - [x] Tested Store Manager flow end-to-end: position → store → PIN → sidebar with checklists
+
+---
+
+# Portal Refinements: Position-Specific Views + Mobile-First
+
+## Operations Manager Fixes
+- [x] Skip store selection — Ops Manager sees all 4 stores
+- [x] Show all-stores Store Performance (not filtered to one store)
+- [x] Show the same Operations Scorecard as the admin dashboard
+- [x] When filling checklists, Ops Manager must still pick a store for that submission
+
+## Store Manager Fixes
+- [x] Add labour %, labour cost, and labour amount to Store Performance (filtered to their store)
+- [x] Weekly Scorecard in portal should match the admin dashboard Weekly Scorecard (filtered to their store)
+
+## Assistant Manager Fixes
+- [x] Add Store Performance page (filtered to their store)
+- [x] Add completed checklists view (see past submissions for their store)
+
+## Mobile-First / App-Like Design
+- [x] Make portal fully responsive for mobile/iPad (bottom nav, touch-friendly, app-like)
+- [x] Sidebar collapses to bottom tab bar on mobile
+- [x] Touch-friendly buttons and spacing
+- [x] Full-screen feel (no browser chrome distractions)
+
+## Uniformity
+- [x] Checklists look the same across all positions
+- [x] Limitations based on position only (what they can see/access)
+
+## Verified
+- [x] All 64 tests passing
+- [x] Ops Manager: skips store, sees all 4 stores, picks store per checklist
+- [x] Store Manager: tested PIN + store lock + sidebar
+- [x] Portal fully isolated from admin dashboard
