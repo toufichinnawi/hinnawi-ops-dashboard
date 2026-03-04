@@ -1044,7 +1044,7 @@ export const appRouter = router({
       return getReportsByUser(ctx.user.id);
     }),
 
-    allReports: adminProcedure.query(async () => {
+    allReports: protectedProcedure.query(async () => {
       return getAllReports();
     }),
   }),

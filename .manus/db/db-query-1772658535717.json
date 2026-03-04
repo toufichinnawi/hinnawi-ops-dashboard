@@ -1,0 +1,18 @@
+{
+  "query": "SELECT 'report_submissions' as tbl, COUNT(*) as cnt FROM report_submissions UNION ALL SELECT 'position_pins', COUNT(*) FROM position_pins;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT 'report_submissions' as tbl, COUNT(*) as cnt FROM report_submissions UNION ALL SELECT 'position_pins', COUNT(*) FROM position_pins;",
+  "rows": [
+    {
+      "tbl": "position_pins",
+      "cnt": "4"
+    },
+    {
+      "tbl": "report_submissions",
+      "cnt": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "tbl\tcnt\nposition_pins\t4\nreport_submissions\t0\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

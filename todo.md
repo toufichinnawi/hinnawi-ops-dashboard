@@ -688,3 +688,7 @@
 - [x] Added "No data for Today" banner on Store Performance when Clover has no data
 - [x] Hidden radar/hourly charts when no data for selected period
 - [x] All 72 tests passing
+
+# Bug: Reports tab not showing portal submissions
+
+- [x] Fix Reports tab in admin dashboard not showing submitted checklist reports from portal (changed allReports from adminProcedure to protectedProcedure)
