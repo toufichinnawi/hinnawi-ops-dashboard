@@ -678,3 +678,13 @@
 - [x] Added 8 vitest tests for public API endpoints (publicApi.test.ts)
 - [x] Fixed 7shifts test to handle token expiration gracefully
 - [x] All 72 tests passing (9 test files)
+
+# Store Performance & Date Filter Fixes
+
+- [x] Fix Store Performance showing fake/demo data for today instead of real Clover/7Shifts data
+- [x] Add "Today" option to all date filters in admin dashboard (already present in all DateFilter components)
+- [x] Add "Today" option to all date filters in portal (inherited from shared components)
+- [x] Fixed Home.tsx, Stores.tsx, Labour.tsx to NOT fall back to demo data when no data for selected period
+- [x] Added "No data for Today" banner on Store Performance when Clover has no data
+- [x] Hidden radar/hourly charts when no data for selected period
+- [x] All 72 tests passing

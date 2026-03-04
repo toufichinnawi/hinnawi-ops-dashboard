@@ -1,0 +1,94 @@
+{
+  "query": "\nSELECT 'users' as tbl, COUNT(*) as cnt FROM users\nUNION ALL SELECT 'teams_webhooks', COUNT(*) FROM teams_webhooks\nUNION ALL SELECT 'alert_rules', COUNT(*) FROM alert_rules\nUNION ALL SELECT 'alert_history', COUNT(*) FROM alert_history\nUNION ALL SELECT 'scheduled_summary', COUNT(*) FROM scheduled_summary\nUNION ALL SELECT 'clover_connections', COUNT(*) FROM clover_connections\nUNION ALL SELECT 'clover_daily_sales', COUNT(*) FROM clover_daily_sales\nUNION ALL SELECT 'clover_shifts', COUNT(*) FROM clover_shifts\nUNION ALL SELECT 'seven_shifts_connections', COUNT(*) FROM seven_shifts_connections\nUNION ALL SELECT 'seven_shifts_daily_sales', COUNT(*) FROM seven_shifts_daily_sales\nUNION ALL SELECT 'excel_labour_data', COUNT(*) FROM excel_labour_data\nUNION ALL SELECT 'excel_sync_meta', COUNT(*) FROM excel_sync_meta\nUNION ALL SELECT 'report_submissions', COUNT(*) FROM report_submissions\nUNION ALL SELECT 'store_pins', COUNT(*) FROM store_pins\nUNION ALL SELECT 'position_pins', COUNT(*) FROM position_pins\nUNION ALL SELECT 'expense_categories', COUNT(*) FROM expense_categories\nUNION ALL SELECT 'vendors', COUNT(*) FROM vendors\nUNION ALL SELECT 'expenses', COUNT(*) FROM expenses\nUNION ALL SELECT 'cogs_targets', COUNT(*) FROM cogs_targets\nUNION ALL SELECT 'inventory_items', COUNT(*) FROM inventory_items\nUNION ALL SELECT 'inventory_counts', COUNT(*) FROM inventory_counts;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute \nSELECT 'users' as tbl, COUNT(*) as cnt FROM users\nUNION ALL SELECT 'teams_webhooks', COUNT(*) FROM teams_webhooks\nUNION ALL SELECT 'alert_rules', COUNT(*) FROM alert_rules\nUNION ALL SELECT 'alert_history', COUNT(*) FROM alert_history\nUNION ALL SELECT 'scheduled_summary', COUNT(*) FROM scheduled_summary\nUNION ALL SELECT 'clover_connections', COUNT(*) FROM clover_connections\nUNION ALL SELECT 'clover_daily_sales', COUNT(*) FROM clover_daily_sales\nUNION ALL SELECT 'clover_shifts', COUNT(*) FROM clover_shifts\nUNION ALL SELECT 'seven_shifts_connections', COUNT(*) FROM seven_shifts_connections\nUNION ALL SELECT 'seven_shifts_daily_sales', COUNT(*) FROM seven_shifts_daily_sales\nUNION ALL SELECT 'excel_labour_data', COUNT(*) FROM excel_labour_data\nUNION ALL SELECT 'excel_sync_meta', COUNT(*) FROM excel_sync_meta\nUNION ALL SELECT 'report_submissions', COUNT(*) FROM report_submissions\nUNION ALL SELECT 'store_pins', COUNT(*) FROM store_pins\nUNION ALL SELECT 'position_pins', COUNT(*) FROM position_pins\nUNION ALL SELECT 'expense_categories', COUNT(*) FROM expense_categories\nUNION ALL SELECT 'vendors', COUNT(*) FROM vendors\nUNION ALL SELECT 'expenses', COUNT(*) FROM expenses\nUNION ALL SELECT 'cogs_targets', COUNT(*) FROM cogs_targets\nUNION ALL SELECT 'inventory_items', COUNT(*) FROM inventory_items\nUNION ALL SELECT 'inventory_counts', COUNT(*) FROM inventory_counts;\n",
+  "rows": [
+    {
+      "tbl": "alert_rules",
+      "cnt": "1"
+    },
+    {
+      "tbl": "teams_webhooks",
+      "cnt": "1"
+    },
+    {
+      "tbl": "users",
+      "cnt": "4"
+    },
+    {
+      "tbl": "alert_history",
+      "cnt": "1"
+    },
+    {
+      "tbl": "scheduled_summary",
+      "cnt": "0"
+    },
+    {
+      "tbl": "clover_connections",
+      "cnt": "3"
+    },
+    {
+      "tbl": "seven_shifts_connections",
+      "cnt": "1"
+    },
+    {
+      "tbl": "clover_shifts",
+      "cnt": "0"
+    },
+    {
+      "tbl": "seven_shifts_daily_sales",
+      "cnt": "62"
+    },
+    {
+      "tbl": "clover_daily_sales",
+      "cnt": "162"
+    },
+    {
+      "tbl": "excel_labour_data",
+      "cnt": "25"
+    },
+    {
+      "tbl": "excel_sync_meta",
+      "cnt": "3"
+    },
+    {
+      "tbl": "report_submissions",
+      "cnt": "34"
+    },
+    {
+      "tbl": "store_pins",
+      "cnt": "4"
+    },
+    {
+      "tbl": "position_pins",
+      "cnt": "4"
+    },
+    {
+      "tbl": "vendors",
+      "cnt": "32"
+    },
+    {
+      "tbl": "expense_categories",
+      "cnt": "44"
+    },
+    {
+      "tbl": "expenses",
+      "cnt": "20"
+    },
+    {
+      "tbl": "cogs_targets",
+      "cnt": "1"
+    },
+    {
+      "tbl": "inventory_counts",
+      "cnt": "22"
+    },
+    {
+      "tbl": "inventory_items",
+      "cnt": "46"
+    }
+  ],
+  "messages": [],
+  "stdout": "tbl\tcnt\nalert_rules\t1\nteams_webhooks\t1\nusers\t4\nalert_history\t1\nscheduled_summary\t0\nclover_connections\t3\nseven_shifts_connections\t1\nclover_shifts\t0\nseven_shifts_daily_sales\t62\nclover_daily_sales\t162\nexcel_labour_data\t25\nexcel_sync_meta\t3\nreport_submissions\t34\nstore_pins\t4\nposition_pins\t4\nvendors\t32\nexpense_categories\t44\nexpenses\t20\ncogs_targets\t1\ninventory_counts\t22\ninventory_items\t46\n",
+  "stderr": "",
+  "execution_time_ms": 311
+}

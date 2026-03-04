@@ -49,11 +49,16 @@ export default function Labour() {
     isLoading: filterLoading,
     hasData: hasFilteredData,
     hasExcelData,
+    noDataForPeriod,
   } = useFilteredCloverData(dateFilter);
 
-  // Fallback to DataContext labour data
+  // Fallback to DataContext labour data — but NEVER fall back to demo data when no data for period
   const { labourData: contextLabour, labourTrend } = useData();
-  const labourData = hasCloverData ? (filteredLabour ?? contextLabour) : contextLabour;
+  const labourData = hasCloverData
+    ? (noDataForPeriod
+      ? stores.map(s => ({ store: s.id, revenue: 0, labourCost: 0, labourPercent: 0, target: s.labourTarget, employees: 0, hoursWorked: 0 }))
+      : (filteredLabour ?? contextLabour))
+    : contextLabour;
 
   // Excel sync meta
   const { data: syncMeta } = trpc.excelLabour.syncMeta.useQuery();

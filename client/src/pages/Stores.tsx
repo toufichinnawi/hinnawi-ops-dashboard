@@ -6,7 +6,7 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts";
-import { MapPin, CheckCircle2, Database, Loader2 } from "lucide-react";
+import { MapPin, CheckCircle2, Database, Loader2, CalendarX } from "lucide-react";
 import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { DateFilter, getDefaultDateFilter, type DateFilterValue } from "@/components/DateFilter";
@@ -56,8 +56,14 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
   // When Clover is connected, always use filtered data (even empty for no-data periods)
   const { labourData: contextLabour, weeklySales: contextSales } = useData();
 
-  const labourData = hasCloverData ? (filteredLabour ?? contextLabour) : contextLabour;
-  const weeklySales = hasCloverData ? (filteredSales ?? contextSales) : contextSales;
+  // When Clover is connected and we have filtered data, use it.
+  // When noDataForPeriod is true, show empty state — NEVER fall back to demo/context data.
+  const labourData = hasCloverData
+    ? (noDataForPeriod ? stores.map(s => ({ store: s.id, revenue: 0, labourCost: 0, labourPercent: 0, target: s.labourTarget, employees: 0, hoursWorked: 0 })) : (filteredLabour ?? contextLabour))
+    : contextLabour;
+  const weeklySales = hasCloverData
+    ? (noDataForPeriod ? [] : (filteredSales ?? contextSales))
+    : contextSales;
 
   // Filter stores if storeFilter is provided
   const filteredStores = storeFilter ? stores.filter(s => s.id === storeFilter) : stores;
@@ -135,6 +141,21 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
               </p>
             </motion.div>
           </Link>
+        )}
+
+        {/* No data for period banner */}
+        {hasCloverData && noDataForPeriod && !filterLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200"
+          >
+            <CalendarX className="w-4 h-4 text-amber-600" />
+            <p className="text-sm text-foreground">
+              <span className="font-medium">No data for {dateFilter.label}.</span>{" "}
+              <span className="text-muted-foreground">Clover POS data may not have synced yet for this date. Try selecting yesterday or a wider range.</span>
+            </p>
+          </motion.div>
         )}
 
         {/* Store Cards */}
@@ -222,8 +243,8 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
           })}
         </motion.div>
 
-        {/* Charts - only show when viewing all stores */}
-        {!storeFilter && (
+        {/* Charts - only show when viewing all stores AND when there's real data */}
+        {!storeFilter && !(hasCloverData && noDataForPeriod) && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Radar Comparison */}
             <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">

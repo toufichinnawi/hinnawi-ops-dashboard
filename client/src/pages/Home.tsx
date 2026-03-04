@@ -92,9 +92,10 @@ export default function Home() {
   // Only fall back to DataContext when Clover is NOT connected
   const { kpis: contextKpis, weeklySales: contextSales, weeklyTraffic: contextTraffic } = useData();
 
+  // When Clover is connected and noDataForPeriod, use the zeroed KPIs from the hook (not demo fallback)
   const kpis = hasCloverData ? (filteredKpis ?? contextKpis) : contextKpis;
-  const weeklySales = hasCloverData ? (filteredSales ?? contextSales) : contextSales;
-  const weeklyTraffic = hasCloverData ? (filteredTraffic ?? contextTraffic) : contextTraffic;
+  const weeklySales = hasCloverData ? (noDataForPeriod ? [] : (filteredSales ?? contextSales)) : contextSales;
+  const weeklyTraffic = hasCloverData ? (noDataForPeriod ? [] : (filteredTraffic ?? contextTraffic)) : contextTraffic;
 
   const todayReports = reportSubmissions.filter((r) => r.type === "Daily Report");
   const status = {
