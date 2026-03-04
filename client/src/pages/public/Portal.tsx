@@ -864,9 +864,9 @@ function PortalInfoPage({
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/trpc/reports.all");
+        const res = await fetch("/api/public/reports");
         const data = await res.json();
-        setReports(data?.result?.data?.json || []);
+        setReports(data?.data || []);
       } catch {
         // silent fail
       } finally {

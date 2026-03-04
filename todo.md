@@ -664,3 +664,17 @@
 - [x] Write operations (sync, upload, connect, admin) remain protected
 - [x] Portal loads without login — tested in preview
 - [x] All 64 tests passing
+
+
+---
+
+# Public API Endpoints for Portal
+
+- [x] Created GET /api/public/reports endpoint for portal to fetch all reports without auth
+- [x] Updated Portal.tsx to use /api/public/reports instead of tRPC reports.all
+- [x] Verified POST /api/public/submit-report already works for checklist submissions
+- [x] Verified scorecard.getData, clover.salesData, sevenShifts.salesData, excelLabour.data are publicProcedure
+- [x] Verified positionPins.positions and positionPins.verify are publicProcedure
+- [x] Added 8 vitest tests for public API endpoints (publicApi.test.ts)
+- [x] Fixed 7shifts test to handle token expiration gracefully
+- [x] All 72 tests passing (9 test files)

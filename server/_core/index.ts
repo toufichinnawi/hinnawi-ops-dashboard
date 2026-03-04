@@ -138,6 +138,18 @@ async function startServer() {
     }
   });
 
+  // Public API endpoint for reading all reports (used by portal)
+  app.get("/api/public/reports", async (_req, res) => {
+    try {
+      const { getAllReports } = await import("../db");
+      const reports = await getAllReports();
+      res.json({ success: true, data: reports });
+    } catch (err) {
+      console.error("[Public API] Reports error:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",
