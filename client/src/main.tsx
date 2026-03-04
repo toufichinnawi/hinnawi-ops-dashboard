@@ -18,6 +18,10 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
+  // Don't redirect to login on public pages (portal, public checklists)
+  const path = window.location.pathname;
+  if (path.startsWith("/portal") || path.startsWith("/public")) return;
+
   window.location.href = getLoginUrl();
 };
 

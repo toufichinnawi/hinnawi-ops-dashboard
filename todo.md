@@ -651,3 +651,16 @@
 - [x] Audit data syncs between portal and dashboard (shared ScorecardContent with green Audited badges)
 - [x] Data flows both ways: portal submissions → dashboard views, dashboard data → portal views
 - [x] All 64 tests passing
+
+---
+
+# Bug Fix: Portal Link Requires Manus Login
+
+- [x] Investigated: server-side has no auth middleware blocking /portal
+- [x] Root cause: global tRPC error handler in main.tsx redirects ALL unauthorized errors to Manus login
+- [x] Root cause: scorecard.getData, clover.salesData, sevenShifts.salesData, excelLabour.data were all protectedProcedure
+- [x] Fix 1: Added path check in main.tsx — skip login redirect on /portal and /public paths
+- [x] Fix 2: Changed 4 data-read endpoints to publicProcedure (scorecard, clover sales, 7shifts sales, excel labour)
+- [x] Write operations (sync, upload, connect, admin) remain protected
+- [x] Portal loads without login — tested in preview
+- [x] All 64 tests passing

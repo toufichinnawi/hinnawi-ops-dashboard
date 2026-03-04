@@ -568,7 +568,7 @@ export const appRouter = router({
       }),
 
     // Get aggregated sales data for the dashboard
-    salesData: protectedProcedure
+    salesData: publicProcedure
       .input(z.object({
         connectionId: z.number().optional(),
         limit: z.number().optional(),
@@ -791,7 +791,7 @@ export const appRouter = router({
       }),
 
     // Get sales data (for dashboard)
-    salesData: protectedProcedure
+    salesData: publicProcedure
       .input(z.object({
         connectionId: z.number().optional(),
         fromDate: z.string().optional(),
@@ -870,7 +870,7 @@ export const appRouter = router({
       }),
 
     // Get all labour data
-    data: protectedProcedure
+    data: publicProcedure
       .input(z.object({
         fromDate: z.string().optional(),
         toDate: z.string().optional(),
@@ -1387,7 +1387,7 @@ export const appRouter = router({
 
   // ─── Scorecard ───
   scorecard: router({
-    getData: protectedProcedure
+    getData: publicProcedure
       .input(
         z.object({
           fromDate: z.string(),
