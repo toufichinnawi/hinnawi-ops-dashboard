@@ -31,6 +31,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { type ChecklistType, ALL_CHECKLISTS } from "@/lib/positionChecklists";
 import { ChecklistForm } from "./PositionChecklists";
+import { ScorecardContent } from "@/pages/OperationsScorecard";
+import { StorePerformanceContent } from "@/pages/Stores";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -904,19 +906,20 @@ function PortalInfoPage({
   }, [normalizedReports, store]);
 
   if (pageId === "scorecard") {
-    return <PortalScorecard reports={normalizedReports} loading={loading} />;
+    return (
+      <div className="max-w-[1400px]">
+        <ScorecardContent />
+      </div>
+    );
   }
 
   if (pageId === "store-performance") {
+    // Ops Manager sees all stores; Store/Asst Manager sees only their store
+    const storeId = store?.storeCode || undefined;
     return (
-      <PortalStorePerformance
-        reports={filteredReports}
-        allReports={normalizedReports}
-        loading={loading}
-        store={store}
-        isOpsManager={isOpsManager}
-        isStoreManager={isStoreManager}
-      />
+      <div className="max-w-[1400px]">
+        <StorePerformanceContent storeFilter={storeId} />
+      </div>
     );
   }
 

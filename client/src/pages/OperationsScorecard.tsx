@@ -479,9 +479,9 @@ function DrillDownDialog({ open, onClose, storeCode, storeName, storeColor, avgS
   );
 }
 
-// ─── Main Component ──────────────────────────────────────────────
+// ─── Reusable Scorecard Content (used by admin page & portal) ───
 
-export default function OperationsScorecard() {
+export function ScorecardContent() {
   const [filter, setFilter] = useState<FilterValue>(PRESETS[2].getValue()); // This Week
   const [drillDownStore, setDrillDownStore] = useState<string | null>(null);
 
@@ -688,7 +688,7 @@ export default function OperationsScorecard() {
   }, [drillDownStore, storeScores, normalizedReports]);
 
   return (
-    <DashboardLayout>
+    <>
       <div className="p-6 lg:p-8 space-y-6 max-w-[1400px]">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1031,6 +1031,16 @@ export default function OperationsScorecard() {
           filterLabel={filter.label !== "Custom" ? filter.label : `${format(filter.from, "MMM d")} – ${format(filter.to, "MMM d")}`}
         />
       )}
+    </>
+  );
+}
+
+// ─── Admin Page Wrapper ─────────────────────────────────────────
+
+export default function OperationsScorecard() {
+  return (
+    <DashboardLayout>
+      <ScorecardContent />
     </DashboardLayout>
   );
 }

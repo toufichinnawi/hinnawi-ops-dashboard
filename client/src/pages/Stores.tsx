@@ -33,7 +33,14 @@ const radarData = [
   { metric: "Cleanliness", pk: 88, mk: 92, ontario: 78, tunnel: 85 },
 ];
 
-export default function Stores() {
+// ─── Reusable Store Performance Content (used by admin page & portal) ───
+
+interface StorePerformanceContentProps {
+  /** If provided, only show this store (e.g. "pk") */
+  storeFilter?: string;
+}
+
+export function StorePerformanceContent({ storeFilter }: StorePerformanceContentProps = {}) {
   const { hasLiveData, hasCloverData, hourlySales } = useData();
   const [dateFilter, setDateFilter] = useState<DateFilterValue>(getDefaultDateFilter);
 
@@ -51,6 +58,9 @@ export default function Stores() {
 
   const labourData = hasCloverData ? (filteredLabour ?? contextLabour) : contextLabour;
   const weeklySales = hasCloverData ? (filteredSales ?? contextSales) : contextSales;
+
+  // Filter stores if storeFilter is provided
+  const filteredStores = storeFilter ? stores.filter(s => s.id === storeFilter) : stores;
 
   function getLabour(storeId: string) {
     return labourData.find((d) => d.store === storeId) ?? { revenue: 0, labourCost: 0, labourPercent: 0, target: 30, employees: 0, hoursWorked: 0 };
@@ -76,7 +86,6 @@ export default function Stores() {
   })() : radarData;
 
   return (
-    <DashboardLayout>
       <div className="p-6 lg:p-8 space-y-8 max-w-[1400px]">
         {/* Header with Date Filter */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start justify-between gap-4 flex-wrap">
@@ -129,8 +138,8 @@ export default function Stores() {
         )}
 
         {/* Store Cards */}
-        <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {stores.map((store) => {
+        <motion.div variants={stagger} initial="hidden" animate="show" className={cn("grid gap-5", filteredStores.length === 1 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2")}>
+          {filteredStores.map((store) => {
             const labour = getLabour(store.id);
             const target = getLabourTarget(store.id);
             const isOver = labour.labourPercent > target;
@@ -213,51 +222,63 @@ export default function Stores() {
           })}
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Radar Comparison */}
-          <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
-            <h3 className="font-serif text-lg text-foreground mb-1">Store Comparison</h3>
-            <p className="text-xs text-muted-foreground mb-4">Multi-dimensional performance radar</p>
-            <ResponsiveContainer width="100%" height={320}>
-              <RadarChart data={dynamicRadarData}>
-                <PolarGrid stroke="#E7E5E4" />
-                <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11, fill: "#78716C" }} />
-                <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-                <Radar name="PK" dataKey="pk" stroke="#D4A853" fill="#D4A853" fillOpacity={0.15} strokeWidth={2} />
-                <Radar name="MK" dataKey="mk" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.1} strokeWidth={2} />
-                <Radar name="Ontario" dataKey="ontario" stroke="#10B981" fill="#10B981" fillOpacity={0.1} strokeWidth={2} />
-                <Radar name="Tunnel" dataKey="tunnel" stroke="#F97316" fill="#F97316" fillOpacity={0.1} strokeWidth={2} />
-              </RadarChart>
-            </ResponsiveContainer>
-            <div className="flex items-center justify-center gap-4 mt-2">
-              {stores.map((s) => (
-                <div key={s.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: s.color }} />
-                  {s.shortName}
-                </div>
-              ))}
-            </div>
-          </motion.div>
+        {/* Charts - only show when viewing all stores */}
+        {!storeFilter && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Radar Comparison */}
+            <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
+              <h3 className="font-serif text-lg text-foreground mb-1">Store Comparison</h3>
+              <p className="text-xs text-muted-foreground mb-4">Multi-dimensional performance radar</p>
+              <ResponsiveContainer width="100%" height={320}>
+                <RadarChart data={dynamicRadarData}>
+                  <PolarGrid stroke="#E7E5E4" />
+                  <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11, fill: "#78716C" }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
+                  <Radar name="PK" dataKey="pk" stroke="#D4A853" fill="#D4A853" fillOpacity={0.15} strokeWidth={2} />
+                  <Radar name="MK" dataKey="mk" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.1} strokeWidth={2} />
+                  <Radar name="Ontario" dataKey="ontario" stroke="#10B981" fill="#10B981" fillOpacity={0.1} strokeWidth={2} />
+                  <Radar name="Tunnel" dataKey="tunnel" stroke="#F97316" fill="#F97316" fillOpacity={0.1} strokeWidth={2} />
+                </RadarChart>
+              </ResponsiveContainer>
+              <div className="flex items-center justify-center gap-4 mt-2">
+                {stores.map((s) => (
+                  <div key={s.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: s.color }} />
+                    {s.shortName}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
 
-          {/* Hourly Sales Pattern */}
-          <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
-            <h3 className="font-serif text-lg text-foreground mb-1">Hourly Sales Pattern</h3>
-            <p className="text-xs text-muted-foreground mb-4">Average across all stores — today</p>
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={hourlySales} barSize={24}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
-                <XAxis dataKey="hour" tick={{ fontSize: 10, fill: "#78716C" }} tickLine={false} axisLine={false} />
-                <YAxis tickFormatter={(v) => `$${v}`} tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} width={50} />
-                <Tooltip
-                  formatter={(v: number) => [`$${v.toLocaleString()}`, "Sales"]}
-                  contentStyle={{ borderRadius: 8, border: "1px solid #E7E5E4", fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}
-                />
-                <Bar dataKey="sales" fill="#D4A853" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </motion.div>
-        </div>
+            {/* Hourly Sales Pattern */}
+            <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
+              <h3 className="font-serif text-lg text-foreground mb-1">Hourly Sales Pattern</h3>
+              <p className="text-xs text-muted-foreground mb-4">Average across all stores — today</p>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={hourlySales} barSize={24}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
+                  <XAxis dataKey="hour" tick={{ fontSize: 10, fill: "#78716C" }} tickLine={false} axisLine={false} />
+                  <YAxis tickFormatter={(v) => `$${v}`} tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} width={50} />
+                  <Tooltip
+                    formatter={(v: number) => [`$${v.toLocaleString()}`, "Sales"]}
+                    contentStyle={{ borderRadius: 8, border: "1px solid #E7E5E4", fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}
+                  />
+                  <Bar dataKey="sales" fill="#D4A853" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </motion.div>
+          </div>
+        )}
       </div>
+  );
+}
+
+// ─── Admin Page Wrapper ─────────────────────────────────────────
+
+export default function Stores() {
+  return (
+    <DashboardLayout>
+      <StorePerformanceContent />
     </DashboardLayout>
   );
 }

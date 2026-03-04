@@ -624,3 +624,13 @@
 - [x] Ops Manager: skips store, sees all 4 stores, picks store per checklist
 - [x] Store Manager: tested PIN + store lock + sidebar
 - [x] Portal fully isolated from admin dashboard
+
+---
+
+# Fix Portal: Match Admin Dashboard Templates
+
+- [x] Portal Operations Scorecard uses ScorecardContent from admin (exact same component)
+- [x] Portal Store Performance uses StorePerformanceContent from admin (exact same component)
+- [x] Ops Manager portal views look identical to admin dashboard equivalents
+- [x] Store Manager Store Performance filtered to their store via storeFilter prop
+- [x] All 64 tests passing
