@@ -634,3 +634,20 @@
 - [x] Ops Manager portal views look identical to admin dashboard equivalents
 - [x] Store Manager Store Performance filtered to their store via storeFilter prop
 - [x] All 64 tests passing
+
+---
+
+# Fix Portal Weekly Scorecard Template + Data Sync
+
+## Weekly Scorecard Template
+- [x] Portal Weekly Scorecard matches admin dashboard form (Store Location, Manager Name, Week Of, Weekly Numbers, Notes)
+- [x] Replaced old Daily Sales/Labour grid with admin template
+- [x] Store pre-filled and locked for Store Managers in the portal
+
+## Data Synchronization
+- [x] All checklist submissions from portal appear in admin dashboard Reports page (same submit endpoint)
+- [x] All checklist submissions from portal appear in Operations Scorecard (same tRPC queries)
+- [x] Sales/labour data from Clover/7shifts/Excel visible in portal Store Performance (shared StorePerformanceContent)
+- [x] Audit data syncs between portal and dashboard (shared ScorecardContent with green Audited badges)
+- [x] Data flows both ways: portal submissions → dashboard views, dashboard data → portal views
+- [x] All 64 tests passing

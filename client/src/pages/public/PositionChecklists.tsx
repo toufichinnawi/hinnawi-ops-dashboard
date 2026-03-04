@@ -596,25 +596,24 @@ function EquipmentMaintenanceForm({ storeCode, storeName, positionLabel, onBack 
 // ─── Weekly Scorecard Form ───
 
 function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
-  const [name, setName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [managerName, setManagerName] = useState("");
   const [weekOf, setWeekOf] = useState("");
-  const [salesData, setSalesData] = useState(SALES_ROWS.map(() => ({ goal: "", actual: "" })));
-  const [laborData, setLaborData] = useState(LABOR_ROWS.map(() => ({ goal: "", actual: "" })));
+  const [totalSales, setTotalSales] = useState("");
+  const [labourCost, setLabourCost] = useState("");
+  const [foodCost, setFoodCost] = useState("");
+  const [customerCount, setCustomerCount] = useState("");
+  const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const totalGoal = salesData.reduce((s, r) => s + (parseFloat(r.goal) || 0), 0);
-  const totalActual = salesData.reduce((s, r) => s + (parseFloat(r.actual) || 0), 0);
-
   const handleSubmit = async () => {
-    if (!name.trim()) { toast.error("Please enter your name"); return; }
+    if (!managerName.trim() || !weekOf) { toast.error("Please fill required fields"); return; }
     setSubmitting(true);
     try {
       await submitPublicReport({
-        submitterName: name.trim(), reportType: "Weekly Scorecard", location: storeName, reportDate: date,
-        data: { weekOf, sales: SALES_ROWS.map((d, i) => ({ day: d, ...salesData[i] })), labor: LABOR_ROWS.map((l, i) => ({ metric: l, ...laborData[i] })), totalGoal, totalActual, submittedVia: `Public - ${positionLabel}` },
-        totalScore: `$${totalActual.toFixed(0)}`,
+        submitterName: managerName.trim(), reportType: "weekly-scorecard", location: storeCode, reportDate: weekOf,
+        data: { weekOf, totalSales, labourCost, foodCost, customerCount, notes, submittedVia: `Public - ${positionLabel}` },
+        totalScore: totalSales ? `$${parseFloat(totalSales).toFixed(0)}` : undefined,
       });
       setSubmitted(true);
       toast.success("Scorecard submitted!");
@@ -622,57 +621,41 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} submitted. Total Actual: $${totalActual.toFixed(0)}`} onNew={() => { setSubmitted(false); setSalesData(SALES_ROWS.map(() => ({ goal: "", actual: "" }))); setLaborData(LABOR_ROWS.map(() => ({ goal: "", actual: "" }))); setWeekOf(""); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setManagerName(""); setWeekOf(""); setTotalSales(""); setLabourCost(""); setFoodCost(""); setCustomerCount(""); setNotes(""); }} onBack={onBack} />;
 
   return (
     <PublicFormLayout title="Weekly Scorecard" subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
       <Card><CardContent className="pt-6 space-y-4">
-        <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2"><Label>Date</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-          <div className="space-y-2"><Label>Week Of</Label><Input type="date" value={weekOf} onChange={(e) => setWeekOf(e.target.value)} /></div>
+        <div className="space-y-1.5">
+          <Label>Store Location</Label>
+          <Input value={storeName} disabled className="bg-muted" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Manager Name *</Label>
+          <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Week Of *</Label>
+          <Input type="date" value={weekOf} onChange={(e) => setWeekOf(e.target.value)} />
         </div>
       </CardContent></Card>
-      <Card>
-        <CardHeader><CardTitle className="text-base">Daily Sales</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-[1fr_100px_100px] gap-2 mb-2">
-            <span className="text-xs font-medium text-muted-foreground">Day</span>
-            <span className="text-xs font-medium text-muted-foreground text-center">Goal ($)</span>
-            <span className="text-xs font-medium text-muted-foreground text-center">Actual ($)</span>
-          </div>
-          {SALES_ROWS.map((day, i) => (
-            <div key={day} className="grid grid-cols-[1fr_100px_100px] gap-2 items-center py-1">
-              <span className="text-sm">{day}</span>
-              <Input type="number" placeholder="0" value={salesData[i].goal} onChange={(e) => setSalesData((p) => p.map((r, j) => j === i ? { ...r, goal: e.target.value } : r))} className="h-8 text-center text-sm" />
-              <Input type="number" placeholder="0" value={salesData[i].actual} onChange={(e) => setSalesData((p) => p.map((r, j) => j === i ? { ...r, actual: e.target.value } : r))} className="h-8 text-center text-sm" />
-            </div>
-          ))}
-          <div className="grid grid-cols-[1fr_100px_100px] gap-2 items-center py-2 border-t mt-2 font-bold">
-            <span className="text-sm">Total</span>
-            <span className="text-sm text-center">${totalGoal.toFixed(0)}</span>
-            <span className="text-sm text-center">${totalActual.toFixed(0)}</span>
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle className="text-base">Labour</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-[1fr_100px_100px] gap-2 mb-2">
-            <span className="text-xs font-medium text-muted-foreground">Metric</span>
-            <span className="text-xs font-medium text-muted-foreground text-center">Goal</span>
-            <span className="text-xs font-medium text-muted-foreground text-center">Actual</span>
-          </div>
-          {LABOR_ROWS.map((metric, i) => (
-            <div key={metric} className="grid grid-cols-[1fr_100px_100px] gap-2 items-center py-1">
-              <span className="text-sm">{metric}</span>
-              <Input type="number" placeholder="0" value={laborData[i].goal} onChange={(e) => setLaborData((p) => p.map((r, j) => j === i ? { ...r, goal: e.target.value } : r))} className="h-8 text-center text-sm" />
-              <Input type="number" placeholder="0" value={laborData[i].actual} onChange={(e) => setLaborData((p) => p.map((r, j) => j === i ? { ...r, actual: e.target.value } : r))} className="h-8 text-center text-sm" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-      <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Scorecard"}</Button>
+      <Card><CardContent className="pt-6 space-y-4">
+        <h3 className="font-serif text-lg font-semibold">Weekly Numbers</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5"><Label>Total Sales ($)</Label><Input type="number" value={totalSales} onChange={(e) => setTotalSales(e.target.value)} placeholder="0.00" /></div>
+          <div className="space-y-1.5"><Label>Labour Cost ($)</Label><Input type="number" value={labourCost} onChange={(e) => setLabourCost(e.target.value)} placeholder="0.00" /></div>
+          <div className="space-y-1.5"><Label>Food Cost ($)</Label><Input type="number" value={foodCost} onChange={(e) => setFoodCost(e.target.value)} placeholder="0.00" /></div>
+          <div className="space-y-1.5"><Label>Customer Count</Label><Input type="number" value={customerCount} onChange={(e) => setCustomerCount(e.target.value)} placeholder="0" /></div>
+        </div>
+      </CardContent></Card>
+      <Card><CardContent className="pt-6 space-y-3">
+        <Label>Notes</Label>
+        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Any additional notes..." />
+      </CardContent></Card>
+      <div className="flex gap-3">
+        <Button variant="outline" onClick={onBack}>Cancel</Button>
+        <Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Scorecard"}</Button>
+      </div>
     </PublicFormLayout>
   );
 }
