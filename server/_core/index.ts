@@ -43,8 +43,8 @@ async function startServer() {
   app.get("/api/quickbooks/connect", async (_req, res) => {
     try {
       const { getQboAuthUrl } = await import("../quickbooks");
-      const protocol = process.env.NODE_ENV === "production" ? "https" : _req.protocol;
-      const redirectUri = `${protocol}://${_req.get("host")}/api/quickbooks/callback`;
+      // Hardcode to match exactly what's registered in Intuit Developer Portal
+      const redirectUri = `https://hinnawidash-i5zcri4c.manus.space/api/quickbooks/callback`;
       const state = Math.random().toString(36).substring(2, 15);
       const authUrl = getQboAuthUrl(redirectUri, state);
       res.redirect(authUrl);
@@ -62,8 +62,8 @@ async function startServer() {
       }
       const { exchangeCodeForTokens, getCompanyInfo } = await import("../quickbooks");
       const { upsertQboToken } = await import("../db");
-      const protocol = process.env.NODE_ENV === "production" ? "https" : req.protocol;
-      const redirectUri = `${protocol}://${req.get("host")}/api/quickbooks/callback`;
+      // Must match exactly what's registered in Intuit Developer Portal
+      const redirectUri = `https://hinnawidash-i5zcri4c.manus.space/api/quickbooks/callback`;
       const tokens = await exchangeCodeForTokens(code, redirectUri);
       tokens.realmId = realmId;
 

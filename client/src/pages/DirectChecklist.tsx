@@ -373,18 +373,26 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
 // ─── Waste Item Data ───
 
 const WASTE_BAGELS = [
-  "Sesame Bagel", "Poppy Bagel", "Everything Bagel", "Plain Bagel", "Whole Wheat Bagel",
-  "Blueberry Bagel", "Cinnamon Raisin Bagel", "Jalapeño Bagel", "Multigrain Bagel", "Onion Bagel",
+  "Sesame Bagel", "Everything Bagel", "Plain Bagel", "Poppy Seeds Bagel", "Multigrain Bagel",
+  "Cheese Bagel", "Rosemary Bagel", "Cinnamon Sugar Bagel", "Cinnamon Raisin Bagel",
+  "Blueberry Bagel", "Coconut Bagel",
 ];
 const WASTE_PASTRIES = [
-  "Croissant", "Pain au Chocolat", "Muffin", "Cookie", "Brownie", "Danish", "Scone", "Cinnamon Roll",
+  "Banana Bread with Nuts", "Croissant", "Croissant aux Amandes", "Chocolatine",
+  "Chocolate Chips Cookie", "Muffin a L'Erabe", "Muffin Bleuets", "Muffin Pistaches",
+  "Muffin Chocolat", "Yogurt Granola", "Fresh orange juice", "Gateau aux Carottes",
+  "Granola bag", "Bagel Chips Bags", "Maple Pecan Bar", "Pudding",
 ];
 const WASTE_CK_ITEMS = [
-  "Cream Cheese", "Hummus", "Butter", "Salmon", "Turkey", "Ham",
-  "Avocado", "Tomato", "Lettuce", "Onion",
+  "Tomatoes", "Pepper", "Onions", "Cucumber", "Lemon", "Avocado",
+  "Mix Salad", "Lettuce", "Spring Mix", "Tofu", "Veggie Patty",
+  "Mozzarella", "Cheddar", "Eggs", "Ham", "Smoke meat",
+  "Bacon", "Bacon jam", "Chicken", "Cream Cheese",
 ];
 
-const QTY_TYPES = ["bag", "box", "unit", "kg", "lb", "tub", "pack", "tray"];
+const QTY_TYPES_BAGEL = ["bag", "unit", "dozen"];
+const QTY_TYPES_PASTRY = ["unit"];
+const QTY_TYPES_CK = ["unit", "container"];
 
 interface WasteItemRow {
   enabled: boolean;
@@ -395,19 +403,20 @@ interface WasteItemRow {
   comment: string;
 }
 
-function initRows(items: string[]): Record<string, WasteItemRow> {
+function initRows(items: string[], defaultQty = "bag"): Record<string, WasteItemRow> {
   const rows: Record<string, WasteItemRow> = {};
   items.forEach((item) => {
-    rows[item] = { enabled: true, leftover: "", leftoverQty: "bag", waste: "", wasteQty: "bag", comment: "" };
+    rows[item] = { enabled: true, leftover: "", leftoverQty: defaultQty, waste: "", wasteQty: defaultQty, comment: "" };
   });
   return rows;
 }
 
-function WasteItemTable({ title, items, rows, onChange }: {
+function WasteItemTable({ title, items, rows, onChange, qtyTypes }: {
   title: string;
   items: string[];
   rows: Record<string, WasteItemRow>;
   onChange: (rows: Record<string, WasteItemRow>) => void;
+  qtyTypes: string[];
 }) {
   const updateRow = (item: string, field: keyof WasteItemRow, value: string | boolean) => {
     onChange({ ...rows, [item]: { ...rows[item], [field]: value } });
@@ -470,7 +479,7 @@ function WasteItemTable({ title, items, rows, onChange }: {
                         disabled={!row.enabled}
                         className="h-8 w-[80px] text-sm rounded-md border border-border bg-background px-1.5"
                       >
-                        {QTY_TYPES.map((q) => <option key={q} value={q}>{q}</option>)}
+                        {qtyTypes.map((q: string) => <option key={q} value={q}>{q}</option>)}
                       </select>
                     </td>
                     <td className="py-2 px-2">
@@ -490,7 +499,7 @@ function WasteItemTable({ title, items, rows, onChange }: {
                         disabled={!row.enabled}
                         className="h-8 w-[80px] text-sm rounded-md border border-border bg-background px-1.5"
                       >
-                        {QTY_TYPES.map((q) => <option key={q} value={q}>{q}</option>)}
+                        {qtyTypes.map((q: string) => <option key={q} value={q}>{q}</option>)}
                       </select>
                     </td>
                     <td className="py-2 pl-2">
@@ -517,9 +526,9 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [bagelRows, setBagelRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_BAGELS));
-  const [pastryRows, setPastryRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_PASTRIES));
-  const [ckRows, setCkRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_CK_ITEMS));
+  const [bagelRows, setBagelRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_BAGELS, "bag"));
+  const [pastryRows, setPastryRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_PASTRIES, "unit"));
+  const [ckRows, setCkRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_CK_ITEMS, "unit"));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -611,7 +620,7 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
       <h3 className="text-xl font-serif">Report Submitted</h3>
       <p className="text-muted-foreground">Leftovers & Waste for {currentStoreName} on {reportDate}</p>
       <div className="flex gap-3 justify-center">
-        <Button onClick={() => { setBagelRows(initRows(WASTE_BAGELS)); setPastryRows(initRows(WASTE_PASTRIES)); setCkRows(initRows(WASTE_CK_ITEMS)); setSubmitted(false); }} variant="outline">New Report</Button>
+        <Button onClick={() => { setBagelRows(initRows(WASTE_BAGELS, "bag")); setPastryRows(initRows(WASTE_PASTRIES, "unit")); setCkRows(initRows(WASTE_CK_ITEMS, "unit")); setSubmitted(false); }} variant="outline">New Report</Button>
         <Button onClick={onBack} variant="outline">Back</Button>
       </div>
     </motion.div>
@@ -633,13 +642,13 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
       </Card>
 
       {/* Bagels */}
-      <WasteItemTable title="Bagels" items={WASTE_BAGELS} rows={bagelRows} onChange={setBagelRows} />
+      <WasteItemTable title="Bagels" items={WASTE_BAGELS} rows={bagelRows} onChange={setBagelRows} qtyTypes={QTY_TYPES_BAGEL} />
 
       {/* Pastries */}
-      <WasteItemTable title="Pastries" items={WASTE_PASTRIES} rows={pastryRows} onChange={setPastryRows} />
+      <WasteItemTable title="Pastries" items={WASTE_PASTRIES} rows={pastryRows} onChange={setPastryRows} qtyTypes={QTY_TYPES_PASTRY} />
 
       {/* CK Items */}
-      <WasteItemTable title="CK Items" items={WASTE_CK_ITEMS} rows={ckRows} onChange={setCkRows} />
+      <WasteItemTable title="CK Items" items={WASTE_CK_ITEMS} rows={ckRows} onChange={setCkRows} qtyTypes={QTY_TYPES_CK} />
 
       {/* Action buttons */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

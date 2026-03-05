@@ -892,18 +892,26 @@ function SectionChecklistForm({
 // ─── Waste Item Data (Public version) ───
 
 const WASTE_BAGELS_PUB = [
-  "Sesame Bagel", "Poppy Bagel", "Everything Bagel", "Plain Bagel", "Whole Wheat Bagel",
-  "Blueberry Bagel", "Cinnamon Raisin Bagel", "Jalape\u00f1o Bagel", "Multigrain Bagel", "Onion Bagel",
+  "Sesame Bagel", "Everything Bagel", "Plain Bagel", "Poppy Seeds Bagel", "Multigrain Bagel",
+  "Cheese Bagel", "Rosemary Bagel", "Cinnamon Sugar Bagel", "Cinnamon Raisin Bagel",
+  "Blueberry Bagel", "Coconut Bagel",
 ];
 const WASTE_PASTRIES_PUB = [
-  "Croissant", "Pain au Chocolat", "Muffin", "Cookie", "Brownie", "Danish", "Scone", "Cinnamon Roll",
+  "Banana Bread with Nuts", "Croissant", "Croissant aux Amandes", "Chocolatine",
+  "Chocolate Chips Cookie", "Muffin a L'Erabe", "Muffin Bleuets", "Muffin Pistaches",
+  "Muffin Chocolat", "Yogurt Granola", "Fresh orange juice", "Gateau aux Carottes",
+  "Granola bag", "Bagel Chips Bags", "Maple Pecan Bar", "Pudding",
 ];
 const WASTE_CK_PUB = [
-  "Cream Cheese", "Hummus", "Butter", "Salmon", "Turkey", "Ham",
-  "Avocado", "Tomato", "Lettuce", "Onion",
+  "Tomatoes", "Pepper", "Onions", "Cucumber", "Lemon", "Avocado",
+  "Mix Salad", "Lettuce", "Spring Mix", "Tofu", "Veggie Patty",
+  "Mozzarella", "Cheddar", "Eggs", "Ham", "Smoke meat",
+  "Bacon", "Bacon jam", "Chicken", "Cream Cheese",
 ];
 
-const QTY_TYPES_PUB = ["bag", "box", "unit", "kg", "lb", "tub", "pack", "tray"];
+const QTY_TYPES_BAGEL_PUB = ["bag", "unit", "dozen"];
+const QTY_TYPES_PASTRY_PUB = ["unit"];
+const QTY_TYPES_CK_PUB = ["unit", "container"];
 
 interface WasteRow {
   enabled: boolean;
@@ -914,19 +922,20 @@ interface WasteRow {
   comment: string;
 }
 
-function initWasteRows(items: string[]): Record<string, WasteRow> {
+function initWasteRows(items: string[], defaultQty = "bag"): Record<string, WasteRow> {
   const rows: Record<string, WasteRow> = {};
   items.forEach((item) => {
-    rows[item] = { enabled: true, leftover: "", leftoverQty: "bag", waste: "", wasteQty: "bag", comment: "" };
+    rows[item] = { enabled: true, leftover: "", leftoverQty: defaultQty, waste: "", wasteQty: defaultQty, comment: "" };
   });
   return rows;
 }
 
-function WasteTable({ title, items, rows, onChange }: {
+function WasteTable({ title, items, rows, onChange, qtyTypes }: {
   title: string;
   items: string[];
   rows: Record<string, WasteRow>;
   onChange: (rows: Record<string, WasteRow>) => void;
+  qtyTypes: string[];
 }) {
   const updateRow = (item: string, field: keyof WasteRow, value: string | boolean) => {
     onChange({ ...rows, [item]: { ...rows[item], [field]: value } });
@@ -976,7 +985,7 @@ function WasteTable({ title, items, rows, onChange }: {
                   </td>
                   <td className="py-2 px-2">
                     <select value={row.leftoverQty} onChange={(e) => updateRow(item, "leftoverQty", e.target.value)} disabled={!row.enabled} className="h-8 w-[75px] text-sm rounded-md border border-border bg-background px-1.5">
-                      {QTY_TYPES_PUB.map((q) => <option key={q} value={q}>{q}</option>)}
+                      {qtyTypes.map((q: string) => <option key={q} value={q}>{q}</option>)}
                     </select>
                   </td>
                   <td className="py-2 px-2">
@@ -984,7 +993,7 @@ function WasteTable({ title, items, rows, onChange }: {
                   </td>
                   <td className="py-2 px-2">
                     <select value={row.wasteQty} onChange={(e) => updateRow(item, "wasteQty", e.target.value)} disabled={!row.enabled} className="h-8 w-[75px] text-sm rounded-md border border-border bg-background px-1.5">
-                      {QTY_TYPES_PUB.map((q) => <option key={q} value={q}>{q}</option>)}
+                      {qtyTypes.map((q: string) => <option key={q} value={q}>{q}</option>)}
                     </select>
                   </td>
                   <td className="py-2 pl-2">
@@ -1004,9 +1013,9 @@ function WasteReportForm({ storeCode: initialStoreCode, storeName: _sn3, positio
   const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [bagelRows, setBagelRows] = useState<Record<string, WasteRow>>(() => initWasteRows(WASTE_BAGELS_PUB));
-  const [pastryRows, setPastryRows] = useState<Record<string, WasteRow>>(() => initWasteRows(WASTE_PASTRIES_PUB));
-  const [ckRows, setCkRows] = useState<Record<string, WasteRow>>(() => initWasteRows(WASTE_CK_PUB));
+  const [bagelRows, setBagelRows] = useState<Record<string, WasteRow>>(() => initWasteRows(WASTE_BAGELS_PUB, "bag"));
+  const [pastryRows, setPastryRows] = useState<Record<string, WasteRow>>(() => initWasteRows(WASTE_PASTRIES_PUB, "unit"));
+  const [ckRows, setCkRows] = useState<Record<string, WasteRow>>(() => initWasteRows(WASTE_CK_PUB, "unit"));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -1044,7 +1053,7 @@ function WasteReportForm({ storeCode: initialStoreCode, storeName: _sn3, positio
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Waste Report submitted for ${currentStoreName} on ${reportDate}`} onNew={() => { setBagelRows(initWasteRows(WASTE_BAGELS_PUB)); setPastryRows(initWasteRows(WASTE_PASTRIES_PUB)); setCkRows(initWasteRows(WASTE_CK_PUB)); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Waste Report submitted for ${currentStoreName} on ${reportDate}`} onNew={() => { setBagelRows(initWasteRows(WASTE_BAGELS_PUB, "bag")); setPastryRows(initWasteRows(WASTE_PASTRIES_PUB, "unit")); setCkRows(initWasteRows(WASTE_CK_PUB, "unit")); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
@@ -1060,9 +1069,9 @@ function WasteReportForm({ storeCode: initialStoreCode, storeName: _sn3, positio
           </div>
         </div>
 
-        <WasteTable title="Bagels" items={WASTE_BAGELS_PUB} rows={bagelRows} onChange={setBagelRows} />
-        <WasteTable title="Pastries" items={WASTE_PASTRIES_PUB} rows={pastryRows} onChange={setPastryRows} />
-        <WasteTable title="CK Items" items={WASTE_CK_PUB} rows={ckRows} onChange={setCkRows} />
+        <WasteTable title="Bagels" items={WASTE_BAGELS_PUB} rows={bagelRows} onChange={setBagelRows} qtyTypes={QTY_TYPES_BAGEL_PUB} />
+        <WasteTable title="Pastries" items={WASTE_PASTRIES_PUB} rows={pastryRows} onChange={setPastryRows} qtyTypes={QTY_TYPES_PASTRY_PUB} />
+        <WasteTable title="CK Items" items={WASTE_CK_PUB} rows={ckRows} onChange={setCkRows} qtyTypes={QTY_TYPES_CK_PUB} />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white h-11">

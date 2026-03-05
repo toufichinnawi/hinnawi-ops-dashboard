@@ -182,8 +182,23 @@ const EQUIP_MONTHLY = [
 ];
 
 const BAGEL_TYPES = ["Sesame", "Poppy", "Everything", "Plain", "Whole Wheat", "Blueberry", "Cinnamon Raisin", "Jalapeno", "Multigrain", "Onion"];
-const PASTRY_TYPES = ["Croissant", "Pain au Chocolat", "Muffin", "Cookie", "Brownie", "Scone", "Danish", "Cinnamon Roll"];
-const CK_ITEMS = ["Cream Cheese (tubs)", "Hummus (tubs)", "Egg Salad (kg)", "Tuna Salad (kg)", "Chicken Salad (kg)", "Smoked Salmon (packs)", "Avocado (units)"];
+const WASTE_BAGEL_TYPES = [
+  "Sesame Bagel", "Everything Bagel", "Plain Bagel", "Poppy Seeds Bagel", "Multigrain Bagel",
+  "Cheese Bagel", "Rosemary Bagel", "Cinnamon Sugar Bagel", "Cinnamon Raisin Bagel",
+  "Blueberry Bagel", "Coconut Bagel",
+];
+const PASTRY_TYPES = [
+  "Banana Bread with Nuts", "Croissant", "Croissant aux Amandes", "Chocolatine",
+  "Chocolate Chips Cookie", "Muffin a L'Erabe", "Muffin Bleuets", "Muffin Pistaches",
+  "Muffin Chocolat", "Yogurt Granola", "Fresh orange juice", "Gateau aux Carottes",
+  "Granola bag", "Bagel Chips Bags", "Maple Pecan Bar", "Pudding",
+];
+const CK_ITEMS = [
+  "Tomatoes", "Pepper", "Onions", "Cucumber", "Lemon", "Avocado",
+  "Mix Salad", "Lettuce", "Spring Mix", "Tofu", "Veggie Patty",
+  "Mozzarella", "Cheddar", "Eggs", "Ham", "Smoke meat",
+  "Bacon", "Bacon jam", "Chicken", "Cream Cheese",
+];
 
 const TRAINING_AREAS = [
   { title: "Customer Service", items: ["Greeting customers promptly and warmly", "Taking orders accurately", "Handling complaints professionally", "Upselling and suggestive selling", "Speed of service"] },
@@ -670,7 +685,7 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
 // ─── Waste Report Form ───
 
 function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
-  const initBagels = Object.fromEntries(BAGEL_TYPES.map((t) => [t, { leftover: "", waste: "" }]));
+  const initBagels = Object.fromEntries(WASTE_BAGEL_TYPES.map((t) => [t, { leftover: "", waste: "" }]));
   const initPastries = Object.fromEntries(PASTRY_TYPES.map((t) => [t, { leftover: "", waste: "" }]));
   const initCk = Object.fromEntries(CK_ITEMS.map((t) => [t, { leftover: "", waste: "" }]));
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
@@ -717,7 +732,7 @@ function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: { stor
     </Card>
   );
 
-  if (submitted) return <SuccessScreen message={`Waste report for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setBagels(Object.fromEntries(BAGEL_TYPES.map((t) => [t, { leftover: "", waste: "" }]))); setPastries(Object.fromEntries(PASTRY_TYPES.map((t) => [t, { leftover: "", waste: "" }]))); setCkItems(Object.fromEntries(CK_ITEMS.map((t) => [t, { leftover: "", waste: "" }]))); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Waste report for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setBagels(Object.fromEntries(WASTE_BAGEL_TYPES.map((t) => [t, { leftover: "", waste: "" }]))); setPastries(Object.fromEntries(PASTRY_TYPES.map((t) => [t, { leftover: "", waste: "" }]))); setCkItems(Object.fromEntries(CK_ITEMS.map((t) => [t, { leftover: "", waste: "" }]))); }} onBack={onBack} />;
 
   return (
     <PublicFormLayout title="Leftovers & Waste Report" subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
@@ -725,7 +740,7 @@ function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: { stor
         <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="space-y-2"><Label>Date</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
       </CardContent></Card>
-      {renderSection("Bagels", BAGEL_TYPES, bagels, setBagels)}
+      {renderSection("Bagels", WASTE_BAGEL_TYPES, bagels, setBagels)}
       {renderSection("Pastries", PASTRY_TYPES, pastries, setPastries)}
       {renderSection("CK Items", CK_ITEMS, ckItems, setCkItems)}
       <div className="flex flex-col gap-3">

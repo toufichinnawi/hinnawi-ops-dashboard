@@ -767,4 +767,6 @@
 - [x] Build QuickBooks Integration page (connect button, status, data preview)
 - [x] Add QuickBooks to sidebar navigation
 - [x] Write tests — 9 QBO tests passing (105 total across 12 test files)
-- [ ] Save checkpoint
+- [x] Save checkpoint
+
+- [x] Update Leftovers & Waste checklist items to match reference site (Bagels: 11 items, Pastry: 16 items, CK Items: 20 items)
