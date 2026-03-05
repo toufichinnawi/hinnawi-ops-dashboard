@@ -1,4 +1,8 @@
-// Hook: Fetch Clover + 7shifts + Excel labour data filtered by date range and compute KPIs/charts
+// Hook: Fetch Koomi + 7shifts + Excel labour data filtered by date range and compute KPIs/charts
+// Sales for PK, Mackay, Tunnel come from Koomi (starting Feb 1, 2026)
+// Sales for Ontario come from 7shifts
+// Labour for PK, Mackay, Tunnel: Koomi for today onwards, Excel for historical
+// Labour for Ontario: always from 7shifts
 import { useMemo } from "react";
 import { format } from "date-fns";
 import { trpc } from "@/lib/trpc";
@@ -11,24 +15,16 @@ import {
   type DailyTraffic,
 } from "@/lib/data";
 
-// Map Clover merchant IDs to our store IDs
-const merchantToStoreId: Record<string, string> = {
-  JVGT8FGCVR9F1: "pk",
-  CQP5TD9M5R691: "mk",
-  KKA9JDAYW9ZY1: "tunnel",
-};
-
-interface CloverSalesRow {
+interface KoomiSalesRow {
   id: number;
-  connectionId: number;
-  merchantId: string;
+  storeId: string;
+  storeName: string;
+  koomiLocationId: string;
   date: string;
-  totalSales: number;
-  totalTips: number;
-  totalTax: number;
-  orderCount: number;
-  refundAmount: number;
+  grossSales: number;
   netSales: number;
+  netSalaries: number;
+  labourPercent: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -76,38 +72,48 @@ interface UnifiedDailyRecord {
   labourMinutes: number;
   overtimeMinutes: number;
   labourPercent: number;
-  source: "clover" | "7shifts" | "excel";
+  source: "koomi" | "7shifts" | "excel";
+}
+
+// Today's date in YYYY-MM-DD (EST)
+function getTodayEST(): string {
+  const now = new Date();
+  const est = new Date(now.toLocaleString("en-US", { timeZone: "America/Toronto" }));
+  const y = est.getFullYear();
+  const m = String(est.getMonth() + 1).padStart(2, "0");
+  const d = String(est.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 export function useFilteredCloverData(dateFilter: DateFilterValue) {
   const fromDate = format(dateFilter.from, "yyyy-MM-dd");
   const toDate = format(dateFilter.to, "yyyy-MM-dd");
 
-  // Fetch Clover sales data
-  const { data: cloverData, isLoading: cloverLoading } = trpc.clover.salesData.useQuery(
+  // Fetch Koomi sales data (PK, Mackay, Tunnel)
+  const { data: koomiData, isLoading: koomiLoading } = trpc.koomi.salesByDateRange.useQuery(
     { fromDate, toDate },
     { retry: 1 }
   );
 
-  // Fetch 7shifts sales data
+  // Fetch 7shifts sales data (Ontario)
   const { data: sevenShiftsData, isLoading: sevenShiftsLoading } = trpc.sevenShifts.salesData.useQuery(
     { fromDate, toDate },
     { retry: 1 }
   );
 
-  // Fetch Excel labour data
+  // Fetch Excel labour data (historical labour for PK/MK/Tunnel)
   const { data: excelData, isLoading: excelLoading } = trpc.excelLabour.data.useQuery(
     { fromDate, toDate },
     { retry: 1 }
   );
 
-  const isLoading = cloverLoading || sevenShiftsLoading || excelLoading;
+  const isLoading = koomiLoading || sevenShiftsLoading || excelLoading;
 
-  const cloverRows = (cloverData ?? []) as CloverSalesRow[];
+  const koomiRows = (koomiData ?? []) as KoomiSalesRow[];
   const sevenShiftsRows = (sevenShiftsData ?? []) as SevenShiftsSalesRow[];
   const excelRows = (excelData ?? []) as ExcelLabourRow[];
 
-  // Build a lookup map of Excel labour data: storeId+date -> { labourCost, labourPercent, netSales }
+  // Build a lookup map of Excel labour data: storeId+date -> { labourCost, labourPercent }
   const excelLabourMap = useMemo(() => {
     const map = new Map<string, ExcelLabourRow>();
     for (const row of excelRows) {
@@ -118,33 +124,56 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
   }, [excelRows]);
 
   const hasExcelData = excelRows.length > 0;
+  const todayStr = useMemo(() => getTodayEST(), []);
 
-  // Merge both data sources into unified records
+  // Merge all data sources into unified records
   const unifiedRows = useMemo((): UnifiedDailyRecord[] => {
     const records: UnifiedDailyRecord[] = [];
 
-    // Add Clover records, enriched with Excel labour data when available
-    for (const row of cloverRows) {
-      const storeId = merchantToStoreId[row.merchantId] || "pk";
-      const excelKey = `${storeId}:${row.date}`;
+    // Add Koomi records (PK, Mackay, Tunnel)
+    // Sales always from Koomi
+    // Labour: from Koomi for today onwards, from Excel for historical dates
+    for (const row of koomiRows) {
+      const excelKey = `${row.storeId}:${row.date}`;
       const excelRow = excelLabourMap.get(excelKey);
+      const isToday = row.date >= todayStr;
+
+      let labourCost: number;
+      let labourPercent: number;
+      let source: "koomi" | "excel";
+
+      if (isToday) {
+        // Today and forward: use Koomi labour data
+        labourCost = row.netSalaries;
+        labourPercent = row.labourPercent;
+        source = "koomi";
+      } else if (excelRow && excelRow.labourCost > 0) {
+        // Historical: use Excel labour data if available
+        labourCost = excelRow.labourCost;
+        labourPercent = excelRow.labourPercent;
+        source = "excel";
+      } else {
+        // Historical with no Excel data: use Koomi labour as fallback
+        labourCost = row.netSalaries;
+        labourPercent = row.labourPercent;
+        source = "koomi";
+      }
 
       records.push({
-        storeId,
+        storeId: row.storeId,
         date: row.date,
-        totalSales: row.totalSales,
-        orderCount: row.orderCount,
-        totalTips: row.totalTips,
-        // Use Excel labour data if available, otherwise 0
-        labourCost: excelRow?.labourCost ?? 0,
+        totalSales: row.grossSales,
+        orderCount: 0, // Koomi doesn't provide order count
+        totalTips: 0,
+        labourCost,
         labourMinutes: 0,
         overtimeMinutes: 0,
-        labourPercent: excelRow?.labourPercent ?? 0,
-        source: excelRow ? "excel" : "clover",
+        labourPercent,
+        source,
       });
     }
 
-    // Add 7shifts records (Ontario) — these have their own labour data
+    // Add 7shifts records (Ontario) — these have their own sales + labour data
     for (const row of sevenShiftsRows) {
       records.push({
         storeId: "ontario",
@@ -161,15 +190,15 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
     }
 
     return records;
-  }, [cloverRows, sevenShiftsRows, excelLabourMap]);
+  }, [koomiRows, sevenShiftsRows, excelLabourMap, todayStr]);
 
   const hasData = unifiedRows.length > 0;
-  const hasCloverData = cloverRows.length > 0;
+  const hasKoomiData = koomiRows.length > 0;
   const hasSevenShiftsData = sevenShiftsRows.length > 0;
 
-  // True when both queries completed but returned no rows
+  // True when all queries completed but returned no rows
   const noDataForPeriod = !isLoading
-    && cloverData !== undefined
+    && koomiData !== undefined
     && sevenShiftsData !== undefined
     && unifiedRows.length === 0;
 
@@ -191,7 +220,6 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
 
     const totalRevenue = unifiedRows.reduce((s, r) => s + r.totalSales, 0);
     const totalOrders = unifiedRows.reduce((s, r) => s + r.orderCount, 0);
-    const totalTips = unifiedRows.reduce((s, r) => s + r.totalTips, 0);
     const totalLabourCost = unifiedRows.reduce((s, r) => s + r.labourCost, 0);
     const storeCount = new Set(unifiedRows.map(r => r.storeId)).size;
     const dayCount = new Set(unifiedRows.map(r => r.date)).size;
@@ -199,14 +227,15 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
     const hasAnyLabour = totalLabourCost > 0;
 
     const sources: string[] = [];
-    if (hasCloverData) sources.push("Clover");
+    if (hasKoomiData) sources.push("Koomi");
     if (hasSevenShiftsData) sources.push("7shifts");
-    if (hasExcelData) sources.push("Excel");
     const sourceLabel = sources.join(" + ");
 
-    const labourSource = hasExcelData && hasSevenShiftsData
-      ? "Excel + 7shifts"
-      : hasExcelData ? "Excel" : hasSevenShiftsData ? "7shifts" : "—";
+    const labourSources: string[] = [];
+    if (hasKoomiData) labourSources.push("Koomi");
+    if (hasExcelData) labourSources.push("Excel");
+    if (hasSevenShiftsData) labourSources.push("7shifts");
+    const labourSource = labourSources.length > 0 ? labourSources.join(" + ") : "—";
 
     const periodLabel = dateFilter.label !== "Custom"
       ? dateFilter.label
@@ -229,7 +258,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
         format: "currency",
         trend: 0,
         trendLabel: hasAnyLabour ? `from ${labourSource}` : "No labour data",
-        subtitle: hasAnyLabour ? `${overallLabourPercent.toFixed(1)}% of revenue` : "Upload Excel report",
+        subtitle: hasAnyLabour ? `${overallLabourPercent.toFixed(1)}% of revenue` : "—",
       },
       {
         title: "Labour %",
@@ -237,7 +266,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
         format: "percent",
         trend: 0,
         trendLabel: hasAnyLabour ? `from ${labourSource}` : "No labour data",
-        subtitle: hasAnyLabour ? `$${Math.round(totalLabourCost).toLocaleString()} / $${Math.round(totalRevenue).toLocaleString()}` : "Upload Excel report",
+        subtitle: hasAnyLabour ? `$${Math.round(totalLabourCost).toLocaleString()} / $${Math.round(totalRevenue).toLocaleString()}` : "—",
       },
       {
         title: "Total Orders",
@@ -245,10 +274,12 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
         format: "number",
         trend: 0,
         trendLabel: periodLabel,
-        subtitle: `Avg $${totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) : "0"} per order`,
+        subtitle: totalOrders > 0
+          ? `Avg $${(totalRevenue / totalOrders).toFixed(2)} per order`
+          : `${sourceLabel} (order count not available from Koomi)`,
       },
     ];
-  }, [unifiedRows, hasData, hasCloverData, hasSevenShiftsData, hasExcelData, noDataForPeriod, dateFilter]);
+  }, [unifiedRows, hasData, hasKoomiData, hasSevenShiftsData, hasExcelData, noDataForPeriod, dateFilter]);
 
   const weeklySales = useMemo((): WeeklySales[] | null => {
     if (!hasData) return null;
@@ -306,8 +337,8 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
       storeRevenue.set(row.storeId, (storeRevenue.get(row.storeId) || 0) + row.totalSales);
       storeLabourCost.set(row.storeId, (storeLabourCost.get(row.storeId) || 0) + row.labourCost);
       storeLabourMinutes.set(row.storeId, (storeLabourMinutes.get(row.storeId) || 0) + row.labourMinutes);
-      // Track whether this store has real labour data (from 7shifts or Excel)
-      if (row.labourCost > 0 && (row.source === "7shifts" || row.source === "excel")) {
+      // Track whether this store has real labour data
+      if (row.labourCost > 0) {
         storeHasRealLabour.set(row.storeId, true);
       }
     }
@@ -318,7 +349,6 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
       const labourMinutes = storeLabourMinutes.get(store.id) || 0;
       const hasRealLabour = storeHasRealLabour.get(store.id) || false;
 
-      // If we have real labour data (from 7shifts or Excel), use it
       if (hasRealLabour && labourCost > 0) {
         return {
           store: store.id,
@@ -331,7 +361,6 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
         };
       }
 
-      // No real labour data — show revenue with 0% labour (no estimate)
       return {
         store: store.id,
         revenue: Math.round(revenue),
@@ -347,7 +376,8 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
   return {
     isLoading,
     hasData,
-    hasCloverData,
+    hasKoomiData,
+    hasCloverData: hasKoomiData, // backward compat alias
     hasSevenShiftsData,
     hasExcelData,
     noDataForPeriod,
@@ -355,7 +385,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
     weeklySales,
     dailyTraffic,
     labourData,
-    salesRows: cloverRows,
+    salesRows: koomiRows,
     sevenShiftsRows,
     excelRows,
     unifiedRows,

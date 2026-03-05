@@ -38,6 +38,7 @@ interface DataContextValue {
   lastUpdated: string | null;
   hasLiveData: boolean;
   hasCloverData: boolean;
+  hasKoomiData: boolean;
   hasExcelData: boolean;
 
   // Computed dashboard data (merges live + demo fallback)
@@ -366,6 +367,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     retry: 1,
   });
 
+  // Fetch Koomi data from API
+  const { data: koomiSalesData } = trpc.koomi.salesByDateRange.useQuery(
+    { fromDate: '2026-02-01', toDate: '2099-12-31' },
+    { refetchInterval: 5 * 60 * 1000, retry: 1 }
+  );
+
   // Fetch Excel labour data from API (all available data)
   const { data: excelLabourData } = trpc.excelLabour.data.useQuery(undefined, {
     refetchInterval: 5 * 60 * 1000,
@@ -397,8 +404,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const hasCSVData = data.uploads.length > 0;
   const hasCloverData = (cloverSalesData?.length ?? 0) > 0;
+  const hasKoomiData = (koomiSalesData?.length ?? 0) > 0;
   const hasSevenShiftsData = (sevenShiftsSalesData?.length ?? 0) > 0;
-  const hasLiveData = hasCloverData || hasSevenShiftsData || hasCSVData || hasExcelData;
+  const hasLiveData = hasCloverData || hasKoomiData || hasSevenShiftsData || hasCSVData || hasExcelData;
 
   // Compute merged data — Clover+7shifts data takes priority over CSV, CSV over demo
   const kpis = useMemo(() => {
@@ -592,6 +600,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     lastUpdated: data.lastUpdated,
     hasLiveData,
     hasCloverData,
+    hasKoomiData,
     hasExcelData,
     kpis,
     weeklySales,

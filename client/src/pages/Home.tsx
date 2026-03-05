@@ -63,7 +63,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Home() {
-  const { reportSubmissions, alerts, hasLiveData, hasCloverData } = useData();
+  const { reportSubmissions, alerts, hasLiveData, hasCloverData, hasKoomiData } = useData();
   const [dateFilter, setDateFilter] = useState<DateFilterValue>(getDefaultDateFilter);
   const utils = trpc.useUtils();
 
@@ -79,23 +79,24 @@ export default function Home() {
       // Invalidate queries to refresh data
       utils.clover.salesData.invalidate();
       utils.sevenShifts.salesData.invalidate();
+      utils.koomi.salesByDateRange.invalidate();
     },
     onError: (err) => {
       toast.error("Sync Failed", { description: err.message });
     },
   });
 
-  // Fetch filtered Clover data based on date selection
-  const { kpis: filteredKpis, weeklySales: filteredSales, dailyTraffic: filteredTraffic, isLoading: filterLoading, hasData: hasFilteredData, noDataForPeriod } = useFilteredCloverData(dateFilter);
+  // Fetch filtered data based on date selection (Koomi + 7shifts + Excel)
+  const { kpis: filteredKpis, weeklySales: filteredSales, dailyTraffic: filteredTraffic, isLoading: filterLoading, hasData: hasFilteredData, hasKoomiData: hasFilteredKoomi, noDataForPeriod } = useFilteredCloverData(dateFilter);
 
-  // When Clover is connected, always use filtered data (even zeroed KPIs for empty periods)
-  // Only fall back to DataContext when Clover is NOT connected
+  // When Koomi/Clover is connected, always use filtered data (even zeroed KPIs for empty periods)
+  // Only fall back to DataContext when neither is connected
   const { kpis: contextKpis, weeklySales: contextSales, weeklyTraffic: contextTraffic } = useData();
 
-  // When Clover is connected and noDataForPeriod, use the zeroed KPIs from the hook (not demo fallback)
-  const kpis = hasCloverData ? (filteredKpis ?? contextKpis) : contextKpis;
-  const weeklySales = hasCloverData ? (noDataForPeriod ? [] : (filteredSales ?? contextSales)) : contextSales;
-  const weeklyTraffic = hasCloverData ? (noDataForPeriod ? [] : (filteredTraffic ?? contextTraffic)) : contextTraffic;
+  const hasLiveSource = hasKoomiData || hasCloverData;
+  const kpis = hasLiveSource ? (filteredKpis ?? contextKpis) : contextKpis;
+  const weeklySales = hasLiveSource ? (noDataForPeriod ? [] : (filteredSales ?? contextSales)) : contextSales;
+  const weeklyTraffic = hasLiveSource ? (noDataForPeriod ? [] : (filteredTraffic ?? contextTraffic)) : contextTraffic;
 
   const todayReports = reportSubmissions.filter((r) => r.type === "Daily Report");
   const status = {
@@ -125,13 +126,13 @@ export default function Home() {
               <p className="text-[#D4A853] text-xs font-medium uppercase tracking-[0.2em]">
                 Operations Dashboard
               </p>
-              {hasCloverData && (
+              {(hasKoomiData || hasCloverData) && (
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-medium">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Clover POS Live
+                  {hasKoomiData ? "Koomi + 7shifts Live" : "Clover POS Live"}
                 </span>
               )}
-              {!hasCloverData && hasLiveData && (
+              {!hasKoomiData && !hasCloverData && hasLiveData && (
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-medium">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   CSV Data
@@ -155,7 +156,22 @@ export default function Home() {
         {/* Data Source Banner + Date Filter */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex-1 min-w-0">
-            {hasCloverData && (
+            {hasKoomiData && (
+              <Link href="/koomi">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/15 transition-colors"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <p className="text-sm text-foreground">
+                    <span className="font-medium">Koomi POS connected.</span>{" "}
+                    <span className="text-muted-foreground">Showing live sales data from PK, Mackay, Tunnel →</span>
+                  </p>
+                </motion.div>
+              </Link>
+            )}
+            {!hasKoomiData && hasCloverData && (
               <Link href="/clover">
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -189,10 +205,10 @@ export default function Home() {
 
           {/* Date Filter + Sync Button */}
           <div className="flex items-center gap-2 shrink-0">
-            {filterLoading && hasCloverData && (
+            {filterLoading && hasLiveSource && (
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             )}
-            {hasCloverData && (
+            {hasLiveSource && (
               <button
                 onClick={() => syncAllSources.mutate()}
                 disabled={syncAllSources.isPending}
@@ -237,8 +253,8 @@ export default function Home() {
               <div>
                 <h3 className="font-serif text-lg text-foreground">Sales by Store</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {hasCloverData
-                    ? `Live from Clover POS — ${dateFilter.label}`
+                  {hasLiveSource
+                    ? `Live from ${hasFilteredKoomi ? 'Koomi' : 'Clover'} POS — ${dateFilter.label}`
                     : hasLiveData
                       ? "From uploaded MYR data"
                       : "Last 8 weeks — demo data"}
@@ -353,7 +369,7 @@ export default function Home() {
             <div>
               <h3 className="font-serif text-lg text-foreground">Weekly Order Pattern</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {hasCloverData
+                {hasLiveSource
                   ? `Average daily orders — ${dateFilter.label}`
                   : "Average daily orders by day of week"}
               </p>

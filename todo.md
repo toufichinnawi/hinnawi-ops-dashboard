@@ -725,3 +725,14 @@
 - [x] Add Koomi sync to the existing auto-sync schedule (every 5 min 7AM-8PM, 9PM, 12AM)
 - [x] Write tests for Koomi scraper (12 tests passing including live integration)
 - [x] Save checkpoint
+
+# Koomi Dashboard Integration — March 5 (batch 2)
+
+- [x] Backfill Koomi sales data from Feb 1 for all 3 stores (PK, Mackay, Tunnel) — 90 records imported
+- [x] Wire Koomi sales into Overview KPIs (Total Revenue should include Koomi stores)
+- [x] Wire Koomi sales into Sales by Store chart (show PK, Mackay, Tunnel from Koomi)
+- [x] Wire Koomi labour data into dashboard — from TODAY only (historical labour stays from Excel/existing sources)
+- [x] Build Koomi Integration page (connection status, test login, sync controls, data table)
+- [x] Add Koomi Integration to sidebar navigation
+- [x] Write/update tests — 96 tests passing across 11 test files
+- [x] Save checkpoint

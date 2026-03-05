@@ -924,8 +924,8 @@ export const appRouter = router({
         return getKoomiSalesByStore(input.storeId, input.limit ?? 60);
       }),
 
-    // Get sales by date range
-    salesByDateRange: protectedProcedure
+    // Get sales by date range (public so dashboard can access without auth)
+    salesByDateRange: publicProcedure
       .input(z.object({ fromDate: z.string(), toDate: z.string() }))
       .query(async ({ input }) => {
         return getKoomiSalesByDateRange(input.fromDate, input.toDate);
