@@ -375,12 +375,12 @@ function getWeekOfRange(today: Date = new Date()): { label: string; start: strin
   // Find the most recent Monday (if today is Mon, that's today)
   const thisMon = new Date(d);
   thisMon.setDate(d.getDate() - ((day + 6) % 7));
-  // Previous week: Mon-1 week to Sun before thisMon
+  // Previous work week: Mon to Fri
   const prevMon = new Date(thisMon); prevMon.setDate(thisMon.getDate() - 7);
-  const prevSun = new Date(thisMon); prevSun.setDate(thisMon.getDate() - 1);
+  const prevFri = new Date(prevMon); prevFri.setDate(prevMon.getDate() + 4);
   const fmt = (dt: Date) => dt.toLocaleDateString("en-US", { month: "long", day: "numeric" });
   const iso = (dt: Date) => dt.toISOString().split("T")[0];
-  return { label: `${fmt(prevMon)} - ${fmt(prevSun)}`, start: iso(prevMon), end: iso(prevSun) };
+  return { label: `${fmt(prevMon)} - ${fmt(prevFri)}`, start: iso(prevMon), end: iso(prevFri) };
 }
 
 function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {

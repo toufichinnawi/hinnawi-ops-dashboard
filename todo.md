@@ -773,3 +773,4 @@
 - [x] Update Weekly Scorecard to improved template (4 sections: Sales, Labour, Digital, Food Cost with Goal/Actual/Variance/How Do I Contribute)
 - [x] Update Weekly Scorecard header: auto 'Date' (today), auto 'Week Of' (prev Mon-Sun range), 'Name' input
 - [x] Make scorecard Date editable (defaults to today), Week Of editable via date picker (auto-snaps to Mon-Sun range)
+- [x] Change Week Of range from Mon-Sun to Mon-Fri (work week) across all 3 scorecard forms
