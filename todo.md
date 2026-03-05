@@ -770,3 +770,4 @@
 - [x] Save checkpoint
 
 - [x] Update Leftovers & Waste checklist items to match reference site (Bagels: 11 items, Pastry: 16 items, CK Items: 20 items)
+- [x] Update Weekly Scorecard to improved template (4 sections: Sales, Labour, Digital, Food Cost with Goal/Actual/Variance/How Do I Contribute)

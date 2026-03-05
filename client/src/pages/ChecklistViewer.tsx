@@ -7,6 +7,14 @@ import {
   ClipboardCheck,
   ChevronRight,
   Store as StoreIcon,
+  TrendingUp,
+  TrendingDown,
+  Target,
+  DollarSign,
+  Users,
+  Star,
+  Utensils,
+  MessageSquare,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
@@ -146,8 +154,7 @@ const TRAINING_AREAS = [
   { title: "Teamwork & Attitude", items: ["Cooperation with team members", "Willingness to learn", "Following instructions", "Punctuality and reliability", "Professional appearance and demeanor"] },
 ];
 
-const SALES_ROWS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const LABOR_ROWS = ["Total Labor Hours", "Total Labor Cost ($)", "Labor % of Sales"];
+// (SALES_ROWS and LABOR_ROWS removed — replaced by new scorecard sections)
 
 // ─── Store Selector ───
 
@@ -1188,71 +1195,279 @@ function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4
 
 // ─── Weekly Scorecard ───
 
+// ─── Scorecard Section Component ───
+
+interface ScorecardSectionData {
+  thisWeekGoal: string;
+  thisWeekActual: string;
+  lastWeekActual: string;
+  lastMonthActual: string;
+  howContribute: string;
+}
+
+function initScorecardSection(): ScorecardSectionData {
+  return { thisWeekGoal: "", thisWeekActual: "", lastWeekActual: "", lastMonthActual: "", howContribute: "" };
+}
+
+function ScorecardSection({
+  title,
+  icon: Icon,
+  color,
+  unit,
+  goalLabel,
+  data,
+  onChange,
+}: {
+  title: string;
+  icon: React.ElementType;
+  color: string;
+  unit: "%" | "$" | "" | "stars";
+  goalLabel?: string;
+  data: ScorecardSectionData;
+  onChange: (d: ScorecardSectionData) => void;
+}) {
+  const update = (field: keyof ScorecardSectionData, value: string) => onChange({ ...data, [field]: value });
+
+  const goal = parseFloat(data.thisWeekGoal);
+  const actual = parseFloat(data.thisWeekActual);
+  const hasComparison = !isNaN(goal) && !isNaN(actual) && goal > 0;
+
+  // For labour/food %, lower is better; for sales/digital, higher is better
+  const lowerIsBetter = title === "Labour" || title === "Food Cost";
+  const isOnTarget = hasComparison
+    ? lowerIsBetter ? actual <= goal : actual >= goal
+    : null;
+
+  const variance = hasComparison
+    ? unit === "%" ? (actual - goal).toFixed(1) : (actual - goal).toFixed(2)
+    : null;
+
+  const prefix = unit === "$" ? "$" : "";
+  const suffix = unit === "%" ? "%" : unit === "stars" ? " ★" : "";
+
+  return (
+    <div className="bg-card rounded-xl border border-border/60 overflow-hidden">
+      {/* Section Header */}
+      <div className="px-5 py-3 flex items-center gap-3" style={{ background: color }}>
+        <Icon className="w-5 h-5 text-white" />
+        <h3 className="font-serif text-lg font-semibold text-white">{title}</h3>
+        {isOnTarget !== null && (
+          <div className={cn("ml-auto flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
+            isOnTarget ? "bg-white/20 text-white" : "bg-red-100 text-red-700"
+          )}>
+            {isOnTarget ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            {isOnTarget ? "On Target" : "Off Target"}
+          </div>
+        )}
+      </div>
+
+      <div className="p-5 space-y-4">
+        {/* Goal / Actual / Variance Row */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{goalLabel || "Goal"}</Label>
+            <div className="relative">
+              {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
+              <Input
+                type="number" min="0" step={unit === "%" ? "0.1" : "0.01"}
+                value={data.thisWeekGoal}
+                onChange={(e) => update("thisWeekGoal", e.target.value)}
+                placeholder="0"
+                className={cn("h-10 text-sm font-mono", unit === "$" && "pl-7")}
+              />
+              {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">This Week</Label>
+            <div className="relative">
+              {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
+              <Input
+                type="number" min="0" step={unit === "%" ? "0.1" : "0.01"}
+                value={data.thisWeekActual}
+                onChange={(e) => update("thisWeekActual", e.target.value)}
+                placeholder="0"
+                className={cn("h-10 text-sm font-mono", unit === "$" && "pl-7")}
+              />
+              {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Variance</Label>
+            <div className={cn(
+              "h-10 rounded-md border flex items-center justify-center text-sm font-mono font-medium",
+              isOnTarget === null ? "border-border/60 text-muted-foreground bg-muted/30" :
+              isOnTarget ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-red-200 text-red-700 bg-red-50"
+            )}>
+              {variance !== null ? (
+                <span>{parseFloat(variance) > 0 ? "+" : ""}{prefix}{variance}{suffix}</span>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Last Week / Last Month */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Week</Label>
+            <div className="relative">
+              {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
+              <Input
+                type="number" min="0" step={unit === "%" ? "0.1" : "0.01"}
+                value={data.lastWeekActual}
+                onChange={(e) => update("lastWeekActual", e.target.value)}
+                placeholder="0"
+                className={cn("h-9 text-sm font-mono bg-muted/20", unit === "$" && "pl-7")}
+              />
+              {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Month</Label>
+            <div className="relative">
+              {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
+              <Input
+                type="number" min="0" step={unit === "%" ? "0.1" : "0.01"}
+                value={data.lastMonthActual}
+                onChange={(e) => update("lastMonthActual", e.target.value)}
+                placeholder="0"
+                className={cn("h-9 text-sm font-mono bg-muted/20", unit === "$" && "pl-7")}
+              />
+              {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* How Do I Contribute? */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">How Do I Contribute?</Label>
+          <Textarea
+            value={data.howContribute}
+            onChange={(e) => update("howContribute", e.target.value)}
+            placeholder="Describe specific actions you take to impact this area..."
+            rows={3}
+            className="text-sm resize-none"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Digital Section (special — has Google Reviews text instead of numbers) ───
+
+interface DigitalSectionData {
+  googleReviews: string;
+  howContribute: string;
+}
+
+function DigitalSection({
+  data,
+  onChange,
+}: {
+  data: DigitalSectionData;
+  onChange: (d: DigitalSectionData) => void;
+}) {
+  return (
+    <div className="bg-card rounded-xl border border-border/60 overflow-hidden">
+      <div className="px-5 py-3 flex items-center gap-3" style={{ background: "#6366F1" }}>
+        <MessageSquare className="w-5 h-5 text-white" />
+        <h3 className="font-serif text-lg font-semibold text-white">Digital</h3>
+      </div>
+      <div className="p-5 space-y-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Google Reviews (Last Week)</Label>
+          <Textarea
+            value={data.googleReviews}
+            onChange={(e) => onChange({ ...data, googleReviews: e.target.value })}
+            placeholder="Paste or summarize recent Google reviews..."
+            rows={3}
+            className="text-sm resize-none"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">How Do I Contribute?</Label>
+          <Textarea
+            value={data.howContribute}
+            onChange={(e) => onChange({ ...data, howContribute: e.target.value })}
+            placeholder="Describe how you encourage reviews, respond to feedback, manage online presence..."
+            rows={3}
+            className="text-sm resize-none"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function WeeklyScorecardForm({ storeCode: initialStoreCode, storeName: _sn5, positionLabel, onBack }: FormProps) {
   const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
-  const [salesData, setSalesData] = useState<Record<string, string>>({});
-  const [laborData, setLaborData] = useState<Record<string, string>>({});
-  const [notes, setNotes] = useState("");
+  const [weekOf, setWeekOf] = useState("");
+  const [sales, setSales] = useState<ScorecardSectionData>(initScorecardSection());
+  const [labour, setLabour] = useState<ScorecardSectionData>(initScorecardSection());
+  const [digital, setDigital] = useState<DigitalSectionData>({ googleReviews: "", howContribute: "" });
+  const [food, setFood] = useState<ScorecardSectionData>(initScorecardSection());
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
     if (!selectedStore) { toast.error("Please select a store"); return; }
+    if (!weekOf) { toast.error("Please select the week"); return; }
     setSubmitting(true);
     try {
       await submitReport({
         submitterName,
         reportType: "Weekly Scorecard",
         location: selectedStore,
-        reportDate: new Date().toISOString().split("T")[0],
-        data: { salesData, laborData, notes },
+        reportDate: weekOf,
+        data: { weekOf, sales, labour, digital, food },
       });
       setSubmitted(true);
     } catch { toast.error("Failed to submit"); }
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Weekly Scorecard submitted for ${currentStoreName}`} onNew={() => { setSalesData({}); setLaborData({}); setNotes(""); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Weekly Scorecard submitted for ${currentStoreName}`} onNew={() => { setSales(initScorecardSection()); setLabour(initScorecardSection()); setDigital({ googleReviews: "", howContribute: "" }); setFood(initScorecardSection()); setSubmitterName(""); setWeekOf(""); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
-      <FormHeader title="Weekly Scorecard" subtitle={`${positionLabel}`} onBack={onBack} />
-      <div className="space-y-4">
-        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
+      <FormHeader title="Store Manager Weekly Scorecard" subtitle={`${positionLabel}`} onBack={onBack} />
+      <div className="space-y-5">
+        {/* Header Info */}
         <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Your Name</Label>
-          <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
-        </div>
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <h3 className="font-semibold mb-3">📊 Daily Sales</h3>
-          <div className="space-y-2">
-            {SALES_ROWS.map((day) => (
-              <div key={day} className="flex items-center gap-3">
-                <Label className="text-sm w-28">{day}</Label>
-                <Input type="number" min="0" step="0.01" placeholder="$0.00" value={salesData[day] || ""} onChange={(e) => setSalesData((prev) => ({ ...prev, [day]: e.target.value }))} />
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Manager Name *</Label>
+              <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Week Of *</Label>
+              <Input type="date" value={weekOf} onChange={(e) => setWeekOf(e.target.value)} />
+            </div>
+            <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
           </div>
         </div>
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <h3 className="font-semibold mb-3">👥 Labor Summary</h3>
-          <div className="space-y-2">
-            {LABOR_ROWS.map((row) => (
-              <div key={row} className="flex items-center gap-3">
-                <Label className="text-sm flex-1 min-w-0">{row}</Label>
-                <Input type="number" min="0" step="0.01" className="w-32" placeholder="0" value={laborData[row] || ""} onChange={(e) => setLaborData((prev) => ({ ...prev, [row]: e.target.value }))} />
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Notes (optional)</Label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Weekly highlights or concerns..." className="mt-1.5" rows={3} />
-        </div>
-        <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white">
+
+        {/* Sales Section */}
+        <ScorecardSection title="Sales" icon={DollarSign} color="#D4A853" unit="$" goalLabel="Weekly Goal" data={sales} onChange={setSales} />
+
+        {/* Labour Section */}
+        <ScorecardSection title="Labour" icon={Users} color="#3B82F6" unit="%" goalLabel="Target %" data={labour} onChange={setLabour} />
+
+        {/* Digital Section */}
+        <DigitalSection data={digital} onChange={setDigital} />
+
+        {/* Food Cost Section */}
+        <ScorecardSection title="Food Cost" icon={Utensils} color="#F97316" unit="%" goalLabel="Target %" data={food} onChange={setFood} />
+
+        {/* Submit */}
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white h-11">
+          <CheckCircle2 className="w-4 h-4 mr-2" />
           {submitting ? "Submitting..." : "Submit Scorecard"}
         </Button>
       </div>

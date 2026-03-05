@@ -825,18 +825,21 @@ function EquipmentMaintenanceForm({ storeCode, storeName, positionLabel, onBack 
 // ─── Weekly Scorecard Form ───
 
 function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
+  interface ScorecardSec { thisWeekGoal: string; thisWeekActual: string; lastWeekActual: string; lastMonthActual: string; howContribute: string; }
+  interface DigitalSec { googleReviews: string; howContribute: string; }
+  const initSec = (): ScorecardSec => ({ thisWeekGoal: "", thisWeekActual: "", lastWeekActual: "", lastMonthActual: "", howContribute: "" });
+
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
     `weekly-scorecard-${storeCode}`,
-    { managerName: "", weekOf: "", totalSales: "", labourCost: "", foodCost: "", customerCount: "", notes: "" }
+    { managerName: "", weekOf: "", sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" } as DigitalSec, food: initSec() }
   );
-  const { managerName, weekOf, totalSales, labourCost, foodCost, customerCount, notes } = draft;
+  const { managerName, weekOf, sales, labour, digital, food } = draft;
   const setManagerName = (v: string) => setDraft((d) => ({ ...d, managerName: v }));
   const setWeekOf = (v: string) => setDraft((d) => ({ ...d, weekOf: v }));
-  const setTotalSales = (v: string) => setDraft((d) => ({ ...d, totalSales: v }));
-  const setLabourCost = (v: string) => setDraft((d) => ({ ...d, labourCost: v }));
-  const setFoodCost = (v: string) => setDraft((d) => ({ ...d, foodCost: v }));
-  const setCustomerCount = (v: string) => setDraft((d) => ({ ...d, customerCount: v }));
-  const setNotes = (v: string) => setDraft((d) => ({ ...d, notes: v }));
+  const setSales = (v: ScorecardSec) => setDraft((d) => ({ ...d, sales: v }));
+  const setLabour = (v: ScorecardSec) => setDraft((d) => ({ ...d, labour: v }));
+  const setDigital = (v: DigitalSec) => setDraft((d) => ({ ...d, digital: v }));
+  const setFood = (v: ScorecardSec) => setDraft((d) => ({ ...d, food: v }));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
@@ -846,8 +849,8 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
     await submitWithDuplicateCheck(
       {
         submitterName: managerName.trim(), reportType: "weekly-scorecard", location: storeCode, reportDate: weekOf,
-        data: { weekOf, totalSales, labourCost, foodCost, customerCount, notes, submittedVia: `Public - ${positionLabel}` },
-        totalScore: totalSales ? `$${parseFloat(totalSales).toFixed(0)}` : undefined,
+        data: { weekOf, sales, labour, digital, food, submittedVia: `Public - ${positionLabel}` },
+        totalScore: sales.thisWeekActual ? `$${parseFloat(sales.thisWeekActual).toFixed(0)}` : undefined,
       },
       () => { setSubmitted(true); clearDraft(); toast.success("Scorecard submitted!"); },
       (msg) => toast.error(msg),
@@ -855,37 +858,122 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
     );
   };
 
-  if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setManagerName(""); setWeekOf(""); setTotalSales(""); setLabourCost(""); setFoodCost(""); setCustomerCount(""); setNotes(""); }} onBack={onBack} />;
+  // Helper to render a scorecard section
+  const renderSection = (title: string, color: string, unit: "%" | "$", goalLabel: string, data: ScorecardSec, onChange: (d: ScorecardSec) => void) => {
+    const update = (field: keyof ScorecardSec, value: string) => onChange({ ...data, [field]: value });
+    const goal = parseFloat(data.thisWeekGoal);
+    const actual = parseFloat(data.thisWeekActual);
+    const hasComp = !isNaN(goal) && !isNaN(actual) && goal > 0;
+    const lowerBetter = title === "Labour" || title === "Food Cost";
+    const onTarget = hasComp ? (lowerBetter ? actual <= goal : actual >= goal) : null;
+    const variance = hasComp ? (unit === "%" ? (actual - goal).toFixed(1) : (actual - goal).toFixed(2)) : null;
+    const pre = unit === "$" ? "$" : "";
+    const suf = unit === "%" ? "%" : "";
+    return (
+      <Card className="overflow-hidden">
+        <div className="px-5 py-3 flex items-center gap-2" style={{ background: color }}>
+          <h3 className="font-serif text-lg font-semibold text-white">{title}</h3>
+          {onTarget !== null && (
+            <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-medium ${onTarget ? "bg-white/20 text-white" : "bg-red-100 text-red-700"}`}>
+              {onTarget ? "On Target" : "Off Target"}
+            </span>
+          )}
+        </div>
+        <CardContent className="pt-5 space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{goalLabel}</Label>
+              <div className="relative">
+                {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
+                <Input type="number" min="0" step={unit === "%" ? "0.1" : "0.01"} value={data.thisWeekGoal} onChange={(e) => update("thisWeekGoal", e.target.value)} placeholder="0" className={`h-10 text-sm font-mono ${unit === "$" ? "pl-7" : ""}`} />
+                {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">This Week</Label>
+              <div className="relative">
+                {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
+                <Input type="number" min="0" step={unit === "%" ? "0.1" : "0.01"} value={data.thisWeekActual} onChange={(e) => update("thisWeekActual", e.target.value)} placeholder="0" className={`h-10 text-sm font-mono ${unit === "$" ? "pl-7" : ""}`} />
+                {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Variance</Label>
+              <div className={`h-10 rounded-md border flex items-center justify-center text-sm font-mono font-medium ${onTarget === null ? "border-border/60 text-muted-foreground bg-muted/30" : onTarget ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-red-200 text-red-700 bg-red-50"}`}>
+                {variance !== null ? <span>{parseFloat(variance) > 0 ? "+" : ""}{pre}{variance}{suf}</span> : <span className="text-muted-foreground">\u2014</span>}
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Week</Label>
+              <div className="relative">
+                {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
+                <Input type="number" min="0" step={unit === "%" ? "0.1" : "0.01"} value={data.lastWeekActual} onChange={(e) => update("lastWeekActual", e.target.value)} placeholder="0" className={`h-9 text-sm font-mono bg-muted/20 ${unit === "$" ? "pl-7" : ""}`} />
+                {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Month</Label>
+              <div className="relative">
+                {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
+                <Input type="number" min="0" step={unit === "%" ? "0.1" : "0.01"} value={data.lastMonthActual} onChange={(e) => update("lastMonthActual", e.target.value)} placeholder="0" className={`h-9 text-sm font-mono bg-muted/20 ${unit === "$" ? "pl-7" : ""}`} />
+                {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">How Do I Contribute?</Label>
+            <Textarea value={data.howContribute} onChange={(e) => update("howContribute", e.target.value)} placeholder="Describe specific actions you take to impact this area..." rows={3} className="text-sm resize-none" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setDraft({ managerName: "", weekOf: "", sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" }, food: initSec() }); }} onBack={onBack} />;
 
   return (
-    <PublicFormLayout title="Weekly Scorecard" subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
+    <PublicFormLayout title="Store Manager Weekly Scorecard" subtitle={`${positionLabel} \u2014 ${storeName}`} onBack={onBack}>
       <Card><CardContent className="pt-6 space-y-4">
         <div className="space-y-1.5">
           <Label>Store Location</Label>
           <Input value={storeName} disabled className="bg-muted" />
         </div>
-        <div className="space-y-1.5">
-          <Label>Manager Name *</Label>
-          <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Week Of *</Label>
-          <Input type="date" value={weekOf} onChange={(e) => setWeekOf(e.target.value)} />
-        </div>
-      </CardContent></Card>
-      <Card><CardContent className="pt-6 space-y-4">
-        <h3 className="font-serif text-lg font-semibold">Weekly Numbers</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5"><Label>Total Sales ($)</Label><Input type="number" value={totalSales} onChange={(e) => setTotalSales(e.target.value)} placeholder="0.00" /></div>
-          <div className="space-y-1.5"><Label>Labour Cost ($)</Label><Input type="number" value={labourCost} onChange={(e) => setLabourCost(e.target.value)} placeholder="0.00" /></div>
-          <div className="space-y-1.5"><Label>Food Cost ($)</Label><Input type="number" value={foodCost} onChange={(e) => setFoodCost(e.target.value)} placeholder="0.00" /></div>
-          <div className="space-y-1.5"><Label>Customer Count</Label><Input type="number" value={customerCount} onChange={(e) => setCustomerCount(e.target.value)} placeholder="0" /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Manager Name *</Label>
+            <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Week Of *</Label>
+            <Input type="date" value={weekOf} onChange={(e) => setWeekOf(e.target.value)} />
+          </div>
         </div>
       </CardContent></Card>
-      <Card><CardContent className="pt-6 space-y-3">
-        <Label>Notes</Label>
-        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Any additional notes..." />
-      </CardContent></Card>
+
+      {renderSection("Sales", "#D4A853", "$", "Weekly Goal", sales, setSales)}
+      {renderSection("Labour", "#3B82F6", "%", "Target %", labour, setLabour)}
+
+      {/* Digital Section */}
+      <Card className="overflow-hidden">
+        <div className="px-5 py-3" style={{ background: "#6366F1" }}>
+          <h3 className="font-serif text-lg font-semibold text-white">Digital</h3>
+        </div>
+        <CardContent className="pt-5 space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Google Reviews (Last Week)</Label>
+            <Textarea value={digital.googleReviews} onChange={(e) => setDigital({ ...digital, googleReviews: e.target.value })} placeholder="Paste or summarize recent Google reviews..." rows={3} className="text-sm resize-none" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">How Do I Contribute?</Label>
+            <Textarea value={digital.howContribute} onChange={(e) => setDigital({ ...digital, howContribute: e.target.value })} placeholder="Describe how you encourage reviews, respond to feedback..." rows={3} className="text-sm resize-none" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {renderSection("Food Cost", "#F97316", "%", "Target %", food, setFood)}
+
       <div className="flex flex-col gap-3">
         <div className="flex gap-3">
           <Button variant="outline" onClick={onBack}>Cancel</Button>
