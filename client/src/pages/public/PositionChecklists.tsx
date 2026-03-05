@@ -13,6 +13,7 @@ import { StarRating } from "@/components/StarRating";
 import { CheckCircle2, ClipboardCheck, ArrowLeft, ChevronRight, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useMemo } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // ─── Save Draft Hook ───
 
@@ -825,17 +826,20 @@ function EquipmentMaintenanceForm({ storeCode, storeName, positionLabel, onBack 
 
 // ─── Weekly Scorecard Form ───
 
-function getWeekOfRange(today: Date = new Date()): { label: string; start: string; end: string } {
-  const d = new Date(today); d.setHours(0,0,0,0);
-  const day = d.getDay();
-  const thisMon = new Date(d);
-  thisMon.setDate(d.getDate() - ((day + 6) % 7));
-  // Previous work week: Mon to Fri
-  const prevMon = new Date(thisMon); prevMon.setDate(thisMon.getDate() - 7);
-  const prevFri = new Date(prevMon); prevFri.setDate(prevMon.getDate() + 4);
-  const fmt = (dt: Date) => dt.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+function generateWeekOptions(count = 12): { label: string; value: string; start: string; end: string }[] {
+  const weeks: { label: string; value: string; start: string; end: string }[] = [];
+  const now = new Date(); now.setHours(0,0,0,0);
+  const day = now.getDay();
+  const thisMon = new Date(now);
+  thisMon.setDate(now.getDate() - ((day + 6) % 7));
+  const fmt = (dt: Date) => dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const iso = (dt: Date) => dt.toISOString().split("T")[0];
-  return { label: `${fmt(prevMon)} - ${fmt(prevFri)}`, start: iso(prevMon), end: iso(prevFri) };
+  for (let i = 1; i <= count; i++) {
+    const mon = new Date(thisMon); mon.setDate(thisMon.getDate() - i * 7);
+    const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+    weeks.push({ label: `${fmt(mon)} - ${fmt(fri)}`, value: iso(mon), start: iso(mon), end: iso(fri) });
+  }
+  return weeks;
 }
 
 function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
@@ -843,17 +847,17 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
   interface DigitalSec { googleReviews: string; howContribute: string; }
   const initSec = (): ScorecardSec => ({ thisWeekGoal: "", thisWeekActual: "", lastWeekActual: "", lastMonthActual: "", howContribute: "" });
 
-  const defaultRange = useMemo(() => getWeekOfRange(), []);
+  const weekOptions = useMemo(() => generateWeekOptions(), []);
 
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
     `weekly-scorecard-${storeCode}`,
-    { managerName: "", dateEntered: new Date().toISOString().split("T")[0], weekOfDate: defaultRange.start, sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" } as DigitalSec, food: initSec() }
+    { managerName: "", dateEntered: new Date().toISOString().split("T")[0], selectedWeek: weekOptions[0]?.value || "", sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" } as DigitalSec, food: initSec() }
   );
-  const { managerName, dateEntered, weekOfDate, sales, labour, digital, food } = draft;
-  const weekOfRange = useMemo(() => getWeekOfRange(new Date(weekOfDate + "T12:00:00")), [weekOfDate]);
+  const { managerName, dateEntered, selectedWeek, sales, labour, digital, food } = draft;
+  const weekOfRange = useMemo(() => weekOptions.find(w => w.value === selectedWeek) || weekOptions[0], [selectedWeek, weekOptions]);
   const setManagerName = (v: string) => setDraft((d) => ({ ...d, managerName: v }));
   const setDateEntered = (v: string) => setDraft((d) => ({ ...d, dateEntered: v }));
-  const setWeekOfDate = (v: string) => setDraft((d) => ({ ...d, weekOfDate: v }));
+  const setSelectedWeek = (v: string) => setDraft((d) => ({ ...d, selectedWeek: v }));
   const setSales = (v: ScorecardSec) => setDraft((d) => ({ ...d, sales: v }));
   const setLabour = (v: ScorecardSec) => setDraft((d) => ({ ...d, labour: v }));
   const setDigital = (v: DigitalSec) => setDraft((d) => ({ ...d, digital: v }));
@@ -867,7 +871,7 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
     await submitWithDuplicateCheck(
       {
         submitterName: managerName.trim(), reportType: "weekly-scorecard", location: storeCode, reportDate: weekOfRange.start,
-        data: { dateEntered, weekOf: weekOfRange.label, weekOfStart: weekOfRange.start, weekOfEnd: weekOfRange.end, weekOfDate, sales, labour, digital, food, submittedVia: `Public - ${positionLabel}` },
+        data: { dateEntered, weekOf: weekOfRange.label, weekOfStart: weekOfRange.start, weekOfEnd: weekOfRange.end, selectedWeek, sales, labour, digital, food, submittedVia: `Public - ${positionLabel}` },
         totalScore: sales.thisWeekActual ? `$${parseFloat(sales.thisWeekActual).toFixed(0)}` : undefined,
       },
       () => { setSubmitted(true); clearDraft(); toast.success("Scorecard submitted!"); },
@@ -949,7 +953,7 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
     );
   };
 
-  if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setDraft({ managerName: "", dateEntered: new Date().toISOString().split("T")[0], weekOfDate: defaultRange.start, sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" }, food: initSec() }); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setDraft({ managerName: "", dateEntered: new Date().toISOString().split("T")[0], selectedWeek: weekOptions[0]?.value || "", sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" }, food: initSec() }); }} onBack={onBack} />;
 
   return (
     <PublicFormLayout title="Store Manager Weekly Scorecard" subtitle={`${positionLabel} \u2014 ${storeName}`} onBack={onBack}>
@@ -968,9 +972,15 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
             <Input type="date" value={dateEntered} onChange={(e) => setDateEntered(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Week Of</Label>
-            <Input type="date" value={weekOfDate} onChange={(e) => setWeekOfDate(e.target.value)} />
-            <p className="text-xs text-muted-foreground mt-1">{weekOfRange.label}</p>
+            <Label>Week Of *</Label>
+            <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+              <SelectTrigger><SelectValue placeholder="Select week" /></SelectTrigger>
+              <SelectContent>
+                {weekOptions.map(w => (
+                  <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </CardContent></Card>

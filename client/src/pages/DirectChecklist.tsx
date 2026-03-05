@@ -14,6 +14,7 @@ import ChecklistViewer from "./ChecklistViewer";
 // that renders the form for a given checklist type
 
 import { useState, useMemo } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { stores } from "@/lib/data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -369,18 +370,20 @@ function ScorecardSectionCard({
   );
 }
 
-function getWeekOfRange(today: Date = new Date()): { label: string; start: string; end: string } {
-  const d = new Date(today); d.setHours(0,0,0,0);
-  const day = d.getDay(); // 0=Sun,1=Mon,...
-  // Find the most recent Monday (if today is Mon, that's today)
-  const thisMon = new Date(d);
-  thisMon.setDate(d.getDate() - ((day + 6) % 7));
-  // Previous work week: Mon to Fri
-  const prevMon = new Date(thisMon); prevMon.setDate(thisMon.getDate() - 7);
-  const prevFri = new Date(prevMon); prevFri.setDate(prevMon.getDate() + 4);
-  const fmt = (dt: Date) => dt.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+function generateWeekOptions(count = 12): { label: string; value: string; start: string; end: string }[] {
+  const weeks: { label: string; value: string; start: string; end: string }[] = [];
+  const now = new Date(); now.setHours(0,0,0,0);
+  const day = now.getDay();
+  const thisMon = new Date(now);
+  thisMon.setDate(now.getDate() - ((day + 6) % 7));
+  const fmt = (dt: Date) => dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const iso = (dt: Date) => dt.toISOString().split("T")[0];
-  return { label: `${fmt(prevMon)} - ${fmt(prevFri)}`, start: iso(prevMon), end: iso(prevFri) };
+  for (let i = 1; i <= count; i++) {
+    const mon = new Date(thisMon); mon.setDate(thisMon.getDate() - i * 7);
+    const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+    weeks.push({ label: `${fmt(mon)} - ${fmt(fri)}`, value: iso(mon), start: iso(mon), end: iso(fri) });
+  }
+  return weeks;
 }
 
 function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
@@ -388,9 +391,9 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [managerName, setManagerName] = useState("");
   const [dateEntered, setDateEntered] = useState(() => new Date().toISOString().split("T")[0]);
-  const defaultRange = useMemo(() => getWeekOfRange(), []);
-  const [weekOfDate, setWeekOfDate] = useState(defaultRange.start);
-  const weekOfRange = useMemo(() => getWeekOfRange(new Date(weekOfDate + "T12:00:00")), [weekOfDate]);
+  const weekOptions = useMemo(() => generateWeekOptions(), []);
+  const [selectedWeek, setSelectedWeek] = useState(weekOptions[0]?.value || "");
+  const weekOfRange = useMemo(() => weekOptions.find(w => w.value === selectedWeek) || weekOptions[0], [selectedWeek, weekOptions]);
   const [sales, setSales] = useState<ScorecardSectionData>(initScorecardSection());
   const [labour, setLabour] = useState<ScorecardSectionData>(initScorecardSection());
   const [digital, setDigital] = useState<DigitalSectionData>({ googleReviews: "", howContribute: "" });
@@ -427,9 +430,15 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
           <div className="space-y-1.5"><Label>Name *</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" /></div>
           <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={dateEntered} onChange={(e) => setDateEntered(e.target.value)} /></div>
           <div className="space-y-1.5">
-            <Label>Week Of</Label>
-            <Input type="date" value={weekOfDate} onChange={(e) => setWeekOfDate(e.target.value)} />
-            <p className="text-xs text-muted-foreground mt-1">{weekOfRange.label}</p>
+            <Label>Week Of *</Label>
+            <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+              <SelectTrigger><SelectValue placeholder="Select week" /></SelectTrigger>
+              <SelectContent>
+                {weekOptions.map(w => (
+                  <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </CardContent></Card>
