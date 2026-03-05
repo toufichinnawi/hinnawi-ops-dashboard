@@ -72,7 +72,7 @@ export const PRESETS = [
 ];
 
 export function getDefaultDateFilter(): DateFilterValue {
-  return PRESETS[2].getValue(); // Last 7 Days
+  return PRESETS[0].getValue(); // Today
 }
 
 export function DateFilter({ value, onChange, className }: DateFilterProps) {

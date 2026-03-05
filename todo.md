@@ -692,3 +692,13 @@
 # Bug: Reports tab not showing portal submissions
 
 - [x] Fix Reports tab in admin dashboard not showing submitted checklist reports from portal (changed allReports from adminProcedure to protectedProcedure)
+
+# Improvement Batch — March 5, 2026
+
+- [x] Make "Today" the default filter in every Date/calendar filter across dashboard and portal
+- [x] Add Operations Scorecard to Store Manager and Assistant Manager portals (scoped to their designated store only)
+- [x] Add Reports tab to Operations Manager and Store Manager portals
+- [x] Make reports editable and deletable by Admin, Ops Manager, and Store Manager
+- [x] Duplicate checklist detection: prompt when same store + same checklist + same date already exists, with option to overwrite (max one entry per checklist per store per day)
+- [x] Add Save Draft button to all checklist forms so users can save progress and resume later (localStorage-based, auto-loads on return)
+- [x] Automated Clover data sync at midnight daily (syncs last 3 days of Clover + 7shifts at 00:00)

@@ -30,6 +30,9 @@ describe("Public API Endpoints", () => {
   });
 
   describe("POST /api/public/submit-report", () => {
+    // Use a unique date far in the past to avoid duplicate conflicts with real data
+    const uniqueDate = "2019-01-01";
+
     it("should accept a valid report submission without authentication", async () => {
       const res = await fetch(`${BASE_URL}/api/public/submit-report`, {
         method: "POST",
@@ -38,9 +41,10 @@ describe("Public API Endpoints", () => {
           submitterName: "Test User",
           reportType: "manager-checklist",
           location: "PK",
-          reportDate: "2026-03-04",
+          reportDate: uniqueDate,
           data: { items: [{ label: "Test item", rating: 5 }] },
           totalScore: "5.00",
+          overwrite: true, // Use overwrite to avoid 409 on re-runs
         }),
       });
 
@@ -48,6 +52,9 @@ describe("Public API Endpoints", () => {
       const json = await res.json();
       expect(json.success).toBe(true);
       expect(json.id).toBeDefined();
+
+      // Cleanup
+      await fetch(`${BASE_URL}/api/public/reports/${json.id}`, { method: "DELETE" });
     });
 
     it("should reject submissions with missing required fields", async () => {
@@ -73,14 +80,20 @@ describe("Public API Endpoints", () => {
           submitterName: "Test User",
           reportType: "Manager Checklist",
           location: "President Kennedy",
-          reportDate: "2026-03-04",
+          reportDate: "2019-01-02",
           data: { test: true },
+          overwrite: true, // Use overwrite to avoid 409 on re-runs
         }),
       });
 
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.success).toBe(true);
+
+      // Cleanup
+      if (json.id) {
+        await fetch(`${BASE_URL}/api/public/reports/${json.id}`, { method: "DELETE" });
+      }
     });
   });
 

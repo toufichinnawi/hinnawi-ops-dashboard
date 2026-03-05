@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import {
-  getReportsByDateRange,
+  getReportsByDateRange, updateReportSubmission, deleteReportSubmission, getReportById,
   listWebhooks, getWebhookById, createWebhook, updateWebhook, deleteWebhook,
   listAlertRules, createAlertRule, updateAlertRule, deleteAlertRule,
   listAlertHistory, createAlertHistoryEntry,
@@ -1047,6 +1047,27 @@ export const appRouter = router({
     allReports: protectedProcedure.query(async () => {
       return getAllReports();
     }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.any().optional(),
+        totalScore: z.string().optional(),
+        status: z.enum(["draft", "submitted", "reviewed"]).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const updateData: any = {};
+        if (input.data !== undefined) updateData.data = input.data;
+        if (input.totalScore !== undefined) updateData.totalScore = input.totalScore;
+        if (input.status !== undefined) updateData.status = input.status;
+        return updateReportSubmission(input.id, updateData);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return deleteReportSubmission(input.id);
+      }),
   }),
 
   // ─── Store PINs ───────────────────────────────────────────────

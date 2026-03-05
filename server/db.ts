@@ -514,11 +514,45 @@ export async function createExcelSyncMeta(data: InsertExcelSyncMeta): Promise<vo
 
 // ─── Report Submissions ───────────────────────────────────────────
 
+export async function checkExistingReport(location: string, reportType: string, reportDate: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(reportSubmissions).where(
+    and(
+      eq(reportSubmissions.location, location),
+      eq(reportSubmissions.reportType, reportType),
+      eq(reportSubmissions.reportDate, reportDate)
+    )
+  ).limit(1);
+  return rows[0] || null;
+}
+
 export async function createReportSubmission(data: InsertReportSubmission) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(reportSubmissions).values(data);
   return { id: result[0].insertId };
+}
+
+export async function updateReportSubmission(id: number, data: Partial<InsertReportSubmission>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(reportSubmissions).set(data).where(eq(reportSubmissions.id, id));
+  return { success: true };
+}
+
+export async function deleteReportSubmission(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(reportSubmissions).where(eq(reportSubmissions.id, id));
+  return { success: true };
+}
+
+export async function getReportById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(reportSubmissions).where(eq(reportSubmissions.id, id)).limit(1);
+  return rows[0] || null;
 }
 
 export async function getReportsByUser(userId: number, limit = 50) {

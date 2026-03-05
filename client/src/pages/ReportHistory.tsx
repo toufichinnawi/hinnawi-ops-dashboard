@@ -37,6 +37,8 @@ import {
   X,
   Download,
   ClipboardCheck,
+  Trash2,
+  Pencil,
 } from "lucide-react";
 import {
   ALL_CHECKLISTS,
@@ -267,14 +269,30 @@ export default function ReportHistory() {
   const [filterChecklist, setFilterChecklist] =
     useState<string>("all");
   const [dateFilter, setDateFilter] = useState<DateFilterValue>({
-    from: null,
-    to: null,
-    label: "All Time",
+    from: today,
+    to: endOfDay(today),
+    label: "Today",
   });
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
+  const utils = trpc.useUtils();
   const { data: allReports = [], isLoading } =
     trpc.reports.allReports.useQuery();
+
+  const deleteMutation = trpc.reports.delete.useMutation({
+    onSuccess: () => {
+      utils.reports.allReports.invalidate();
+      setDeleteConfirmId(null);
+      setSelectedReport(null);
+    },
+  });
+
+  const updateMutation = trpc.reports.update.useMutation({
+    onSuccess: () => {
+      utils.reports.allReports.invalidate();
+    },
+  });
 
   // Determine which checklist types belong to the selected position
   const positionChecklists = useMemo(() => {
@@ -348,7 +366,7 @@ export default function ReportHistory() {
     setFilterStore("all");
     setFilterPosition("all");
     setFilterChecklist("all");
-    setDateFilter({ from: null, to: null, label: "All Time" });
+    setDateFilter({ from: today, to: endOfDay(today), label: "Today" });
   }
 
   function parsePayload(data: any) {
@@ -561,6 +579,9 @@ export default function ReportHistory() {
                     <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                       Submitted
                     </th>
+                    <th className="text-center px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -673,6 +694,32 @@ export default function ReportHistory() {
                                 minute: "2-digit",
                               })
                             : "—"}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedReport(report);
+                              }}
+                              className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                              title="View / Edit"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirmId(report.id);
+                              }}
+                              className="p-1.5 rounded-md hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -876,8 +923,58 @@ export default function ReportHistory() {
                     );
                   })()}
                 </div>
+                {/* Delete button in detail view */}
+                <div className="flex justify-end gap-2 pt-3 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => setDeleteConfirmId(selectedReport.id)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                    Delete Report
+                  </Button>
+                </div>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={deleteConfirmId !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeleteConfirmId(null);
+          }}
+        >
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-red-600">Delete Report</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete this report? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteConfirmId(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (deleteConfirmId !== null) {
+                    deleteMutation.mutate({ id: deleteConfirmId });
+                  }
+                }}
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

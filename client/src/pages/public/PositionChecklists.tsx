@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams } from "wouter";
 import PinGate from "@/components/PinGate";
 import { getPositionConfig, getChecklistInfo, type ChecklistType } from "@/lib/positionChecklists";
@@ -10,8 +10,70 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/StarRating";
-import { CheckCircle2, ClipboardCheck, ArrowLeft, ChevronRight } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, ArrowLeft, ChevronRight, Save } from "lucide-react";
 import { toast } from "sonner";
+
+// ─── Save Draft Hook ───
+
+function useDraft<T>(key: string, initialValue: T): {
+  value: T;
+  setValue: React.Dispatch<React.SetStateAction<T>>;
+  saveDraft: () => void;
+  clearDraft: () => void;
+  hasDraft: boolean;
+  draftButton: React.ReactNode;
+} {
+  const storageKey = `hinnawi-draft-${key}`;
+  const [hasDraft, setHasDraft] = useState(false);
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        setHasDraft(true);
+        return JSON.parse(saved) as T;
+      }
+    } catch { /* ignore */ }
+    return initialValue;
+  });
+
+  // Show toast if draft was loaded
+  const notifiedRef = useRef(false);
+  useEffect(() => {
+    if (hasDraft && !notifiedRef.current) {
+      notifiedRef.current = true;
+      toast.info("Draft restored. You can continue where you left off.", { duration: 4000 });
+    }
+  }, [hasDraft]);
+
+  function saveDraft() {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(value));
+      setHasDraft(true);
+      toast.success("Draft saved! You can come back and finish later.", { duration: 3000 });
+    } catch {
+      toast.error("Could not save draft");
+    }
+  }
+
+  function clearDraft() {
+    localStorage.removeItem(storageKey);
+    setHasDraft(false);
+  }
+
+  const draftButton = (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={saveDraft}
+      className="w-full h-12 text-lg border-[#D4A853] text-[#D4A853] hover:bg-[#D4A853]/10"
+    >
+      <Save className="w-5 h-5 mr-2" />
+      Save Draft
+    </Button>
+  );
+
+  return { value, setValue, saveDraft, clearDraft, hasDraft, draftButton };
+}
 
 // ─── Checklist Data Definitions ───
 
@@ -313,25 +375,143 @@ function SuccessScreen({ message, onNew, onBack }: { message: string; onNew: () 
   );
 }
 
-async function submitPublicReport(data: { submitterName: string; reportType: string; location: string; reportDate: string; data: any; totalScore?: string | null }) {
+class DuplicateReportError extends Error {
+  existingReport: any;
+  constructor(message: string, existingReport: any) {
+    super(message);
+    this.name = "DuplicateReportError";
+    this.existingReport = existingReport;
+  }
+}
+
+async function submitPublicReport(data: { submitterName: string; reportType: string; location: string; reportDate: string; data: any; totalScore?: string | null; overwrite?: boolean }) {
   const res = await fetch("/api/public/submit-report", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
+  if (res.status === 409) {
+    const body = await res.json();
+    throw new DuplicateReportError(body.message, body.existingReport);
+  }
   if (!res.ok) throw new Error("Failed to submit");
   return res.json();
+}
+
+function DuplicateDialog({ open, existing, onOverwrite, onCancel, overwriting }: {
+  open: boolean;
+  existing: any;
+  onOverwrite: () => void;
+  onCancel: () => void;
+  overwriting: boolean;
+}) {
+  if (!open) return null;
+  const submittedBy = existing?.data?.submitterName || existing?.submitterName || "Someone";
+  const submittedAt = existing?.createdAt ? new Date(existing.createdAt).toLocaleString() : "earlier today";
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
+        <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mx-auto">
+          <ClipboardCheck className="h-6 w-6 text-amber-600" />
+        </div>
+        <h3 className="text-lg font-bold text-center">Checklist Already Submitted</h3>
+        <p className="text-sm text-muted-foreground text-center">
+          <strong>{submittedBy}</strong> already submitted this checklist for this store on this date ({submittedAt}).
+        </p>
+        <p className="text-sm text-center text-muted-foreground">
+          Would you like to <strong>overwrite</strong> the existing entry with your new data?
+        </p>
+        <div className="flex gap-3 justify-center pt-2">
+          <Button variant="outline" onClick={onCancel} disabled={overwriting}>Cancel</Button>
+          <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={onOverwrite} disabled={overwriting}>
+            {overwriting ? "Overwriting..." : "Overwrite"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function useDuplicateCheck() {
+  const [dupOpen, setDupOpen] = useState(false);
+  const [dupExisting, setDupExisting] = useState<any>(null);
+  const [dupOverwriting, setDupOverwriting] = useState(false);
+  const pendingSubmitRef = useRef<(() => Promise<void>) | null>(null);
+
+  async function submitWithDuplicateCheck(
+    reportData: { submitterName: string; reportType: string; location: string; reportDate: string; data: any; totalScore?: string | null },
+    onSuccess: () => void,
+    onError: (msg: string) => void,
+    setSubmitting: (v: boolean) => void,
+  ) {
+    setSubmitting(true);
+    try {
+      await submitPublicReport(reportData);
+      onSuccess();
+    } catch (err) {
+      if (err instanceof DuplicateReportError) {
+        setDupExisting(err.existingReport);
+        setDupOpen(true);
+        // Store the overwrite action for when user confirms
+        pendingSubmitRef.current = async () => {
+          setDupOverwriting(true);
+          try {
+            await submitPublicReport({ ...reportData, overwrite: true });
+            setDupOpen(false);
+            setDupExisting(null);
+            onSuccess();
+          } catch {
+            onError("Failed to overwrite");
+          } finally {
+            setDupOverwriting(false);
+          }
+        };
+      } else {
+        onError("Failed to submit");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function handleOverwrite() {
+    pendingSubmitRef.current?.();
+  }
+
+  function handleCancelDup() {
+    setDupOpen(false);
+    setDupExisting(null);
+    pendingSubmitRef.current = null;
+  }
+
+  const duplicateDialog = (
+    <DuplicateDialog
+      open={dupOpen}
+      existing={dupExisting}
+      onOverwrite={handleOverwrite}
+      onCancel={handleCancelDup}
+      overwriting={dupOverwriting}
+    />
+  );
+
+  return { submitWithDuplicateCheck, duplicateDialog };
 }
 
 // ─── Manager Checklist Form (formerly Operations Checklist) ───
 
 function ManagerChecklistForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
-  const [name, setName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [tasks, setTasks] = useState(OPS_TASKS.map(() => ({ rating: 0, isNA: false, comment: "" })));
-  const [comments, setComments] = useState("");
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `manager-checklist-${storeCode}`,
+    { name: "", date: new Date().toISOString().split("T")[0], tasks: OPS_TASKS.map(() => ({ rating: 0, isNA: false, comment: "" })), comments: "" }
+  );
+  const { name, date, tasks, comments } = draft;
+  const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
+  const setDate = (v: string) => setDraft((d) => ({ ...d, date: v }));
+  const setTasks = (fn: (prev: typeof tasks) => typeof tasks) => setDraft((d) => ({ ...d, tasks: fn(d.tasks) }));
+  const setComments = (v: string) => setDraft((d) => ({ ...d, comments: v }));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
   const ratedTasks = tasks.filter((t) => !t.isNA && t.rating > 0);
   const avg = ratedTasks.length > 0 ? (ratedTasks.reduce((s, t) => s + t.rating, 0) / ratedTasks.length).toFixed(2) : "0.00";
@@ -339,23 +519,22 @@ function ManagerChecklistForm({ storeCode, storeName, positionLabel, onBack }: {
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
     if (ratedTasks.length === 0) { toast.error("Please rate at least one item"); return; }
-    setSubmitting(true);
-    try {
-      await submitPublicReport({
+    await submitWithDuplicateCheck(
+      {
         submitterName: name.trim(),
         reportType: "Manager Checklist",
         location: storeName,
         reportDate: date,
         data: { tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, submittedVia: `Public - ${positionLabel}` },
         totalScore: avg,
-      });
-      setSubmitted(true);
-      toast.success("Checklist submitted!");
-    } catch { toast.error("Failed to submit"); }
-    finally { setSubmitting(false); }
+      },
+      () => { setSubmitted(true); clearDraft(); toast.success("Checklist submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
-  if (submitted) return <SuccessScreen message={`Manager Checklist for ${storeName} submitted. Average: ${avg}/5`} onNew={() => { setSubmitted(false); setTasks(OPS_TASKS.map(() => ({ rating: 0, isNA: false, comment: "" }))); setComments(""); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Manager Checklist for ${storeName} submitted. Average: ${avg}/5`} onNew={() => { setSubmitted(false); setTasks(() => OPS_TASKS.map(() => ({ rating: 0, isNA: false, comment: "" }))); setComments(""); }} onBack={onBack} />;
 
   return (
     <PublicFormLayout title="Manager Checklist" subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
@@ -389,7 +568,11 @@ function ManagerChecklistForm({ storeCode, storeName, positionLabel, onBack }: {
         ))}
       </div>
       <Card><CardContent className="pt-6"><Label>Final Comments</Label><Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="General comments..." /></CardContent></Card>
-      <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Checklist"}</Button>
+      <div className="flex flex-col gap-3">
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Checklist"}</Button>
+        {draftButton}
+      </div>
+      {duplicateDialog}
     </PublicFormLayout>
   );
 }
@@ -399,12 +582,19 @@ function ManagerChecklistForm({ storeCode, storeName, positionLabel, onBack }: {
 function SectionChecklistForm({ title, sections, reportType, storeCode, storeName, positionLabel, onBack, useRating }: {
   title: string; sections: { title: string; items: string[] }[]; reportType: string; storeCode: string; storeName: string; positionLabel: string; onBack: () => void; useRating?: boolean;
 }) {
-  const [name, setName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [data, setData] = useState<any[][]>(sections.map((s) => s.items.map(() => useRating ? { rating: 0, comment: "" } : { checked: false })));
-  const [comments, setComments] = useState("");
+  const initData = sections.map((s) => s.items.map(() => useRating ? { rating: 0, comment: "" } : { checked: false }));
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `${reportType}-${storeCode}`,
+    { name: "", date: new Date().toISOString().split("T")[0], data: initData, comments: "" }
+  );
+  const { name, date, data, comments } = draft;
+  const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
+  const setDate = (v: string) => setDraft((d) => ({ ...d, date: v }));
+  const setData = (fn: (prev: any[][]) => any[][]) => setDraft((d) => ({ ...d, data: fn(d.data) }));
+  const setComments = (v: string) => setDraft((d) => ({ ...d, comments: v }));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
   const totalScore = useRating
     ? (() => {
@@ -419,23 +609,22 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
 
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
-    setSubmitting(true);
-    try {
-      await submitPublicReport({
+    await submitWithDuplicateCheck(
+      {
         submitterName: name.trim(),
         reportType,
         location: storeName,
         reportDate: date,
         data: { sections: sections.map((s, si) => ({ title: s.title, items: s.items.map((item, ii) => ({ item, ...data[si][ii] })) })), comments, submittedVia: `Public - ${positionLabel}` },
         totalScore,
-      });
-      setSubmitted(true);
-      toast.success(`${title} submitted!`);
-    } catch { toast.error("Failed to submit"); }
-    finally { setSubmitting(false); }
+      },
+      () => { setSubmitted(true); clearDraft(); toast.success(`${title} submitted!`); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
-  if (submitted) return <SuccessScreen message={`${title} for ${storeName} submitted. Score: ${totalScore}`} onNew={() => { setSubmitted(false); setData(sections.map((s) => s.items.map(() => useRating ? { rating: 0, comment: "" } : { checked: false })) as any[][]); setComments(""); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`${title} for ${storeName} submitted. Score: ${totalScore}`} onNew={() => { setSubmitted(false); setData(() => sections.map((s) => s.items.map(() => useRating ? { rating: 0, comment: "" } : { checked: false })) as any[][]); setComments(""); }} onBack={onBack} />;
 
   return (
     <PublicFormLayout title={title} subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
@@ -469,7 +658,11 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
         </Card>
       ))}
       <Card><CardContent className="pt-6"><Label>Comments</Label><Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Additional comments..." /></CardContent></Card>
-      <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : `Submit ${title}`}</Button>
+      <div className="flex flex-col gap-3">
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : `Submit ${title}`}</Button>
+        {draftButton}
+      </div>
+      {duplicateDialog}
     </PublicFormLayout>
   );
 }
@@ -477,23 +670,31 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
 // ─── Waste Report Form ───
 
 function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
-  const [name, setName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [bagels, setBagels] = useState<Record<string, { leftover: string; waste: string }>>(Object.fromEntries(BAGEL_TYPES.map((t) => [t, { leftover: "", waste: "" }])));
-  const [pastries, setPastries] = useState<Record<string, { leftover: string; waste: string }>>(Object.fromEntries(PASTRY_TYPES.map((t) => [t, { leftover: "", waste: "" }])));
-  const [ckItems, setCkItems] = useState<Record<string, { leftover: string; waste: string }>>(Object.fromEntries(CK_ITEMS.map((t) => [t, { leftover: "", waste: "" }])));
+  const initBagels = Object.fromEntries(BAGEL_TYPES.map((t) => [t, { leftover: "", waste: "" }]));
+  const initPastries = Object.fromEntries(PASTRY_TYPES.map((t) => [t, { leftover: "", waste: "" }]));
+  const initCk = Object.fromEntries(CK_ITEMS.map((t) => [t, { leftover: "", waste: "" }]));
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `waste-report-${storeCode}`,
+    { name: "", date: new Date().toISOString().split("T")[0], bagels: initBagels, pastries: initPastries, ckItems: initCk }
+  );
+  const { name, date, bagels, pastries, ckItems } = draft;
+  const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
+  const setDate = (v: string) => setDraft((d) => ({ ...d, date: v }));
+  const setBagels = (v: Record<string, { leftover: string; waste: string }>) => setDraft((d) => ({ ...d, bagels: v }));
+  const setPastries = (v: Record<string, { leftover: string; waste: string }>) => setDraft((d) => ({ ...d, pastries: v }));
+  const setCkItems = (v: Record<string, { leftover: string; waste: string }>) => setDraft((d) => ({ ...d, ckItems: v }));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
-    setSubmitting(true);
-    try {
-      await submitPublicReport({ submitterName: name.trim(), reportType: "Leftovers & Waste", location: storeName, reportDate: date, data: { bagels, pastries, ckItems, submittedVia: `Public - ${positionLabel}` } });
-      setSubmitted(true);
-      toast.success("Waste report submitted!");
-    } catch { toast.error("Failed to submit"); }
-    finally { setSubmitting(false); }
+    await submitWithDuplicateCheck(
+      { submitterName: name.trim(), reportType: "Leftovers & Waste", location: storeName, reportDate: date, data: { bagels, pastries, ckItems, submittedVia: `Public - ${positionLabel}` } },
+      () => { setSubmitted(true); clearDraft(); toast.success("Waste report submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
   const renderSection = (sectionTitle: string, items: string[], data: Record<string, { leftover: string; waste: string }>, setData: (d: Record<string, { leftover: string; waste: string }>) => void) => (
@@ -527,7 +728,11 @@ function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: { stor
       {renderSection("Bagels", BAGEL_TYPES, bagels, setBagels)}
       {renderSection("Pastries", PASTRY_TYPES, pastries, setPastries)}
       {renderSection("CK Items", CK_ITEMS, ckItems, setCkItems)}
-      <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Waste Report"}</Button>
+      <div className="flex flex-col gap-3">
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Waste Report"}</Button>
+        {draftButton}
+      </div>
+      {duplicateDialog}
     </PublicFormLayout>
   );
 }
@@ -535,29 +740,34 @@ function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: { stor
 // ─── Equipment Maintenance Form ───
 
 function EquipmentMaintenanceForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
-  const [name, setName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [daily, setDaily] = useState(EQUIP_DAILY.map(() => ({ checked: false, initial: "" })));
-  const [weekly, setWeekly] = useState(EQUIP_WEEKLY.map(() => ({ checked: false, initial: "" })));
-  const [monthly, setMonthly] = useState(EQUIP_MONTHLY.map(() => ({ checked: false, initial: "" })));
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `equipment-maintenance-${storeCode}`,
+    { name: "", date: new Date().toISOString().split("T")[0], daily: EQUIP_DAILY.map(() => ({ checked: false, initial: "" })), weekly: EQUIP_WEEKLY.map(() => ({ checked: false, initial: "" })), monthly: EQUIP_MONTHLY.map(() => ({ checked: false, initial: "" })) }
+  );
+  const { name, date, daily, weekly, monthly } = draft;
+  const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
+  const setDate = (v: string) => setDraft((d) => ({ ...d, date: v }));
+  const setDaily: React.Dispatch<React.SetStateAction<{ checked: boolean; initial: string }[]>> = (fn) => setDraft((d) => ({ ...d, daily: typeof fn === 'function' ? fn(d.daily) : fn }));
+  const setWeekly: React.Dispatch<React.SetStateAction<{ checked: boolean; initial: string }[]>> = (fn) => setDraft((d) => ({ ...d, weekly: typeof fn === 'function' ? fn(d.weekly) : fn }));
+  const setMonthly: React.Dispatch<React.SetStateAction<{ checked: boolean; initial: string }[]>> = (fn) => setDraft((d) => ({ ...d, monthly: typeof fn === 'function' ? fn(d.monthly) : fn }));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
-    setSubmitting(true);
-    try {
-      const total = daily.length + weekly.length + monthly.length;
-      const checked = [...daily, ...weekly, ...monthly].filter((i) => i.checked).length;
-      await submitPublicReport({
+    const total = daily.length + weekly.length + monthly.length;
+    const checked = [...daily, ...weekly, ...monthly].filter((i) => i.checked).length;
+    await submitWithDuplicateCheck(
+      {
         submitterName: name.trim(), reportType: "Equipment Maintenance", location: storeName, reportDate: date,
         data: { daily: EQUIP_DAILY.map((e, i) => ({ ...e, ...daily[i] })), weekly: EQUIP_WEEKLY.map((e, i) => ({ ...e, ...weekly[i] })), monthly: EQUIP_MONTHLY.map((e, i) => ({ ...e, ...monthly[i] })), submittedVia: `Public - ${positionLabel}` },
         totalScore: `${checked}/${total}`,
-      });
-      setSubmitted(true);
-      toast.success("Equipment checklist submitted!");
-    } catch { toast.error("Failed to submit"); }
-    finally { setSubmitting(false); }
+      },
+      () => { setSubmitted(true); clearDraft(); toast.success("Equipment checklist submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
   const renderEquipSection = (sectionTitle: string, items: { equipment: string; task: string }[], data: { checked: boolean; initial: string }[], setData: React.Dispatch<React.SetStateAction<{ checked: boolean; initial: string }[]>>) => (
@@ -588,7 +798,11 @@ function EquipmentMaintenanceForm({ storeCode, storeName, positionLabel, onBack 
       {renderEquipSection("Daily Checks", EQUIP_DAILY, daily, setDaily)}
       {renderEquipSection("Weekly Checks", EQUIP_WEEKLY, weekly, setWeekly)}
       {renderEquipSection("Monthly Checks", EQUIP_MONTHLY, monthly, setMonthly)}
-      <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Equipment Checklist"}</Button>
+      <div className="flex flex-col gap-3">
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Equipment Checklist"}</Button>
+        {draftButton}
+      </div>
+      {duplicateDialog}
     </PublicFormLayout>
   );
 }
@@ -596,29 +810,34 @@ function EquipmentMaintenanceForm({ storeCode, storeName, positionLabel, onBack 
 // ─── Weekly Scorecard Form ───
 
 function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
-  const [managerName, setManagerName] = useState("");
-  const [weekOf, setWeekOf] = useState("");
-  const [totalSales, setTotalSales] = useState("");
-  const [labourCost, setLabourCost] = useState("");
-  const [foodCost, setFoodCost] = useState("");
-  const [customerCount, setCustomerCount] = useState("");
-  const [notes, setNotes] = useState("");
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `weekly-scorecard-${storeCode}`,
+    { managerName: "", weekOf: "", totalSales: "", labourCost: "", foodCost: "", customerCount: "", notes: "" }
+  );
+  const { managerName, weekOf, totalSales, labourCost, foodCost, customerCount, notes } = draft;
+  const setManagerName = (v: string) => setDraft((d) => ({ ...d, managerName: v }));
+  const setWeekOf = (v: string) => setDraft((d) => ({ ...d, weekOf: v }));
+  const setTotalSales = (v: string) => setDraft((d) => ({ ...d, totalSales: v }));
+  const setLabourCost = (v: string) => setDraft((d) => ({ ...d, labourCost: v }));
+  const setFoodCost = (v: string) => setDraft((d) => ({ ...d, foodCost: v }));
+  const setCustomerCount = (v: string) => setDraft((d) => ({ ...d, customerCount: v }));
+  const setNotes = (v: string) => setDraft((d) => ({ ...d, notes: v }));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
   const handleSubmit = async () => {
     if (!managerName.trim() || !weekOf) { toast.error("Please fill required fields"); return; }
-    setSubmitting(true);
-    try {
-      await submitPublicReport({
+    await submitWithDuplicateCheck(
+      {
         submitterName: managerName.trim(), reportType: "weekly-scorecard", location: storeCode, reportDate: weekOf,
         data: { weekOf, totalSales, labourCost, foodCost, customerCount, notes, submittedVia: `Public - ${positionLabel}` },
         totalScore: totalSales ? `$${parseFloat(totalSales).toFixed(0)}` : undefined,
-      });
-      setSubmitted(true);
-      toast.success("Scorecard submitted!");
-    } catch { toast.error("Failed to submit"); }
-    finally { setSubmitting(false); }
+      },
+      () => { setSubmitted(true); clearDraft(); toast.success("Scorecard submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
   if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setManagerName(""); setWeekOf(""); setTotalSales(""); setLabourCost(""); setFoodCost(""); setCustomerCount(""); setNotes(""); }} onBack={onBack} />;
@@ -652,10 +871,14 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
         <Label>Notes</Label>
         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Any additional notes..." />
       </CardContent></Card>
-      <div className="flex gap-3">
-        <Button variant="outline" onClick={onBack}>Cancel</Button>
-        <Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Scorecard"}</Button>
+      <div className="flex flex-col gap-3">
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={onBack}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={submitting} className="flex-1 bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Scorecard"}</Button>
+        </div>
+        {draftButton}
       </div>
+      {duplicateDialog}
     </PublicFormLayout>
   );
 }
@@ -663,13 +886,19 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
 // ─── Training Evaluation Form ───
 
 function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
-  const [name, setName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [traineeName, setTraineeName] = useState("");
-  const [ratings, setRatings] = useState(TRAINING_AREAS.map((a) => a.items.map(() => ({ rating: 0, comment: "" }))));
-  const [overallComments, setOverallComments] = useState("");
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `training-eval-${storeCode}`,
+    { name: "", date: new Date().toISOString().split("T")[0], traineeName: "", ratings: TRAINING_AREAS.map((a) => a.items.map(() => ({ rating: 0, comment: "" }))), overallComments: "" }
+  );
+  const { name, date, traineeName, ratings, overallComments } = draft;
+  const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
+  const setDate = (v: string) => setDraft((d) => ({ ...d, date: v }));
+  const setTraineeName = (v: string) => setDraft((d) => ({ ...d, traineeName: v }));
+  const setRatings = (fn: (prev: { rating: number; comment: string }[][]) => { rating: number; comment: string }[][]) => setDraft((d) => ({ ...d, ratings: fn(d.ratings) }));
+  const setOverallComments = (v: string) => setDraft((d) => ({ ...d, overallComments: v }));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
   const allRatings = ratings.flat().filter((r) => r.rating > 0);
   const avg = allRatings.length > 0 ? (allRatings.reduce((s, r) => s + r.rating, 0) / allRatings.length).toFixed(2) : "0.00";
@@ -677,20 +906,19 @@ function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack }:
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
     if (!traineeName.trim()) { toast.error("Please enter trainee name"); return; }
-    setSubmitting(true);
-    try {
-      await submitPublicReport({
+    await submitWithDuplicateCheck(
+      {
         submitterName: name.trim(), reportType: "Training Evaluation", location: storeName, reportDate: date,
         data: { traineeName, areas: TRAINING_AREAS.map((a, ai) => ({ title: a.title, items: a.items.map((item, ii) => ({ item, ...ratings[ai][ii] })) })), overallComments, submittedVia: `Public - ${positionLabel}` },
         totalScore: avg,
-      });
-      setSubmitted(true);
-      toast.success("Training evaluation submitted!");
-    } catch { toast.error("Failed to submit"); }
-    finally { setSubmitting(false); }
+      },
+      () => { setSubmitted(true); clearDraft(); toast.success("Training evaluation submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
-  if (submitted) return <SuccessScreen message={`Training evaluation for ${traineeName} at ${storeName} submitted. Average: ${avg}/5`} onNew={() => { setSubmitted(false); setRatings(TRAINING_AREAS.map((a) => a.items.map(() => ({ rating: 0, comment: "" })))); setTraineeName(""); setOverallComments(""); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Training evaluation for ${traineeName} at ${storeName} submitted. Average: ${avg}/5`} onNew={() => { setSubmitted(false); setRatings(() => TRAINING_AREAS.map((a) => a.items.map(() => ({ rating: 0, comment: "" })))); setTraineeName(""); setOverallComments(""); }} onBack={onBack} />;
 
   return (
     <PublicFormLayout title="Training Evaluation" subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
@@ -717,7 +945,11 @@ function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack }:
         </Card>
       ))}
       <Card><CardContent className="pt-6"><Label>Overall Comments</Label><Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment..." /></CardContent></Card>
-      <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Evaluation"}</Button>
+      <div className="flex flex-col gap-3">
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Evaluation"}</Button>
+        {draftButton}
+      </div>
+      {duplicateDialog}
     </PublicFormLayout>
   );
 }
@@ -726,27 +958,32 @@ function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack }:
 
 function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
   const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-  const [name, setName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [orders, setOrders] = useState<string[][]>(BAGEL_TYPES.map(() => DAYS.map(() => "")));
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `bagel-orders-${storeCode}`,
+    { name: "", date: new Date().toISOString().split("T")[0], orders: BAGEL_TYPES.map(() => DAYS.map(() => "")) }
+  );
+  const { name, date, orders } = draft;
+  const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
+  const setDate = (v: string) => setDraft((d) => ({ ...d, date: v }));
+  const setOrders = (fn: (prev: string[][]) => string[][]) => setDraft((d) => ({ ...d, orders: fn(d.orders) }));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
-    setSubmitting(true);
-    try {
-      await submitPublicReport({
+    await submitWithDuplicateCheck(
+      {
         submitterName: name.trim(), reportType: "Bagel Orders", location: storeName, reportDate: date,
         data: { orders: BAGEL_TYPES.map((type, i) => ({ type, quantities: Object.fromEntries(DAYS.map((d, j) => [d, orders[i][j]])) })), submittedVia: `Public - ${positionLabel}` },
-      });
-      setSubmitted(true);
-      toast.success("Bagel orders submitted!");
-    } catch { toast.error("Failed to submit"); }
-    finally { setSubmitting(false); }
+      },
+      () => { setSubmitted(true); clearDraft(); toast.success("Bagel orders submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
-  if (submitted) return <SuccessScreen message={`Bagel orders for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setOrders(BAGEL_TYPES.map(() => DAYS.map(() => ""))); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Bagel orders for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setOrders(() => BAGEL_TYPES.map(() => DAYS.map(() => ""))); }} onBack={onBack} />;
 
   return (
     <PublicFormLayout title="Bagel Orders" subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
@@ -779,7 +1016,11 @@ function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: { stor
           </table>
         </CardContent>
       </Card>
-      <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Bagel Orders"}</Button>
+      <div className="flex flex-col gap-3">
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Bagel Orders"}</Button>
+        {draftButton}
+      </div>
+      {duplicateDialog}
     </PublicFormLayout>
   );
 }
@@ -800,14 +1041,20 @@ const EVAL_CRITERIA = [
 ];
 
 function PerformanceEvaluationForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
-  const [name, setName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [employeeName, setEmployeeName] = useState("");
-  const [employeePosition, setEmployeePosition] = useState("");
-  const [ratings, setRatings] = useState(EVAL_CRITERIA.map(() => ({ rating: 0, comment: "" })));
-  const [overallComments, setOverallComments] = useState("");
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `perf-eval-${storeCode}`,
+    { name: "", date: new Date().toISOString().split("T")[0], employeeName: "", employeePosition: "", ratings: EVAL_CRITERIA.map(() => ({ rating: 0, comment: "" })), overallComments: "" }
+  );
+  const { name, date, employeeName, employeePosition, ratings, overallComments } = draft;
+  const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
+  const setDate = (v: string) => setDraft((d) => ({ ...d, date: v }));
+  const setEmployeeName = (v: string) => setDraft((d) => ({ ...d, employeeName: v }));
+  const setEmployeePosition = (v: string) => setDraft((d) => ({ ...d, employeePosition: v }));
+  const setRatings = (fn: (prev: { rating: number; comment: string }[]) => { rating: number; comment: string }[]) => setDraft((d) => ({ ...d, ratings: fn(d.ratings) }));
+  const setOverallComments = (v: string) => setDraft((d) => ({ ...d, overallComments: v }));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
   const rated = ratings.filter((r) => r.rating > 0);
   const avg = rated.length > 0 ? (rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(2) : "0.00";
@@ -815,20 +1062,19 @@ function PerformanceEvaluationForm({ storeCode, storeName, positionLabel, onBack
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
     if (!employeeName.trim()) { toast.error("Please enter employee name"); return; }
-    setSubmitting(true);
-    try {
-      await submitPublicReport({
+    await submitWithDuplicateCheck(
+      {
         submitterName: name.trim(), reportType: "Performance Evaluation", location: storeName, reportDate: date,
         data: { employeeName, employeePosition, criteria: EVAL_CRITERIA.map((c, i) => ({ ...c, ...ratings[i] })), overallComments, submittedVia: `Public - ${positionLabel}` },
         totalScore: avg,
-      });
-      setSubmitted(true);
-      toast.success("Evaluation submitted!");
-    } catch { toast.error("Failed to submit"); }
-    finally { setSubmitting(false); }
+      },
+      () => { setSubmitted(true); clearDraft(); toast.success("Evaluation submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
-  if (submitted) return <SuccessScreen message={`Performance evaluation for ${employeeName} submitted. Average: ${avg}/5`} onNew={() => { setSubmitted(false); setRatings(EVAL_CRITERIA.map(() => ({ rating: 0, comment: "" }))); setEmployeeName(""); setEmployeePosition(""); setOverallComments(""); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Performance evaluation for ${employeeName} submitted. Average: ${avg}/5`} onNew={() => { setSubmitted(false); setRatings(() => EVAL_CRITERIA.map(() => ({ rating: 0, comment: "" }))); setEmployeeName(""); setEmployeePosition(""); setOverallComments(""); }} onBack={onBack} />;
 
   return (
     <PublicFormLayout title="Performance Evaluation" subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
@@ -854,7 +1100,11 @@ function PerformanceEvaluationForm({ storeCode, storeName, positionLabel, onBack
         </Card>
       ))}
       <Card><CardContent className="pt-6"><Label>Overall Comments</Label><Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment and recommendations..." /></CardContent></Card>
-      <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Evaluation"}</Button>
+      <div className="flex flex-col gap-3">
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Evaluation"}</Button>
+        {draftButton}
+      </div>
+      {duplicateDialog}
     </PublicFormLayout>
   );
 }

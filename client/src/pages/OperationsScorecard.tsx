@@ -481,8 +481,8 @@ function DrillDownDialog({ open, onClose, storeCode, storeName, storeColor, avgS
 
 // ─── Reusable Scorecard Content (used by admin page & portal) ───
 
-export function ScorecardContent() {
-  const [filter, setFilter] = useState<FilterValue>(PRESETS[2].getValue()); // This Week
+export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {}) {
+  const [filter, setFilter] = useState<FilterValue>(PRESETS[0].getValue()); // Today
   const [drillDownStore, setDrillDownStore] = useState<string | null>(null);
 
   const fromStr = format(filter.from, "yyyy-MM-dd");
@@ -496,12 +496,26 @@ export function ScorecardContent() {
     return reports.map((r) => normalizeReport(r as any)) as typeof reports;
   }, [reports]);
 
+  // If storeFilter is set, only show that store
+  const activeCodes = useMemo(() => {
+    if (!storeFilter) return STORE_CODES;
+    // Normalize the store filter to match STORE_CODES
+    const STORE_NORMALIZE: Record<string, string> = {
+      pk: "PK", "president kennedy": "PK",
+      mk: "MK", mackay: "MK",
+      on: "ON", ontario: "ON",
+      tn: "TN", tunnel: "TN", "cathcart (tunnel)": "TN",
+    };
+    const normalized = STORE_NORMALIZE[storeFilter.toLowerCase()] || storeFilter.toUpperCase();
+    return STORE_CODES.filter(c => c === normalized);
+  }, [storeFilter]);
+
   // ─── Compute scores per store ──────────────────────────────────
 
   const storeScores = useMemo(() => {
     if (!normalizedReports.length) return [];
 
-    return STORE_CODES.map((code) => {
+    return activeCodes.map((code) => {
       const storeInfo = getStoreInfo(code);
       const storeReports = normalizedReports.filter(
         (r) => r.location === code
@@ -664,7 +678,7 @@ export function ScorecardContent() {
       const dayStr = format(day, "yyyy-MM-dd");
       const dayReports = normalizedReports.filter((r) => r.reportDate === dayStr);
 
-      const byStore = STORE_CODES.map((code) => {
+      const byStore = activeCodes.map((code) => {
         const storeDay = dayReports.filter(
           (r) => r.location === code
         );
@@ -721,8 +735,8 @@ export function ScorecardContent() {
           {/* ─── Scores Tab ─────────────────────────────────────── */}
           <TabsContent value="scores" className="space-y-6">
             {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {STORE_CODES.map((c) => (
+              <div className={cn("grid gap-4", activeCodes.length === 1 ? "grid-cols-1 max-w-md" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4")}>
+                {activeCodes.map((c) => (
                   <div key={c} className="rounded-xl border border-border/60 bg-card p-6 animate-pulse">
                     <div className="h-4 bg-muted rounded w-20 mb-4" />
                     <div className="h-20 bg-muted rounded-full w-20 mx-auto mb-4" />
@@ -733,7 +747,7 @@ export function ScorecardContent() {
             ) : (
               <>
                 {/* Store Score Cards — now clickable */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className={cn("grid gap-4", activeCodes.length === 1 ? "grid-cols-1 max-w-md" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4")}>
                   {storeScores.map((s) => (
                     <div
                       key={s.code}
@@ -823,7 +837,7 @@ export function ScorecardContent() {
                         <thead>
                           <tr className="border-b border-border/40 bg-muted/30">
                             <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
-                            {STORE_CODES.map((code) => {
+                            {activeCodes.map((code) => {
                               const info = getStoreInfo(code);
                               return (
                                 <th key={code} className="text-center px-4 py-3 font-medium" style={{ color: info.color }}>

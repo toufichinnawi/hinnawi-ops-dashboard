@@ -92,6 +92,7 @@ const POSITIONS: PositionDef[] = [
     sidebarItems: [
       si("scorecard", "Operations Scorecard", BarChart3, "info", { infoContent: "scorecard" }),
       si("store-perf", "Store Performance", TrendingUp, "info", { infoContent: "store-performance" }),
+      si("reports", "Reports", FileText, "info", { infoContent: "reports" }),
       si("ops-audit", "Ops. Mgr Weekly Audit", ClipboardCheck, "checklist", { checklistType: "ops-manager-checklist" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
     ],
@@ -107,7 +108,9 @@ const POSITIONS: PositionDef[] = [
     requiresPin: true,
     requiresStore: true,
     sidebarItems: [
+      si("scorecard", "Operations Scorecard", BarChart3, "info", { infoContent: "scorecard" }),
       si("store-perf", "Store Performance", TrendingUp, "info", { infoContent: "store-performance" }),
+      si("reports", "Reports", FileText, "info", { infoContent: "reports" }),
       si("daily-checklist", "Store Mgr Daily Checklist", ClipboardCheck, "checklist", { checklistType: "manager-checklist" }),
       si("weekly-scorecard", "Weekly Scorecard", BarChart3, "checklist", { checklistType: "weekly-scorecard" }),
       si("performance-eval", "Performance Evaluation", Star, "checklist", { checklistType: "performance-evaluation" }),
@@ -128,6 +131,7 @@ const POSITIONS: PositionDef[] = [
     requiresPin: true,
     requiresStore: true,
     sidebarItems: [
+      si("scorecard", "Operations Scorecard", BarChart3, "info", { infoContent: "scorecard" }),
       si("store-perf", "Store Performance", TrendingUp, "info", { infoContent: "store-performance" }),
       si("completed", "Completed Checklists", FileText, "info", { infoContent: "completed-checklists" }),
       si("equipment", "Equipment & Maintenance", Wrench, "checklist", { checklistType: "equipment-maintenance" }),
@@ -861,18 +865,21 @@ function PortalInfoPage({
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  async function fetchReports() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/public/reports");
+      const data = await res.json();
+      setReports(data?.data || []);
+    } catch {
+      // silent fail
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/public/reports");
-        const data = await res.json();
-        setReports(data?.data || []);
-      } catch {
-        // silent fail
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchReports();
   }, []);
 
   const isOpsManager = position.slug === "operations-manager";
@@ -906,9 +913,11 @@ function PortalInfoPage({
   }, [normalizedReports, store]);
 
   if (pageId === "scorecard") {
+    // Store Manager and Assistant Manager see only their store; Ops Manager sees all
+    const scorecardStoreFilter = store?.storeCode || undefined;
     return (
       <div className="max-w-[1400px]">
-        <ScorecardContent />
+        <ScorecardContent storeFilter={scorecardStoreFilter} />
       </div>
     );
   }
@@ -920,6 +929,18 @@ function PortalInfoPage({
       <div className="max-w-[1400px]">
         <StorePerformanceContent storeFilter={storeId} />
       </div>
+    );
+  }
+
+  if (pageId === "reports") {
+    return (
+      <PortalReportsPage
+        reports={store ? filteredReports : normalizedReports}
+        loading={loading}
+        store={store}
+        position={position}
+        onRefresh={fetchReports}
+      />
     );
   }
 
@@ -1475,6 +1496,183 @@ function PortalCompletedChecklists({
               </Card>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Reports Page (for Ops Manager & Store Manager portals) ──────
+
+function PortalReportsPage({
+  reports,
+  loading,
+  store,
+  position,
+  onRefresh,
+}: {
+  reports: any[];
+  loading: boolean;
+  store: StoreInfo | null;
+  position: PositionDef;
+  onRefresh?: () => void;
+}) {
+  const [filterType, setFilterType] = useState<string>("all");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const canEditDelete = position.slug === "ops-manager" || position.slug === "store-manager";
+
+  const sorted = useMemo(() =>
+    [...reports].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [reports]
+  );
+
+  const filtered = useMemo(() => {
+    if (filterType === "all") return sorted;
+    return sorted.filter(r => r.reportType === filterType);
+  }, [sorted, filterType]);
+
+  const reportTypes = useMemo(() => {
+    const types = new Set<string>();
+    reports.forEach(r => { if (r.reportType) types.add(r.reportType); });
+    return Array.from(types).sort();
+  }, [reports]);
+
+  async function handleDelete(id: number) {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/public/reports/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast.success("Report deleted successfully");
+      setDeleteConfirmId(null);
+      onRefresh?.();
+    } catch {
+      toast.error("Failed to delete report");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1200px] space-y-6">
+      <div>
+        <h1 className="text-xl sm:text-2xl font-serif text-foreground">Reports</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {store
+            ? `All submitted checklists and reports for ${store.storeName}.`
+            : "All submitted checklists and reports across all stores."}
+        </p>
+      </div>
+
+      {/* Filter */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder="All Checklists" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Checklists</SelectItem>
+            {reportTypes.map(type => {
+              const info = ALL_CHECKLISTS[type as ChecklistType];
+              return (
+                <SelectItem key={type} value={type}>
+                  {info?.label || type}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+        <span className="text-sm text-muted-foreground">{filtered.length} report{filtered.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-12 text-muted-foreground">Loading reports...</div>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm font-medium">No Reports Found</p>
+            <p className="text-xs mt-1">Try adjusting your filter or submit some checklists first.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/40 bg-muted/30">
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
+                  {!store && <th className="text-left px-4 py-3 font-medium text-muted-foreground">Store</th>}
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Checklist</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Submitted By</th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Score</th>
+                  {canEditDelete && <th className="text-center px-4 py-3 font-medium text-muted-foreground">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r) => {
+                  const info = ALL_CHECKLISTS[r.reportType as ChecklistType];
+                  return (
+                    <tr key={r.id} className="border-b border-border/20 last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="text-sm">{new Date(r.createdAt).toLocaleDateString()}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                      </td>
+                      {!store && (
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted text-xs font-medium">
+                            {r.normalizedLocation || r.location}
+                          </span>
+                        </td>
+                      )}
+                      <td className="px-4 py-3 text-sm">{info?.label || r.reportType}</td>
+                      <td className="px-4 py-3 text-sm">{r.submitterName || "—"}</td>
+                      <td className="px-4 py-3 text-right font-mono font-medium">
+                        {r.totalScore ? parseFloat(r.totalScore).toFixed(1) : "—"}
+                      </td>
+                      {canEditDelete && (
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => setDeleteConfirmId(r.id)}
+                            className="p-1.5 rounded-md hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation */}
+      {deleteConfirmId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card rounded-xl p-6 max-w-sm mx-4 shadow-xl">
+            <h3 className="text-lg font-serif text-red-600 mb-2">Delete Report</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Are you sure you want to delete this report? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+              <Button
+                size="sm"
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={deleting}
+                onClick={() => { if (deleteConfirmId !== null) handleDelete(deleteConfirmId); }}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
