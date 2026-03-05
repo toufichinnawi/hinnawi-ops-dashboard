@@ -255,6 +255,49 @@ export const koomiDailySales = mysqlTable("koomi_daily_sales", {
 export type KoomiDailySales = typeof koomiDailySales.$inferSelect;
 export type InsertKoomiDailySales = typeof koomiDailySales.$inferInsert;
 
+// ─── QuickBooks Online OAuth Tokens ───
+
+export const qboTokens = mysqlTable("qbo_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  realmId: varchar("realmId", { length: 64 }).notNull().unique(), // QBO company ID
+  companyName: varchar("companyName", { length: 255 }),
+  accessToken: text("accessToken").notNull(),
+  refreshToken: text("refreshToken").notNull(),
+  accessTokenExpiresAt: timestamp("accessTokenExpiresAt").notNull(),
+  refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  lastSyncAt: timestamp("lastSyncAt"),
+  lastSyncSuccess: boolean("lastSyncSuccess"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type QboToken = typeof qboTokens.$inferSelect;
+export type InsertQboToken = typeof qboTokens.$inferInsert;
+
+// ─── QuickBooks COGS Data ───
+
+export const qboCogs = mysqlTable("qbo_cogs", {
+  id: int("id").autoincrement().primaryKey(),
+  realmId: varchar("realmId", { length: 64 }).notNull(),
+  storeId: varchar("storeId", { length: 32 }).notNull(), // "mk", "tunnel", "pk", "ontario"
+  storeName: varchar("storeName", { length: 255 }).notNull(),
+  qboLocationId: varchar("qboLocationId", { length: 64 }), // QBO Location/Class ID
+  qboLocationName: varchar("qboLocationName", { length: 255 }), // QBO Location/Class name
+  periodStart: varchar("periodStart", { length: 10 }).notNull(), // YYYY-MM-DD
+  periodEnd: varchar("periodEnd", { length: 10 }).notNull(), // YYYY-MM-DD
+  cogsAmount: float("cogsAmount").default(0).notNull(),
+  revenue: float("revenue").default(0).notNull(),
+  grossProfit: float("grossProfit").default(0).notNull(),
+  cogsPercent: float("cogsPercent").default(0).notNull(),
+  cogsBreakdown: json("cogsBreakdown"), // { "Food": 1200, "Supplies": 300, ... }
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type QboCogs = typeof qboCogs.$inferSelect;
+export type InsertQboCogs = typeof qboCogs.$inferInsert;
+
 // ─── Report Submissions ───
 
 export const reportSubmissions = mysqlTable("report_submissions", {

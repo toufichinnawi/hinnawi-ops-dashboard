@@ -30,6 +30,7 @@ import {
   getInventoryCounts, bulkUpsertInventoryCounts,
   getAllUsers, updateUserRole,
   upsertKoomiDailySales, getAllKoomiSales, getKoomiSalesByStore, getKoomiSalesByDateRange,
+  getActiveQboToken, updateQboToken, deleteQboToken, upsertQboCogs, getQboCogsByDateRange, getAllQboCogs,
 } from "./db";
 import { parseExcelBuffer } from "./excelParser";
 import { sendTeamsNotification } from "./teamsNotify";
@@ -45,6 +46,9 @@ import {
 import {
   scrapeAllStores, scrapeMultipleDays, KOOMI_STORES, koomiLogin, getTodayEST,
 } from "./koomi";
+import {
+  refreshAccessToken, syncQboCogs,
+} from "./quickbooks";
 
 export const appRouter = router({
   system: systemRouter,
@@ -979,6 +983,138 @@ export const appRouter = router({
         }
         return { success: true, daysBack: input.daysBack, recordsSaved: saved, data };
       }),
+  }),
+
+  // ─── QuickBooks Online ─────────────────────────────────────────
+  quickbooks: router({
+    // Get connection status
+    status: publicProcedure.query(async () => {
+      const token = await getActiveQboToken();
+      if (!token) return { connected: false };
+      const isExpired = token.refreshTokenExpiresAt < new Date();
+      return {
+        connected: !isExpired,
+        companyName: token.companyName,
+        realmId: token.realmId,
+        lastSyncAt: token.lastSyncAt,
+        lastSyncSuccess: token.lastSyncSuccess,
+        accessTokenExpired: token.accessTokenExpiresAt < new Date(),
+        refreshTokenExpired: isExpired,
+      };
+    }),
+
+    // Disconnect QuickBooks
+    disconnect: protectedProcedure.mutation(async () => {
+      const token = await getActiveQboToken();
+      if (token) await deleteQboToken(token.id);
+      return { success: true };
+    }),
+
+    // Sync COGS data from QuickBooks P&L report
+    syncCogs: protectedProcedure
+      .input(z.object({
+        startDate: z.string(),
+        endDate: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const token = await getActiveQboToken();
+        if (!token) throw new Error("QuickBooks not connected");
+
+        let accessToken = token.accessToken;
+
+        // Refresh access token if expired
+        if (token.accessTokenExpiresAt < new Date()) {
+          try {
+            const refreshed = await refreshAccessToken(token.refreshToken);
+            accessToken = refreshed.accessToken;
+            await updateQboToken(token.id, {
+              accessToken: refreshed.accessToken,
+              refreshToken: refreshed.refreshToken,
+              accessTokenExpiresAt: refreshed.accessTokenExpiresAt,
+              refreshTokenExpiresAt: refreshed.refreshTokenExpiresAt,
+            });
+          } catch (err) {
+            await updateQboToken(token.id, { lastSyncSuccess: false });
+            throw new Error("Failed to refresh QuickBooks token. Please reconnect.");
+          }
+        }
+
+        try {
+          const cogsData = await syncQboCogs(
+            token.realmId,
+            accessToken,
+            input.startDate,
+            input.endDate
+          );
+
+          // Map QBO location names to store IDs
+          const LOCATION_TO_STORE: Record<string, string> = {
+            "mackay": "mk",
+            "mk": "mk",
+            "tunnel": "tunnel",
+            "cathcart": "tunnel",
+            "tn": "tunnel",
+            "president kennedy": "pk",
+            "pk": "pk",
+            "ontario": "ontario",
+            "on": "ontario",
+          };
+
+          let saved = 0;
+          for (const loc of cogsData) {
+            const storeId = LOCATION_TO_STORE[loc.locationName.toLowerCase()] || loc.locationName.toLowerCase();
+            await upsertQboCogs({
+              realmId: token.realmId,
+              storeId,
+              storeName: loc.locationName,
+              qboLocationId: loc.locationId,
+              qboLocationName: loc.locationName,
+              periodStart: input.startDate,
+              periodEnd: input.endDate,
+              cogsAmount: loc.cogsAmount,
+              revenue: loc.revenue,
+              grossProfit: loc.grossProfit,
+              cogsPercent: loc.cogsPercent,
+              cogsBreakdown: loc.cogsBreakdown,
+            });
+            saved++;
+          }
+
+          await updateQboToken(token.id, {
+            lastSyncAt: new Date(),
+            lastSyncSuccess: true,
+          });
+
+          return {
+            success: true,
+            locationsSynced: saved,
+            locations: cogsData.map(l => ({
+              name: l.locationName,
+              cogs: l.cogsAmount,
+              revenue: l.revenue,
+              cogsPercent: l.cogsPercent,
+            })),
+          };
+        } catch (err: any) {
+          await updateQboToken(token.id, { lastSyncSuccess: false });
+          throw new Error(`QuickBooks sync failed: ${err.message}`);
+        }
+      }),
+
+    // Get COGS data by date range
+    cogsByDateRange: publicProcedure
+      .input(z.object({
+        fromDate: z.string(),
+        toDate: z.string(),
+      }))
+      .query(async ({ input }) => {
+        return getQboCogsByDateRange(input.fromDate, input.toDate);
+      }),
+
+    // Get all COGS data
+    allCogs: publicProcedure.query(async () => {
+      return getAllQboCogs();
+    }),
   }),
 
   // ─── Combined Sync All Sources ────────────────────────────────

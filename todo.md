@@ -755,3 +755,16 @@
 - [x] Remove Math.round from useFilteredCloverData KPIs to show exact amounts
 - [x] All 96 tests passing
 - [x] Verify and save checkpoint
+
+# QuickBooks Online Integration (COGS)
+- [x] Store QBO Client ID and Client Secret as env secrets
+- [x] Build OAuth2 connect flow (authorize URL, callback handler, token storage)
+- [x] Build token refresh logic (auto-refresh before expiry)
+- [x] Create QBO API service to fetch P&L report by Location
+- [x] Extract COGS data per store from P&L report
+- [x] Add tRPC routes for QBO (status, disconnect, syncCogs, cogsByDateRange)
+- [ ] Add COGS to Store Performance cards (COGS $, COGS %, Gross Profit)
+- [x] Build QuickBooks Integration page (connect button, status, data preview)
+- [x] Add QuickBooks to sidebar navigation
+- [x] Write tests — 9 QBO tests passing (105 total across 12 test files)
+- [ ] Save checkpoint

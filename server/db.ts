@@ -1,4 +1,4 @@
-import { eq, desc, and, gte, lte, lt } from "drizzle-orm";
+import { eq, desc, and, gte, lte, lt, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -23,6 +23,8 @@ import {
   inventoryCounts, InsertInventoryCount, InventoryCount,
   positionPins, InsertPositionPin, PositionPin,
   koomiDailySales, InsertKoomiDailySales, KoomiDailySales,
+  qboTokens, InsertQboToken, QboToken,
+  qboCogs, InsertQboCogs, QboCogs,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1047,4 +1049,102 @@ export async function getKoomiSalesByDateRange(fromDate: string, toDate: string)
       lte(koomiDailySales.date, toDate)
     ))
     .orderBy(desc(koomiDailySales.date));
+}
+
+// ─── QuickBooks Online Token Helpers ───
+
+export async function upsertQboToken(data: Omit<InsertQboToken, "id" | "createdAt" | "updatedAt">): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(qboTokens).values(data as any)
+    .onDuplicateKeyUpdate({
+      set: {
+        companyName: sql`VALUES(companyName)`,
+        accessToken: sql`VALUES(accessToken)`,
+        refreshToken: sql`VALUES(refreshToken)`,
+        accessTokenExpiresAt: sql`VALUES(accessTokenExpiresAt)`,
+        refreshTokenExpiresAt: sql`VALUES(refreshTokenExpiresAt)`,
+        isActive: sql`VALUES(isActive)`,
+      },
+    });
+}
+
+export async function getActiveQboToken(): Promise<QboToken | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(qboTokens)
+    .where(eq(qboTokens.isActive, true))
+    .limit(1);
+  return rows[0];
+}
+
+export async function updateQboToken(id: number, data: Partial<InsertQboToken>): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(qboTokens).set(data).where(eq(qboTokens.id, id));
+}
+
+export async function deleteQboToken(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(qboTokens).where(eq(qboTokens.id, id));
+}
+
+// ─── QuickBooks COGS Helpers ───
+
+export async function upsertQboCogs(data: Omit<InsertQboCogs, "id" | "createdAt" | "updatedAt">): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  // Check if record exists for this realm + store + period
+  const existing = await db.select().from(qboCogs)
+    .where(and(
+      eq(qboCogs.realmId, data.realmId),
+      eq(qboCogs.storeId, data.storeId),
+      eq(qboCogs.periodStart, data.periodStart),
+      eq(qboCogs.periodEnd, data.periodEnd)
+    ))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db.update(qboCogs).set({
+      cogsAmount: data.cogsAmount,
+      revenue: data.revenue,
+      grossProfit: data.grossProfit,
+      cogsPercent: data.cogsPercent,
+      cogsBreakdown: data.cogsBreakdown,
+      storeName: data.storeName,
+      qboLocationId: data.qboLocationId,
+      qboLocationName: data.qboLocationName,
+    }).where(eq(qboCogs.id, existing[0].id));
+  } else {
+    await db.insert(qboCogs).values(data as any);
+  }
+}
+
+export async function getQboCogsByDateRange(fromDate: string, toDate: string): Promise<QboCogs[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(qboCogs)
+    .where(and(
+      gte(qboCogs.periodStart, fromDate),
+      lte(qboCogs.periodEnd, toDate)
+    ))
+    .orderBy(desc(qboCogs.periodEnd));
+}
+
+export async function getQboCogsByStore(storeId: string, limit = 12): Promise<QboCogs[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(qboCogs)
+    .where(eq(qboCogs.storeId, storeId))
+    .orderBy(desc(qboCogs.periodEnd))
+    .limit(limit);
+}
+
+export async function getAllQboCogs(limit = 50): Promise<QboCogs[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(qboCogs)
+    .orderBy(desc(qboCogs.periodEnd))
+    .limit(limit);
 }

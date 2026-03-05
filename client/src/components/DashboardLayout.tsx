@@ -99,6 +99,7 @@ const navSections: NavSection[] = [
       { path: "/data", label: "Data Management", icon: Database },
       { path: "/clover", label: "Clover POS", icon: CreditCard },
       { path: "/koomi", label: "Koomi POS", icon: Coffee },
+      { path: "/quickbooks", label: "QuickBooks", icon: Receipt },
       { path: "/7shifts", label: "7shifts", icon: Clock },
       { path: "/teams", label: "Teams Integration", icon: MessageSquare, adminOnly: true },
       { path: "/tools", label: "External Tools", icon: ExternalLink },

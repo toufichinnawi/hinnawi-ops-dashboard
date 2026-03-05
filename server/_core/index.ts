@@ -38,6 +38,63 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Chat API with streaming and tool calling
   registerChatRoutes(app);
+
+  // ─── QuickBooks Online OAuth2 Routes ───
+  app.get("/api/quickbooks/connect", async (_req, res) => {
+    try {
+      const { getQboAuthUrl } = await import("../quickbooks");
+      const protocol = process.env.NODE_ENV === "production" ? "https" : _req.protocol;
+      const redirectUri = `${protocol}://${_req.get("host")}/api/quickbooks/callback`;
+      const state = Math.random().toString(36).substring(2, 15);
+      const authUrl = getQboAuthUrl(redirectUri, state);
+      res.redirect(authUrl);
+    } catch (err) {
+      console.error("[QBO] Connect error:", err);
+      res.status(500).json({ error: "Failed to initiate QuickBooks connection" });
+    }
+  });
+
+  app.get("/api/quickbooks/callback", async (req, res) => {
+    try {
+      const { code, realmId } = req.query as Record<string, string>;
+      if (!code || !realmId) {
+        return res.status(400).send("Missing code or realmId from QuickBooks");
+      }
+      const { exchangeCodeForTokens, getCompanyInfo } = await import("../quickbooks");
+      const { upsertQboToken } = await import("../db");
+      const protocol = process.env.NODE_ENV === "production" ? "https" : req.protocol;
+      const redirectUri = `${protocol}://${req.get("host")}/api/quickbooks/callback`;
+      const tokens = await exchangeCodeForTokens(code, redirectUri);
+      tokens.realmId = realmId;
+
+      // Get company name
+      let companyName = "QuickBooks Company";
+      try {
+        const info = await getCompanyInfo(realmId, tokens.accessToken);
+        companyName = info.companyName;
+      } catch (e) {
+        console.warn("[QBO] Could not fetch company name:", e);
+      }
+
+      // Store tokens in database
+      await upsertQboToken({
+        realmId,
+        companyName,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        accessTokenExpiresAt: tokens.accessTokenExpiresAt,
+        refreshTokenExpiresAt: tokens.refreshTokenExpiresAt,
+        isActive: true,
+      });
+
+      console.log(`[QBO] Successfully connected to ${companyName} (realm: ${realmId})`);
+      // Redirect back to the QuickBooks integration page
+      res.redirect("/quickbooks?connected=true");
+    } catch (err) {
+      console.error("[QBO] Callback error:", err);
+      res.redirect("/quickbooks?error=connection_failed");
+    }
+  });
   // Public API endpoint to check if a report already exists for a store+type+date
   app.get("/api/public/check-existing-report", async (req, res) => {
     try {

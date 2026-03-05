@@ -15,6 +15,7 @@ import DataManagement from "./pages/DataManagement";
 import TeamsIntegration from "./pages/TeamsIntegration";
 import CloverIntegration from "./pages/CloverIntegration";
 import KoomiIntegration from "./pages/KoomiIntegration";
+import QuickBooksIntegration from "./pages/QuickBooksIntegration";
 import SevenShiftsIntegration from "./pages/SevenShiftsIntegration";
 import PositionChecklists from "@/pages/public/PositionChecklists";
 import DirectChecklist from "@/pages/DirectChecklist";
@@ -65,6 +66,7 @@ function Router() {
       <Route path="/data" component={DataManagement} />
       <Route path="/clover" component={CloverIntegration} />
       <Route path="/koomi" component={KoomiIntegration} />
+      <Route path="/quickbooks" component={QuickBooksIntegration} />
       <Route path="/7shifts" component={SevenShiftsIntegration} />
       <Route path="/teams" component={TeamsIntegration} />
       <Route path="/tools" component={ExternalTools} />

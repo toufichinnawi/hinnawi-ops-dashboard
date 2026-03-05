@@ -8,4 +8,6 @@ export const ENV = {
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   teamsWebhookUrl: process.env.TEAMS_WEBHOOK_URL ?? "",
+  qboClientId: process.env.QBO_CLIENT_ID ?? "",
+  qboClientSecret: process.env.QBO_CLIENT_SECRET ?? "",
 };
