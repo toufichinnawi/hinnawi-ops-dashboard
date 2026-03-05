@@ -370,20 +370,15 @@ function ScorecardSectionCard({
   );
 }
 
-function generateWeekOptions(count = 12): { label: string; value: string; start: string; end: string }[] {
-  const weeks: { label: string; value: string; start: string; end: string }[] = [];
+function getDefaultWeekRange(): { start: string; end: string } {
   const now = new Date(); now.setHours(0,0,0,0);
   const day = now.getDay();
   const thisMon = new Date(now);
   thisMon.setDate(now.getDate() - ((day + 6) % 7));
-  const fmt = (dt: Date) => dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const prevMon = new Date(thisMon); prevMon.setDate(thisMon.getDate() - 7);
+  const prevSun = new Date(prevMon); prevSun.setDate(prevMon.getDate() + 6);
   const iso = (dt: Date) => dt.toISOString().split("T")[0];
-  for (let i = 1; i <= count; i++) {
-    const mon = new Date(thisMon); mon.setDate(thisMon.getDate() - i * 7);
-    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-    weeks.push({ label: `${fmt(mon)} - ${fmt(sun)}`, value: iso(mon), start: iso(mon), end: iso(sun) });
-  }
-  return weeks;
+  return { start: iso(prevMon), end: iso(prevSun) };
 }
 
 function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
@@ -391,9 +386,13 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [managerName, setManagerName] = useState("");
   const [dateEntered, setDateEntered] = useState(() => new Date().toISOString().split("T")[0]);
-  const weekOptions = useMemo(() => generateWeekOptions(), []);
-  const [selectedWeek, setSelectedWeek] = useState(weekOptions[0]?.value || "");
-  const weekOfRange = useMemo(() => weekOptions.find(w => w.value === selectedWeek) || weekOptions[0], [selectedWeek, weekOptions]);
+  const defaultWeek = useMemo(() => getDefaultWeekRange(), []);
+  const [weekStart, setWeekStart] = useState(defaultWeek.start);
+  const [weekEnd, setWeekEnd] = useState(defaultWeek.end);
+  const weekOfLabel = useMemo(() => {
+    const fmt = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return weekStart && weekEnd ? `${fmt(weekStart)} - ${fmt(weekEnd)}` : "";
+  }, [weekStart, weekEnd]);
   const [sales, setSales] = useState<ScorecardSectionData>(initScorecardSection());
   const [labour, setLabour] = useState<ScorecardSectionData>(initScorecardSection());
   const [digital, setDigital] = useState<DigitalSectionData>({ googleReviews: "", howContribute: "" });
@@ -403,8 +402,8 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
   const handleSubmit = () => {
     if (!managerName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
     const payload = {
-      reportType: "weekly-scorecard", location: selectedStore, submitterName: managerName, reportDate: weekOfRange.start,
-      data: { dateEntered, weekOf: weekOfRange.label, weekOfStart: weekOfRange.start, weekOfEnd: weekOfRange.end, sales, labour, digital, food },
+      reportType: "weekly-scorecard", location: selectedStore, submitterName: managerName, reportDate: weekStart,
+      data: { dateEntered, weekOf: weekOfLabel, weekOfStart: weekStart, weekOfEnd: weekEnd, sales, labour, digital, food },
     };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
@@ -429,17 +428,8 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5"><Label>Name *</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" /></div>
           <div className="space-y-1.5"><Label>Date Completed</Label><Input type="date" value={dateEntered} onChange={(e) => setDateEntered(e.target.value)} /></div>
-          <div className="space-y-1.5">
-            <Label>Week Of *</Label>
-            <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-              <SelectTrigger><SelectValue placeholder="Select week" /></SelectTrigger>
-              <SelectContent>
-                {weekOptions.map(w => (
-                  <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <div className="space-y-1.5"><Label>Week Of — Start *</Label><Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Week Of — End *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
         </div>
       </CardContent></Card>
 

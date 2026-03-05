@@ -777,3 +777,4 @@
 - [x] Replace Week Of date picker with dropdown of pre-computed Mon-Fri week ranges
 - [x] Change Week Of dropdown from Mon-Fri to Mon-Sun ranges
 - [x] Rename 'Date' label to 'Date Completed' on Weekly Scorecard
+- [x] Replace Week Of dropdown with Start Date / End Date pickers (no year-end limitation)
