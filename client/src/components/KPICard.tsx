@@ -13,7 +13,7 @@ interface KPICardProps {
 function formatValue(value: number, format: KPI["format"]): string {
   switch (format) {
     case "currency":
-      return `$${value.toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
+      return `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     case "percent":
       return `${value.toFixed(1)}%`;
     case "number":

@@ -55,7 +55,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <div key={p.dataKey} className="flex items-center gap-2 text-xs">
           <div className="w-2 h-2 rounded-full" style={{ background: p.color }} />
           <span className="text-muted-foreground">{p.name}:</span>
-          <span className="font-mono font-medium">${(p.value / 1000).toFixed(1)}K</span>
+          <span className="font-mono font-medium">${p.value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
       ))}
     </div>
@@ -276,11 +276,11 @@ export default function Home() {
                   axisLine={false}
                 />
                 <YAxis
-                  tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`}
+                  tickFormatter={(v) => `$${v.toLocaleString()}`}
                   tick={{ fontSize: 11, fill: "#78716C" }}
                   tickLine={false}
                   axisLine={false}
-                  width={50}
+                  width={70}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend

@@ -1402,12 +1402,12 @@ function LabourCard({ storeCode, storeName }: { storeCode: string; storeName: st
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center p-3 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground mb-1">Revenue</p>
-              <p className="text-xl font-bold font-mono">${(labourData.revenue / 1000).toFixed(1)}K</p>
+              <p className="text-xl font-bold font-mono">${labourData.revenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
             <div className="text-center p-3 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground mb-1">Labour Cost</p>
               <p className={cn("text-xl font-bold font-mono", labourData.labourPercent > labourData.target ? "text-red-600" : "text-foreground")}>
-                ${(labourData.labourCost / 1000).toFixed(1)}K
+                ${labourData.labourCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
             <div className="text-center p-3 rounded-lg bg-muted/50">

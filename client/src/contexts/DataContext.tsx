@@ -119,7 +119,7 @@ function computeCloverKPIs(salesData: CloverSalesRow[]): KPI[] | null {
   return [
     {
       title: "Total Revenue",
-      value: Math.round(totalRevenue),
+      value: totalRevenue,
       format: "currency",
       trend: parseFloat(revenueTrend.toFixed(1)),
       trendLabel: "vs prior period",
@@ -127,7 +127,7 @@ function computeCloverKPIs(salesData: CloverSalesRow[]): KPI[] | null {
     },
     {
       title: "Total Tips",
-      value: Math.round(totalTips),
+      value: totalTips,
       format: "currency",
       trend: 0,
       trendLabel: "from Clover POS",
@@ -232,8 +232,8 @@ function computeCloverLabourData(salesData: CloverSalesRow[]): LabourEntry[] | n
 
     return {
       store: store.id,
-      revenue: Math.round(revenue),
-      labourCost: Math.round(labourCost),
+      revenue,
+      labourCost,
       labourPercent,
       target: 30,
       employees: demoEntry?.employees ?? 0,
@@ -258,7 +258,7 @@ function computeKPIs(uploads: ParseResult[]): KPI[] | null {
   return [
     {
       title: "Total Revenue",
-      value: Math.round(totalRevenue),
+      value: totalRevenue,
       format: "currency",
       trend: 0,
       trendLabel: "from MYR data",
@@ -266,7 +266,7 @@ function computeKPIs(uploads: ParseResult[]): KPI[] | null {
     },
     {
       title: "Labour Cost",
-      value: Math.round(totalLabourCost),
+      value: totalLabourCost,
       format: "currency",
       trend: 0,
       trendLabel: "from MYR data",
@@ -425,7 +425,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       if (cloverKpis) {
         // Add 7shifts revenue/orders to existing Clover KPIs
-        const totalRev = cloverKpis[0].value + Math.round(ssRevenue);
+        const totalRev = cloverKpis[0].value + ssRevenue;
         const totalOrd = cloverKpis[3].value + ssOrders;
         const storeCount = new Set([...((cloverSalesData as CloverSalesRow[]) || []).filter(s => recentDates.includes(s.date)).map(s => s.merchantId)]).size + 1;
 
@@ -438,7 +438,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           const recentExDates = exDates.slice(0, 7);
           excelLabourCost = exRows.filter((r: any) => recentExDates.includes(r.date)).reduce((s: number, r: any) => s + r.labourCost, 0);
         }
-        const totalLabour = Math.round(ssLabourCost + excelLabourCost);
+        const totalLabour = ssLabourCost + excelLabourCost;
         const labourPct = totalRev > 0 ? (totalLabour / totalRev) * 100 : 0;
         const hasLabour = totalLabour > 0;
         const labourSrc = hasExcelData && hasSevenShiftsData ? "Excel + 7shifts" : hasExcelData ? "Excel" : hasSevenShiftsData ? "7shifts" : "—";
@@ -453,8 +453,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       // Only 7shifts data
       return [
-        { title: "Total Revenue", value: Math.round(ssRevenue), format: "currency" as const, trend: 0, trendLabel: "from 7shifts", subtitle: "1 store — last 7 days" },
-        { title: "Labour Cost", value: Math.round(recentSS.reduce((s: number, r: any) => s + r.labourCost, 0)), format: "currency" as const, trend: 0, trendLabel: "from 7shifts", subtitle: "Ontario" },
+        { title: "Total Revenue", value: ssRevenue, format: "currency" as const, trend: 0, trendLabel: "from 7shifts", subtitle: "1 store — last 7 days" },
+        { title: "Labour Cost", value: recentSS.reduce((s: number, r: any) => s + r.labourCost, 0), format: "currency" as const, trend: 0, trendLabel: "from 7shifts", subtitle: "Ontario" },
         { title: "Avg Ticket", value: ssOrders > 0 ? parseFloat((ssRevenue / ssOrders).toFixed(2)) : 0, format: "currency" as const, trend: 0, trendLabel: "from 7shifts", subtitle: `${ssOrders} orders` },
         { title: "Total Orders", value: ssOrders, format: "number" as const, trend: 0, trendLabel: "from 7shifts", subtitle: `Avg $${ssOrders > 0 ? (ssRevenue / ssOrders).toFixed(2) : "0"} per order` },
       ];
@@ -508,8 +508,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (ontarioIdx >= 0) {
           result[ontarioIdx] = {
             store: "ontario",
-            revenue: Math.round(ssRevenue),
-            labourCost: Math.round(ssLabourCost),
+            revenue: ssRevenue,
+            labourCost: ssLabourCost,
             labourPercent: ssRevenue > 0 ? parseFloat(((ssLabourCost / ssRevenue) * 100).toFixed(1)) : 0,
             target: 30,
             employees: 0,
@@ -539,10 +539,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         for (const [storeId, excelAgg] of Array.from(storeLabour)) {
           const idx = result.findIndex(r => r.store === storeId);
           if (idx >= 0) {
-            const revenue = result[idx].revenue || Math.round(excelAgg.netSales);
+            const revenue = result[idx].revenue || excelAgg.netSales;
             result[idx] = {
               ...result[idx],
-              labourCost: Math.round(excelAgg.labourCost),
+              labourCost: excelAgg.labourCost,
               labourPercent: revenue > 0 ? parseFloat(((excelAgg.labourCost / revenue) * 100).toFixed(1)) : 0,
             };
           }

@@ -215,12 +215,12 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
                 <div className="p-4 grid grid-cols-4 gap-3">
                   <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Revenue</p>
-                    <p className="text-lg font-mono font-semibold mt-0.5">${(labour.revenue / 1000).toFixed(1)}K</p>
+                    <p className="text-lg font-mono font-semibold mt-0.5">${labour.revenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Labour $</p>
                     <p className={cn("text-lg font-mono font-semibold mt-0.5", isOver ? "text-red-600" : "text-foreground")}>
-                      ${labour.labourCost > 0 ? (labour.labourCost / 1000).toFixed(1) + "K" : "—"}
+                      ${labour.labourCost > 0 ? labour.labourCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
                     </p>
                     {labour.labourCost > 0 && (
                       <p className="text-[9px] text-muted-foreground mt-0.5">from Excel</p>
@@ -235,7 +235,7 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
                   </div>
                   <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Period Sales</p>
-                    <p className="text-lg font-mono font-semibold mt-0.5">${(storeTotalSales / 1000).toFixed(1)}K</p>
+                    <p className="text-lg font-mono font-semibold mt-0.5">${storeTotalSales.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                 </div>
               </motion.div>

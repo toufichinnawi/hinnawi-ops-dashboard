@@ -247,8 +247,8 @@ export default function Labour() {
         {/* Summary KPIs */}
         <motion.div variants={fadeUp} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { icon: DollarSign, label: "Total Revenue", value: `$${(totalRevenue / 1000).toFixed(1)}K`, sub: "All stores" },
-            { icon: DollarSign, label: "Labour Cost", value: `$${(totalLabour / 1000).toFixed(1)}K`, sub: totalLabour > 0 ? `${totalPercent.toFixed(1)}% of revenue` : "No labour data" },
+            { icon: DollarSign, label: "Total Revenue", value: `$${totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: "All stores" },
+            { icon: DollarSign, label: "Labour Cost", value: `$${totalLabour.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: totalLabour > 0 ? `${totalPercent.toFixed(1)}% of revenue` : "No labour data" },
             { icon: Users, label: "Employees", value: totalEmployees.toString(), sub: "Across all stores" },
             { icon: Clock, label: "Hours Worked", value: totalHours.toLocaleString(), sub: "This period" },
           ].map((item) => (
@@ -381,9 +381,9 @@ export default function Labour() {
                           <span className="font-medium">{store.name}</span>
                         </div>
                       </td>
-                      <td className="text-right px-5 py-3.5 font-mono text-xs">${row.revenue.toLocaleString()}</td>
+                      <td className="text-right px-5 py-3.5 font-mono text-xs">${row.revenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td className="text-right px-5 py-3.5 font-mono text-xs">
-                        {hasLabour ? `$${row.labourCost.toLocaleString()}` : <span className="text-muted-foreground">—</span>}
+                        {hasLabour ? `$${row.labourCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : <span className="text-muted-foreground">—</span>}
                       </td>
                       <td className={cn("text-right px-5 py-3.5 font-mono text-xs font-semibold",
                         !hasLabour ? "text-muted-foreground" : isOver ? "text-red-600" : isClose ? "text-amber-600" : "text-emerald-600"

@@ -736,3 +736,14 @@
 - [x] Add Koomi Integration to sidebar navigation
 - [x] Write/update tests — 96 tests passing across 11 test files
 - [x] Save checkpoint
+
+# Number Formatting — Show Exact Amounts (not rounded)
+- [x] Update Store Performance page: Revenue, Labour $, Period Sales to show exact amounts ($1,687.00 not $1.7K)
+- [x] Update Portal pages: Revenue, Labour Cost to show exact amounts
+- [x] Update Overview KPI cards (Total Revenue, Labour Cost, Tips) to show exact amounts
+- [x] Update Labour Monitor summary cards and table to show exact amounts
+- [x] Update Home chart tooltip and Y-axis to show exact amounts
+- [x] Remove Math.round from DataContext currency computations to preserve cents
+- [x] Verify changes visually — all pages confirmed
+- [x] All 96 tests passing
+- [ ] Save checkpoint
