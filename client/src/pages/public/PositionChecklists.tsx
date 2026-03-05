@@ -842,15 +842,17 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
   interface DigitalSec { googleReviews: string; howContribute: string; }
   const initSec = (): ScorecardSec => ({ thisWeekGoal: "", thisWeekActual: "", lastWeekActual: "", lastMonthActual: "", howContribute: "" });
 
-  const [dateEntered] = useState(() => new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }));
-  const weekOfRange = useMemo(() => getWeekOfRange(), []);
+  const defaultRange = useMemo(() => getWeekOfRange(), []);
 
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
     `weekly-scorecard-${storeCode}`,
-    { managerName: "", sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" } as DigitalSec, food: initSec() }
+    { managerName: "", dateEntered: new Date().toISOString().split("T")[0], weekOfDate: defaultRange.start, sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" } as DigitalSec, food: initSec() }
   );
-  const { managerName, sales, labour, digital, food } = draft;
+  const { managerName, dateEntered, weekOfDate, sales, labour, digital, food } = draft;
+  const weekOfRange = useMemo(() => getWeekOfRange(new Date(weekOfDate + "T12:00:00")), [weekOfDate]);
   const setManagerName = (v: string) => setDraft((d) => ({ ...d, managerName: v }));
+  const setDateEntered = (v: string) => setDraft((d) => ({ ...d, dateEntered: v }));
+  const setWeekOfDate = (v: string) => setDraft((d) => ({ ...d, weekOfDate: v }));
   const setSales = (v: ScorecardSec) => setDraft((d) => ({ ...d, sales: v }));
   const setLabour = (v: ScorecardSec) => setDraft((d) => ({ ...d, labour: v }));
   const setDigital = (v: DigitalSec) => setDraft((d) => ({ ...d, digital: v }));
@@ -864,7 +866,7 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
     await submitWithDuplicateCheck(
       {
         submitterName: managerName.trim(), reportType: "weekly-scorecard", location: storeCode, reportDate: weekOfRange.start,
-        data: { dateEntered, weekOf: weekOfRange.label, weekOfStart: weekOfRange.start, weekOfEnd: weekOfRange.end, sales, labour, digital, food, submittedVia: `Public - ${positionLabel}` },
+        data: { dateEntered, weekOf: weekOfRange.label, weekOfStart: weekOfRange.start, weekOfEnd: weekOfRange.end, weekOfDate, sales, labour, digital, food, submittedVia: `Public - ${positionLabel}` },
         totalScore: sales.thisWeekActual ? `$${parseFloat(sales.thisWeekActual).toFixed(0)}` : undefined,
       },
       () => { setSubmitted(true); clearDraft(); toast.success("Scorecard submitted!"); },
@@ -946,7 +948,7 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
     );
   };
 
-  if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setDraft({ managerName: "", sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" }, food: initSec() }); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setDraft({ managerName: "", dateEntered: new Date().toISOString().split("T")[0], weekOfDate: defaultRange.start, sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" }, food: initSec() }); }} onBack={onBack} />;
 
   return (
     <PublicFormLayout title="Store Manager Weekly Scorecard" subtitle={`${positionLabel} \u2014 ${storeName}`} onBack={onBack}>
@@ -962,11 +964,12 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
           </div>
           <div className="space-y-1.5">
             <Label>Date</Label>
-            <Input value={dateEntered} disabled className="bg-muted" />
+            <Input type="date" value={dateEntered} onChange={(e) => setDateEntered(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>Week Of</Label>
-            <Input value={weekOfRange.label} disabled className="bg-muted" />
+            <Input type="date" value={weekOfDate} onChange={(e) => setWeekOfDate(e.target.value)} />
+            <p className="text-xs text-muted-foreground mt-1">{weekOfRange.label}</p>
           </div>
         </div>
       </CardContent></Card>

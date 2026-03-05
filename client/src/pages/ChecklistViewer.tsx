@@ -1418,8 +1418,10 @@ function WeeklyScorecardForm({ storeCode: initialStoreCode, storeName: _sn5, pos
   const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
-  const [dateEntered] = useState(() => new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }));
-  const weekOfRange = useMemo(() => getWeekOfRange(), []);
+  const [dateEntered, setDateEntered] = useState(() => new Date().toISOString().split("T")[0]);
+  const defaultRange = useMemo(() => getWeekOfRange(), []);
+  const [weekOfDate, setWeekOfDate] = useState(defaultRange.start);
+  const weekOfRange = useMemo(() => getWeekOfRange(new Date(weekOfDate + "T12:00:00")), [weekOfDate]);
   const [sales, setSales] = useState<ScorecardSectionData>(initScorecardSection());
   const [labour, setLabour] = useState<ScorecardSectionData>(initScorecardSection());
   const [digital, setDigital] = useState<DigitalSectionData>({ googleReviews: "", howContribute: "" });
@@ -1459,11 +1461,12 @@ function WeeklyScorecardForm({ storeCode: initialStoreCode, storeName: _sn5, pos
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Date</Label>
-              <Input value={dateEntered} disabled className="bg-muted" />
+              <Input type="date" value={dateEntered} onChange={(e) => setDateEntered(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Week Of</Label>
-              <Input value={weekOfRange.label} disabled className="bg-muted" />
+              <Input type="date" value={weekOfDate} onChange={(e) => setWeekOfDate(e.target.value)} />
+              <p className="text-xs text-muted-foreground mt-1">{weekOfRange.label}</p>
             </div>
             <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
           </div>

@@ -387,8 +387,10 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [managerName, setManagerName] = useState("");
-  const [dateEntered] = useState(() => new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }));
-  const weekOfRange = useMemo(() => getWeekOfRange(), []);
+  const [dateEntered, setDateEntered] = useState(() => new Date().toISOString().split("T")[0]);
+  const defaultRange = useMemo(() => getWeekOfRange(), []);
+  const [weekOfDate, setWeekOfDate] = useState(defaultRange.start);
+  const weekOfRange = useMemo(() => getWeekOfRange(new Date(weekOfDate + "T12:00:00")), [weekOfDate]);
   const [sales, setSales] = useState<ScorecardSectionData>(initScorecardSection());
   const [labour, setLabour] = useState<ScorecardSectionData>(initScorecardSection());
   const [digital, setDigital] = useState<DigitalSectionData>({ googleReviews: "", howContribute: "" });
@@ -423,8 +425,12 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5"><Label>Name *</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" /></div>
-          <div className="space-y-1.5"><Label>Date</Label><Input value={dateEntered} disabled className="bg-muted" /></div>
-          <div className="space-y-1.5"><Label>Week Of</Label><Input value={weekOfRange.label} disabled className="bg-muted" /></div>
+          <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={dateEntered} onChange={(e) => setDateEntered(e.target.value)} /></div>
+          <div className="space-y-1.5">
+            <Label>Week Of</Label>
+            <Input type="date" value={weekOfDate} onChange={(e) => setWeekOfDate(e.target.value)} />
+            <p className="text-xs text-muted-foreground mt-1">{weekOfRange.label}</p>
+          </div>
         </div>
       </CardContent></Card>
 
