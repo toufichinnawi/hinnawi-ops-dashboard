@@ -1402,11 +1402,24 @@ function DigitalSection({
   );
 }
 
+function getWeekOfRange(today: Date = new Date()): { label: string; start: string; end: string } {
+  const d = new Date(today); d.setHours(0,0,0,0);
+  const day = d.getDay();
+  const thisMon = new Date(d);
+  thisMon.setDate(d.getDate() - ((day + 6) % 7));
+  const prevMon = new Date(thisMon); prevMon.setDate(thisMon.getDate() - 7);
+  const prevSun = new Date(thisMon); prevSun.setDate(thisMon.getDate() - 1);
+  const fmt = (dt: Date) => dt.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  const iso = (dt: Date) => dt.toISOString().split("T")[0];
+  return { label: `${fmt(prevMon)} - ${fmt(prevSun)}`, start: iso(prevMon), end: iso(prevSun) };
+}
+
 function WeeklyScorecardForm({ storeCode: initialStoreCode, storeName: _sn5, positionLabel, onBack }: FormProps) {
   const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
-  const [weekOf, setWeekOf] = useState("");
+  const [dateEntered] = useState(() => new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }));
+  const weekOfRange = useMemo(() => getWeekOfRange(), []);
   const [sales, setSales] = useState<ScorecardSectionData>(initScorecardSection());
   const [labour, setLabour] = useState<ScorecardSectionData>(initScorecardSection());
   const [digital, setDigital] = useState<DigitalSectionData>({ googleReviews: "", howContribute: "" });
@@ -1417,22 +1430,21 @@ function WeeklyScorecardForm({ storeCode: initialStoreCode, storeName: _sn5, pos
   const handleSubmit = async () => {
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
     if (!selectedStore) { toast.error("Please select a store"); return; }
-    if (!weekOf) { toast.error("Please select the week"); return; }
     setSubmitting(true);
     try {
       await submitReport({
         submitterName,
         reportType: "Weekly Scorecard",
         location: selectedStore,
-        reportDate: weekOf,
-        data: { weekOf, sales, labour, digital, food },
+        reportDate: weekOfRange.start,
+        data: { dateEntered, weekOf: weekOfRange.label, weekOfStart: weekOfRange.start, weekOfEnd: weekOfRange.end, sales, labour, digital, food },
       });
       setSubmitted(true);
     } catch { toast.error("Failed to submit"); }
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Weekly Scorecard submitted for ${currentStoreName}`} onNew={() => { setSales(initScorecardSection()); setLabour(initScorecardSection()); setDigital({ googleReviews: "", howContribute: "" }); setFood(initScorecardSection()); setSubmitterName(""); setWeekOf(""); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Weekly Scorecard submitted for ${currentStoreName}`} onNew={() => { setSales(initScorecardSection()); setLabour(initScorecardSection()); setDigital({ googleReviews: "", howContribute: "" }); setFood(initScorecardSection()); setSubmitterName(""); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
@@ -1440,14 +1452,18 @@ function WeeklyScorecardForm({ storeCode: initialStoreCode, storeName: _sn5, pos
       <div className="space-y-5">
         {/* Header Info */}
         <div className="bg-card rounded-xl border border-border/60 p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Manager Name *</Label>
+              <Label className="text-sm font-medium">Name *</Label>
               <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Week Of *</Label>
-              <Input type="date" value={weekOf} onChange={(e) => setWeekOf(e.target.value)} />
+              <Label className="text-sm font-medium">Date</Label>
+              <Input value={dateEntered} disabled className="bg-muted" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Week Of</Label>
+              <Input value={weekOfRange.label} disabled className="bg-muted" />
             </div>
             <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
           </div>

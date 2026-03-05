@@ -13,7 +13,7 @@ import ChecklistViewer from "./ChecklistViewer";
 // We need to import the form component directly, so let's create a wrapper
 // that renders the form for a given checklist type
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { stores } from "@/lib/data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -369,11 +369,26 @@ function ScorecardSectionCard({
   );
 }
 
+function getWeekOfRange(today: Date = new Date()): { label: string; start: string; end: string } {
+  const d = new Date(today); d.setHours(0,0,0,0);
+  const day = d.getDay(); // 0=Sun,1=Mon,...
+  // Find the most recent Monday (if today is Mon, that's today)
+  const thisMon = new Date(d);
+  thisMon.setDate(d.getDate() - ((day + 6) % 7));
+  // Previous week: Mon-1 week to Sun before thisMon
+  const prevMon = new Date(thisMon); prevMon.setDate(thisMon.getDate() - 7);
+  const prevSun = new Date(thisMon); prevSun.setDate(thisMon.getDate() - 1);
+  const fmt = (dt: Date) => dt.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  const iso = (dt: Date) => dt.toISOString().split("T")[0];
+  return { label: `${fmt(prevMon)} - ${fmt(prevSun)}`, start: iso(prevMon), end: iso(prevSun) };
+}
+
 function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [managerName, setManagerName] = useState("");
-  const [weekOf, setWeekOf] = useState("");
+  const [dateEntered] = useState(() => new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }));
+  const weekOfRange = useMemo(() => getWeekOfRange(), []);
   const [sales, setSales] = useState<ScorecardSectionData>(initScorecardSection());
   const [labour, setLabour] = useState<ScorecardSectionData>(initScorecardSection());
   const [digital, setDigital] = useState<DigitalSectionData>({ googleReviews: "", howContribute: "" });
@@ -381,10 +396,10 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = () => {
-    if (!managerName.trim() || !selectedStore || !weekOf) { toast.error("Please fill required fields"); return; }
+    if (!managerName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
     const payload = {
-      reportType: "weekly-scorecard", location: selectedStore, submitterName: managerName, reportDate: weekOf,
-      data: { weekOf, sales, labour, digital, food },
+      reportType: "weekly-scorecard", location: selectedStore, submitterName: managerName, reportDate: weekOfRange.start,
+      data: { dateEntered, weekOf: weekOfRange.label, weekOfStart: weekOfRange.start, weekOfEnd: weekOfRange.end, sales, labour, digital, food },
     };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
@@ -396,7 +411,7 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
       <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" /><h3 className="text-xl font-serif">Scorecard Submitted</h3>
       <p className="text-muted-foreground">Weekly Scorecard for {currentStoreName}</p>
       <div className="flex gap-3 justify-center">
-        <Button onClick={() => { setSales(initScorecardSection()); setLabour(initScorecardSection()); setDigital({ googleReviews: "", howContribute: "" }); setFood(initScorecardSection()); setManagerName(""); setWeekOf(""); setSubmitted(false); }} variant="outline">New Report</Button>
+        <Button onClick={() => { setSales(initScorecardSection()); setLabour(initScorecardSection()); setDigital({ googleReviews: "", howContribute: "" }); setFood(initScorecardSection()); setManagerName(""); setSubmitted(false); }} variant="outline">New Report</Button>
         <Button onClick={onBack} variant="outline">Back</Button>
       </div>
     </motion.div>
@@ -406,9 +421,10 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
     <div className="space-y-5">
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5"><Label>Manager Name *</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" /></div>
-          <div className="space-y-1.5"><Label>Week Of *</Label><Input type="date" value={weekOf} onChange={(e) => setWeekOf(e.target.value)} /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-1.5"><Label>Name *</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" /></div>
+          <div className="space-y-1.5"><Label>Date</Label><Input value={dateEntered} disabled className="bg-muted" /></div>
+          <div className="space-y-1.5"><Label>Week Of</Label><Input value={weekOfRange.label} disabled className="bg-muted" /></div>
         </div>
       </CardContent></Card>
 

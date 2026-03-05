@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/StarRating";
 import { CheckCircle2, ClipboardCheck, ArrowLeft, ChevronRight, Save } from "lucide-react";
 import { toast } from "sonner";
+import { useMemo } from "react";
 
 // ─── Save Draft Hook ───
 
@@ -824,18 +825,32 @@ function EquipmentMaintenanceForm({ storeCode, storeName, positionLabel, onBack 
 
 // ─── Weekly Scorecard Form ───
 
+function getWeekOfRange(today: Date = new Date()): { label: string; start: string; end: string } {
+  const d = new Date(today); d.setHours(0,0,0,0);
+  const day = d.getDay();
+  const thisMon = new Date(d);
+  thisMon.setDate(d.getDate() - ((day + 6) % 7));
+  const prevMon = new Date(thisMon); prevMon.setDate(thisMon.getDate() - 7);
+  const prevSun = new Date(thisMon); prevSun.setDate(thisMon.getDate() - 1);
+  const fmt = (dt: Date) => dt.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  const iso = (dt: Date) => dt.toISOString().split("T")[0];
+  return { label: `${fmt(prevMon)} - ${fmt(prevSun)}`, start: iso(prevMon), end: iso(prevSun) };
+}
+
 function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
   interface ScorecardSec { thisWeekGoal: string; thisWeekActual: string; lastWeekActual: string; lastMonthActual: string; howContribute: string; }
   interface DigitalSec { googleReviews: string; howContribute: string; }
   const initSec = (): ScorecardSec => ({ thisWeekGoal: "", thisWeekActual: "", lastWeekActual: "", lastMonthActual: "", howContribute: "" });
 
+  const [dateEntered] = useState(() => new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }));
+  const weekOfRange = useMemo(() => getWeekOfRange(), []);
+
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
     `weekly-scorecard-${storeCode}`,
-    { managerName: "", weekOf: "", sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" } as DigitalSec, food: initSec() }
+    { managerName: "", sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" } as DigitalSec, food: initSec() }
   );
-  const { managerName, weekOf, sales, labour, digital, food } = draft;
+  const { managerName, sales, labour, digital, food } = draft;
   const setManagerName = (v: string) => setDraft((d) => ({ ...d, managerName: v }));
-  const setWeekOf = (v: string) => setDraft((d) => ({ ...d, weekOf: v }));
   const setSales = (v: ScorecardSec) => setDraft((d) => ({ ...d, sales: v }));
   const setLabour = (v: ScorecardSec) => setDraft((d) => ({ ...d, labour: v }));
   const setDigital = (v: DigitalSec) => setDraft((d) => ({ ...d, digital: v }));
@@ -845,11 +860,11 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
   const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
   const handleSubmit = async () => {
-    if (!managerName.trim() || !weekOf) { toast.error("Please fill required fields"); return; }
+    if (!managerName.trim()) { toast.error("Please fill required fields"); return; }
     await submitWithDuplicateCheck(
       {
-        submitterName: managerName.trim(), reportType: "weekly-scorecard", location: storeCode, reportDate: weekOf,
-        data: { weekOf, sales, labour, digital, food, submittedVia: `Public - ${positionLabel}` },
+        submitterName: managerName.trim(), reportType: "weekly-scorecard", location: storeCode, reportDate: weekOfRange.start,
+        data: { dateEntered, weekOf: weekOfRange.label, weekOfStart: weekOfRange.start, weekOfEnd: weekOfRange.end, sales, labour, digital, food, submittedVia: `Public - ${positionLabel}` },
         totalScore: sales.thisWeekActual ? `$${parseFloat(sales.thisWeekActual).toFixed(0)}` : undefined,
       },
       () => { setSubmitted(true); clearDraft(); toast.success("Scorecard submitted!"); },
@@ -931,7 +946,7 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
     );
   };
 
-  if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setDraft({ managerName: "", weekOf: "", sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" }, food: initSec() }); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setDraft({ managerName: "", sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" }, food: initSec() }); }} onBack={onBack} />;
 
   return (
     <PublicFormLayout title="Store Manager Weekly Scorecard" subtitle={`${positionLabel} \u2014 ${storeName}`} onBack={onBack}>
@@ -940,14 +955,18 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
           <Label>Store Location</Label>
           <Input value={storeName} disabled className="bg-muted" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
-            <Label>Manager Name *</Label>
+            <Label>Name *</Label>
             <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" />
           </div>
           <div className="space-y-1.5">
-            <Label>Week Of *</Label>
-            <Input type="date" value={weekOf} onChange={(e) => setWeekOf(e.target.value)} />
+            <Label>Date</Label>
+            <Input value={dateEntered} disabled className="bg-muted" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Week Of</Label>
+            <Input value={weekOfRange.label} disabled className="bg-muted" />
           </div>
         </div>
       </CardContent></Card>
