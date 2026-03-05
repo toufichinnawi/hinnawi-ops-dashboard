@@ -29,6 +29,7 @@ import {
   getInventoryItems, createInventoryItem, updateInventoryItem, deleteInventoryItem,
   getInventoryCounts, bulkUpsertInventoryCounts,
   getAllUsers, updateUserRole,
+  upsertKoomiDailySales, getAllKoomiSales, getKoomiSalesByStore, getKoomiSalesByDateRange,
 } from "./db";
 import { parseExcelBuffer } from "./excelParser";
 import { sendTeamsNotification } from "./teamsNotify";
@@ -41,6 +42,9 @@ import {
 import {
   fetchCompanies, fetchLocations, fetchDailySalesAndLabor, getDateRangeStrings,
 } from "./sevenShifts";
+import {
+  scrapeAllStores, scrapeMultipleDays, KOOMI_STORES, koomiLogin, getTodayEST,
+} from "./koomi";
 
 export const appRouter = router({
   system: systemRouter,
@@ -899,6 +903,84 @@ export const appRouter = router({
     }),
   }),
 
+  // ─── Koomi/MYR POS (Scraper) ──────────────────────────────────
+  koomi: router({
+    // List available Koomi stores
+    stores: protectedProcedure.query(() => {
+      return KOOMI_STORES;
+    }),
+
+    // Get all Koomi sales data
+    allSales: protectedProcedure
+      .input(z.object({ limit: z.number().min(1).max(500).optional() }).optional())
+      .query(async ({ input }) => {
+        return getAllKoomiSales(input?.limit ?? 120);
+      }),
+
+    // Get sales by store
+    salesByStore: protectedProcedure
+      .input(z.object({ storeId: z.string(), limit: z.number().optional() }))
+      .query(async ({ input }) => {
+        return getKoomiSalesByStore(input.storeId, input.limit ?? 60);
+      }),
+
+    // Get sales by date range
+    salesByDateRange: protectedProcedure
+      .input(z.object({ fromDate: z.string(), toDate: z.string() }))
+      .query(async ({ input }) => {
+        return getKoomiSalesByDateRange(input.fromDate, input.toDate);
+      }),
+
+    // Test login
+    testLogin: protectedProcedure.mutation(async () => {
+      const success = await koomiLogin();
+      return { success, message: success ? "Successfully logged into Koomi admin" : "Login failed — check credentials" };
+    }),
+
+    // Sync today's data
+    syncToday: protectedProcedure.mutation(async () => {
+      const today = getTodayEST();
+      const data = await scrapeAllStores(today);
+      let saved = 0;
+      for (const d of data) {
+        await upsertKoomiDailySales({
+          storeId: d.storeId,
+          storeName: d.storeName,
+          koomiLocationId: d.koomiLocationId,
+          date: d.date,
+          grossSales: d.grossSales,
+          netSales: d.netSales,
+          netSalaries: d.netSalaries,
+          labourPercent: d.labourPercent,
+        });
+        saved++;
+      }
+      return { success: true, date: today, storesSynced: saved, data };
+    }),
+
+    // Sync multiple days (backfill)
+    syncDays: protectedProcedure
+      .input(z.object({ daysBack: z.number().min(1).max(90) }))
+      .mutation(async ({ input }) => {
+        const data = await scrapeMultipleDays(input.daysBack);
+        let saved = 0;
+        for (const d of data) {
+          await upsertKoomiDailySales({
+            storeId: d.storeId,
+            storeName: d.storeName,
+            koomiLocationId: d.koomiLocationId,
+            date: d.date,
+            grossSales: d.grossSales,
+            netSales: d.netSales,
+            netSalaries: d.netSalaries,
+            labourPercent: d.labourPercent,
+          });
+          saved++;
+        }
+        return { success: true, daysBack: input.daysBack, recordsSaved: saved, data };
+      }),
+  }),
+
   // ─── Combined Sync All Sources ────────────────────────────────
   syncAllSources: protectedProcedure
     .input(z.object({ daysBack: z.number().min(1).max(180).optional() }).optional())
@@ -906,8 +988,8 @@ export const appRouter = router({
       const daysBack = input?.daysBack ?? 60;
       const results: { source: string; success: boolean; message: string; details?: any }[] = [];
 
-      // Run Clover and 7shifts sync in parallel
-      const [cloverResult, sevenShiftsResult] = await Promise.allSettled([
+      // Run Clover, 7shifts, and Koomi sync in parallel
+      const [cloverResult, sevenShiftsResult, koomiResult] = await Promise.allSettled([
         // Clover sync
         (async () => {
           const connections = await listCloverConnections();
@@ -985,6 +1067,44 @@ export const appRouter = router({
           }
           return { source: "7shifts", success: synced > 0, message: `${synced}/${active.length} locations synced`, synced, storeResults };
         })(),
+
+        // Koomi/MYR sync (scraper)
+        (async () => {
+          try {
+            // Koomi scraper syncs last 3 days (same as Clover/7shifts auto-sync)
+            const koomiDaysBack = Math.min(daysBack, 7); // Limit scraper to 7 days max to avoid overloading
+            const data = await scrapeMultipleDays(koomiDaysBack);
+            let saved = 0;
+            const storeResults: any[] = [];
+            const storeMap = new Map<string, { success: number; total: number }>();
+
+            for (const d of data) {
+              await upsertKoomiDailySales({
+                storeId: d.storeId,
+                storeName: d.storeName,
+                koomiLocationId: d.koomiLocationId,
+                date: d.date,
+                grossSales: d.grossSales,
+                netSales: d.netSales,
+                netSalaries: d.netSalaries,
+                labourPercent: d.labourPercent,
+              });
+              saved++;
+              const existing = storeMap.get(d.storeId) || { success: 0, total: 0 };
+              existing.success++;
+              existing.total++;
+              storeMap.set(d.storeId, existing);
+            }
+
+            Array.from(storeMap.entries()).forEach(([storeId, counts]) => {
+              storeResults.push({ store: storeId, success: true, days: counts.success });
+            });
+
+            return { source: "Koomi", success: saved > 0, message: `${saved} records saved from ${KOOMI_STORES.length} stores`, synced: saved, storeResults };
+          } catch (err: any) {
+            return { source: "Koomi", success: false, message: err.message, synced: 0 };
+          }
+        })(),
       ]);
 
       // Process results
@@ -997,6 +1117,11 @@ export const appRouter = router({
         results.push(sevenShiftsResult.value);
       } else {
         results.push({ source: "7shifts", success: false, message: sevenShiftsResult.reason?.message ?? "Unknown error" });
+      }
+      if (koomiResult.status === "fulfilled") {
+        results.push(koomiResult.value);
+      } else {
+        results.push({ source: "Koomi", success: false, message: koomiResult.reason?.message ?? "Unknown error" });
       }
 
       return { results, allSuccess: results.every(r => r.success) };

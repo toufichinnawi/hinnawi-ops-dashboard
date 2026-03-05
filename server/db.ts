@@ -22,6 +22,7 @@ import {
   inventoryItems, InsertInventoryItem, InventoryItem,
   inventoryCounts, InsertInventoryCount, InventoryCount,
   positionPins, InsertPositionPin, PositionPin,
+  koomiDailySales, InsertKoomiDailySales, KoomiDailySales,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -999,4 +1000,51 @@ export async function updateUserRole(userId: number, role: "user" | "admin") {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
   await db.update(users).set({ role }).where(eq(users.id, userId));
+}
+
+// ─── Koomi/MYR Daily Sales ──────────────────────────────────────────
+
+export async function upsertKoomiDailySales(data: InsertKoomiDailySales): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Check if entry exists for this store + date
+  const existing = await db.select().from(koomiDailySales)
+    .where(and(
+      eq(koomiDailySales.koomiLocationId, data.koomiLocationId),
+      eq(koomiDailySales.date, data.date)
+    ))
+    .limit(1);
+  if (existing.length > 0) {
+    await db.update(koomiDailySales).set(data).where(eq(koomiDailySales.id, existing[0].id));
+  } else {
+    await db.insert(koomiDailySales).values(data);
+  }
+}
+
+export async function getAllKoomiSales(limit = 120): Promise<KoomiDailySales[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(koomiDailySales)
+    .orderBy(desc(koomiDailySales.date))
+    .limit(limit);
+}
+
+export async function getKoomiSalesByStore(storeId: string, limit = 60): Promise<KoomiDailySales[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(koomiDailySales)
+    .where(eq(koomiDailySales.storeId, storeId))
+    .orderBy(desc(koomiDailySales.date))
+    .limit(limit);
+}
+
+export async function getKoomiSalesByDateRange(fromDate: string, toDate: string): Promise<KoomiDailySales[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(koomiDailySales)
+    .where(and(
+      gte(koomiDailySales.date, fromDate),
+      lte(koomiDailySales.date, toDate)
+    ))
+    .orderBy(desc(koomiDailySales.date));
 }

@@ -236,6 +236,25 @@ export const excelSyncMeta = mysqlTable("excel_sync_meta", {
 export type ExcelSyncMeta = typeof excelSyncMeta.$inferSelect;
 export type InsertExcelSyncMeta = typeof excelSyncMeta.$inferInsert;
 
+// ─── Koomi/MYR Daily Sales (scraped from admin.koomi.com) ───
+
+export const koomiDailySales = mysqlTable("koomi_daily_sales", {
+  id: int("id").autoincrement().primaryKey(),
+  storeId: varchar("storeId", { length: 32 }).notNull(), // "mk", "tunnel", "pk"
+  storeName: varchar("storeName", { length: 255 }).notNull(),
+  koomiLocationId: varchar("koomiLocationId", { length: 20 }).notNull(), // "2207", "1036", "1037"
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
+  grossSales: float("grossSales").default(0).notNull(),
+  netSales: float("netSales").default(0).notNull(),
+  netSalaries: float("netSalaries").default(0).notNull(),
+  labourPercent: float("labourPercent").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KoomiDailySales = typeof koomiDailySales.$inferSelect;
+export type InsertKoomiDailySales = typeof koomiDailySales.$inferInsert;
+
 // ─── Report Submissions ───
 
 export const reportSubmissions = mysqlTable("report_submissions", {

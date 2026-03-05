@@ -309,6 +309,36 @@ async function startServer() {
         }
       }
 
+      // Koomi/MYR sync (scraper)
+      try {
+        const { upsertKoomiDailySales } = await import("../db");
+        const { scrapeAllStores, getTodayEST } = await import("../koomi");
+
+        // Scrape last 3 days for each Koomi store
+        for (let i = 0; i < daysBack; i++) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dateStr = d.toISOString().slice(0, 10);
+
+          const storeData = await scrapeAllStores(dateStr);
+          for (const s of storeData) {
+            await upsertKoomiDailySales({
+              storeId: s.storeId,
+              storeName: s.storeName,
+              koomiLocationId: s.koomiLocationId,
+              date: s.date,
+              grossSales: s.grossSales,
+              netSales: s.netSales,
+              netSalaries: s.netSalaries,
+              labourPercent: s.labourPercent,
+            });
+          }
+          console.log(`[AutoSync] Koomi: ${dateStr} synced ${storeData.length} stores`);
+        }
+      } catch (err: any) {
+        console.error(`[AutoSync] Koomi failed:`, err.message);
+      }
+
       // 7shifts sync
       const sevenConns = await listSevenShiftsConnections();
       const activeSeven = sevenConns.filter(c => c.isActive);

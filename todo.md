@@ -714,3 +714,14 @@
 - [x] One-time sync at 9PM daily
 - [x] One-time sync at 12AM daily
 - [x] Replace old midnight-only sync with new schedule
+
+# Koomi/MYR Back Office Scraper — March 5
+
+- [x] Store Koomi credentials securely as env secrets
+- [x] Explore MYR Back Office (admin.koomi.com) to map scraping targets
+- [x] Build Koomi scraper service (login, store switching, data extraction)
+- [x] Extract: Total Gross Sales, Total Net Sales, Total Net Salaries per store per day
+- [x] Integrate scraped data into dashboard database (koomi_daily_sales table)
+- [x] Add Koomi sync to the existing auto-sync schedule (every 5 min 7AM-8PM, 9PM, 12AM)
+- [x] Write tests for Koomi scraper (12 tests passing including live integration)
+- [x] Save checkpoint
