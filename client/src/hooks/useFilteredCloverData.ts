@@ -246,7 +246,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
     return [
       {
         title: "Total Revenue",
-        value: Math.round(totalRevenue),
+        value: totalRevenue,
         format: "currency",
         trend: 0,
         trendLabel: periodLabel,
@@ -254,7 +254,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
       },
       {
         title: "Labour Cost",
-        value: Math.round(totalLabourCost),
+        value: totalLabourCost,
         format: "currency",
         trend: 0,
         trendLabel: hasAnyLabour ? `from ${labourSource}` : "No labour data",
@@ -266,7 +266,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
         format: "percent",
         trend: 0,
         trendLabel: hasAnyLabour ? `from ${labourSource}` : "No labour data",
-        subtitle: hasAnyLabour ? `$${Math.round(totalLabourCost).toLocaleString()} / $${Math.round(totalRevenue).toLocaleString()}` : "—",
+        subtitle: hasAnyLabour ? `$${totalLabourCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / $${totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—",
       },
       {
         title: "Total Orders",
@@ -332,6 +332,9 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
     const storeLabourCost = new Map<string, number>();
     const storeLabourMinutes = new Map<string, number>();
     const storeHasRealLabour = new Map<string, boolean>();
+    // Collect native labour % values from sources (Koomi, 7shifts, Excel)
+    // We'll compute a weighted average: sum(labourPercent * dailySales) / sum(dailySales)
+    const storeLabourWeighted = new Map<string, { weightedSum: number; salesSum: number }>();
 
     for (const row of unifiedRows) {
       storeRevenue.set(row.storeId, (storeRevenue.get(row.storeId) || 0) + row.totalSales);
@@ -341,6 +344,13 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
       if (row.labourCost > 0) {
         storeHasRealLabour.set(row.storeId, true);
       }
+      // Accumulate native labour % weighted by daily sales
+      if (row.labourPercent > 0 && row.totalSales > 0) {
+        const existing = storeLabourWeighted.get(row.storeId) ?? { weightedSum: 0, salesSum: 0 };
+        existing.weightedSum += row.labourPercent * row.totalSales;
+        existing.salesSum += row.totalSales;
+        storeLabourWeighted.set(row.storeId, existing);
+      }
     }
 
     return stores.map((store) => {
@@ -348,13 +358,19 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
       const labourCost = storeLabourCost.get(store.id) || 0;
       const labourMinutes = storeLabourMinutes.get(store.id) || 0;
       const hasRealLabour = storeHasRealLabour.get(store.id) || false;
+      const weighted = storeLabourWeighted.get(store.id);
 
       if (hasRealLabour && labourCost > 0) {
+        // Use native labour % from source (weighted average across days)
+        const nativeLabourPercent = weighted && weighted.salesSum > 0
+          ? parseFloat((weighted.weightedSum / weighted.salesSum).toFixed(1))
+          : (revenue > 0 ? parseFloat(((labourCost / revenue) * 100).toFixed(1)) : 0);
+
         return {
           store: store.id,
-          revenue: Math.round(revenue),
-          labourCost: Math.round(labourCost),
-          labourPercent: revenue > 0 ? parseFloat(((labourCost / revenue) * 100).toFixed(1)) : 0,
+          revenue,
+          labourCost,
+          labourPercent: nativeLabourPercent,
           target: store.labourTarget,
           employees: 0,
           hoursWorked: labourMinutes > 0 ? Math.round(labourMinutes / 60) : 0,
@@ -363,7 +379,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
 
       return {
         store: store.id,
-        revenue: Math.round(revenue),
+        revenue,
         labourCost: 0,
         labourPercent: 0,
         target: store.labourTarget,

@@ -746,4 +746,12 @@
 - [x] Remove Math.round from DataContext currency computations to preserve cents
 - [x] Verify changes visually — all pages confirmed
 - [x] All 96 tests passing
-- [ ] Save checkpoint
+- [x] Save checkpoint
+
+# Use Koomi's Native Labour % (not recalculated)
+- [x] Pass through Koomi's labourPercent from scraper instead of recalculating labourCost/revenue
+- [x] Update useFilteredCloverData hook to use Koomi's native labour % (weighted average across days)
+- [x] Update Store Performance and Overview to display Koomi's labour %
+- [x] Remove Math.round from useFilteredCloverData KPIs to show exact amounts
+- [x] All 96 tests passing
+- [x] Verify and save checkpoint
