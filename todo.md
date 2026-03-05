@@ -702,3 +702,8 @@
 - [x] Duplicate checklist detection: prompt when same store + same checklist + same date already exists, with option to overwrite (max one entry per checklist per store per day)
 - [x] Add Save Draft button to all checklist forms so users can save progress and resume later (localStorage-based, auto-loads on return)
 - [x] Automated Clover data sync at midnight daily (syncs last 3 days of Clover + 7shifts at 00:00)
+
+# Bug/Feature — March 5 (batch 2)
+
+- [x] Investigate Noujad's missing weekly report for PK (report exists in DB dated Mar 4, was hidden by Today default filter)
+- [x] Make Manager portal report editing match admin dashboard template (same edit UI — detail dialog with star ratings, items, metadata, delete)

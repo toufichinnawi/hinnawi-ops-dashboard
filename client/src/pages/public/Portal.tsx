@@ -15,6 +15,7 @@ import {
   ClipboardCheck, BarChart3, Star, Trash2, Wrench,
   GraduationCap, CircleDot, TrendingUp, Menu, X,
   FileText, DollarSign, Percent, Clock, CheckCircle2,
+  Pencil,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { type ChecklistType, ALL_CHECKLISTS } from "@/lib/positionChecklists";
+import { type ChecklistType, ALL_CHECKLISTS, POSITION_CHECKLISTS } from "@/lib/positionChecklists";
 import { ChecklistForm } from "./PositionChecklists";
 import { ScorecardContent } from "@/pages/OperationsScorecard";
 import { StorePerformanceContent } from "@/pages/Stores";
@@ -1520,6 +1521,7 @@ function PortalReportsPage({
   const [filterType, setFilterType] = useState<string>("all");
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
 
   const canEditDelete = position.slug === "ops-manager" || position.slug === "store-manager";
 
@@ -1546,12 +1548,38 @@ function PortalReportsPage({
       if (!res.ok) throw new Error("Failed to delete");
       toast.success("Report deleted successfully");
       setDeleteConfirmId(null);
+      setSelectedReport(null);
       onRefresh?.();
     } catch {
       toast.error("Failed to delete report");
     } finally {
       setDeleting(false);
     }
+  }
+
+  function parsePayload(data: any): Record<string, any> | null {
+    if (!data) return null;
+    if (typeof data === "string") {
+      try { return JSON.parse(data); } catch { return null; }
+    }
+    return data;
+  }
+
+  function getPositionLabel(reportType: string): string {
+    for (const [, config] of Object.entries(POSITION_CHECKLISTS)) {
+      if (config.checklists.includes(reportType as ChecklistType)) return config.label;
+    }
+    return "—";
+  }
+
+  function renderStars(rating: number) {
+    return (
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map(s => (
+          <Star key={s} className={`w-3.5 h-3.5 ${s <= rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`} />
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -1577,7 +1605,7 @@ function PortalReportsPage({
               const info = ALL_CHECKLISTS[type as ChecklistType];
               return (
                 <SelectItem key={type} value={type}>
-                  {info?.label || type}
+                  {info?.icon || "📋"} {info?.label || type}
                 </SelectItem>
               );
             })}
@@ -1602,46 +1630,76 @@ function PortalReportsPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/40 bg-muted/30">
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
-                  {!store && <th className="text-left px-4 py-3 font-medium text-muted-foreground">Store</th>}
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Checklist</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Submitted By</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Score</th>
-                  {canEditDelete && <th className="text-center px-4 py-3 font-medium text-muted-foreground">Actions</th>}
+                  {!store && <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Store</th>}
+                  <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Date</th>
+                  <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Position</th>
+                  <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Checklist</th>
+                  <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Submitted By</th>
+                  <th className="text-center px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Score</th>
+                  <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Submitted</th>
+                  {canEditDelete && <th className="text-center px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((r) => {
                   const info = ALL_CHECKLISTS[r.reportType as ChecklistType];
+                  const posLabel = getPositionLabel(r.reportType);
                   return (
-                    <tr key={r.id} className="border-b border-border/20 last:border-0 hover:bg-muted/20 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="text-sm">{new Date(r.createdAt).toLocaleDateString()}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </div>
-                      </td>
+                    <tr
+                      key={r.id}
+                      onClick={() => setSelectedReport(r)}
+                      className="border-b border-border/20 last:border-0 hover:bg-muted/20 transition-colors cursor-pointer"
+                    >
                       {!store && (
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted text-xs font-medium">
-                            {r.normalizedLocation || r.location}
-                          </span>
+                        <td className="px-4 py-3.5">
+                          <span className="font-semibold text-xs">{r.normalizedLocation || r.location}</span>
                         </td>
                       )}
-                      <td className="px-4 py-3 text-sm">{info?.label || r.reportType}</td>
-                      <td className="px-4 py-3 text-sm">{r.submitterName || "—"}</td>
-                      <td className="px-4 py-3 text-right font-mono font-medium">
-                        {r.totalScore ? parseFloat(r.totalScore).toFixed(1) : "—"}
+                      <td className="px-4 py-3.5 font-mono text-xs">{r.reportDate || "—"}</td>
+                      <td className="px-4 py-3.5 text-xs text-muted-foreground">{posLabel}</td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm">{info?.icon || "📋"}</span>
+                          <span className="text-xs font-medium">{info?.label || r.reportType}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-muted-foreground">{r.submitterName || "—"}</td>
+                      <td className="px-4 py-3.5 text-center">
+                        {r.totalScore ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
+                            parseFloat(r.totalScore) >= 4 ? "bg-emerald-100 text-emerald-700"
+                            : parseFloat(r.totalScore) >= 3 ? "bg-amber-100 text-amber-700"
+                            : "bg-red-100 text-red-700"
+                          }`}>
+                            {r.totalScore}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                        {r.createdAt
+                          ? new Date(r.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+                          : "—"}
                       </td>
                       {canEditDelete && (
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => setDeleteConfirmId(r.id)}
-                            className="p-1.5 rounded-md hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setSelectedReport(r); }}
+                              className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                              title="View / Edit"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(r.id); }}
+                              className="p-1.5 rounded-md hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -1653,9 +1711,114 @@ function PortalReportsPage({
         </div>
       )}
 
+      {/* Report Detail Dialog — matches admin dashboard template */}
+      {selectedReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedReport(null)}>
+          <div className="bg-card rounded-xl p-6 max-w-lg mx-4 shadow-xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-lg">{ALL_CHECKLISTS[selectedReport.reportType as ChecklistType]?.icon || "📋"}</span>
+              <h3 className="text-lg font-serif">{ALL_CHECKLISTS[selectedReport.reportType as ChecklistType]?.label || selectedReport.reportType}</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-muted-foreground text-xs">Store</p>
+                <p className="font-medium mt-0.5">{selectedReport.normalizedLocation || selectedReport.location}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Report Date</p>
+                <p className="font-medium mt-0.5">{selectedReport.reportDate || "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Position</p>
+                <p className="font-medium mt-0.5">{getPositionLabel(selectedReport.reportType)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Submitted By</p>
+                <p className="font-medium mt-0.5">{selectedReport.submitterName || "—"}</p>
+              </div>
+              {selectedReport.totalScore && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Score</p>
+                  <p className="font-bold text-lg mt-0.5">{selectedReport.totalScore}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-muted-foreground text-xs">Submitted At</p>
+                <p className="font-medium mt-0.5">
+                  {selectedReport.createdAt ? new Date(selectedReport.createdAt).toLocaleString("en-CA") : "—"}
+                </p>
+              </div>
+            </div>
+
+            {/* Detailed Data — same as admin */}
+            {(() => {
+              const payload = parsePayload(selectedReport.data);
+              if (!payload) return <p className="text-sm text-muted-foreground mt-4">No detailed data available</p>;
+              return (
+                <div className="space-y-3 border-t pt-3 mt-4">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Details</p>
+                  {Object.entries(payload).map(([key, value]) => {
+                    if (key === "submitterName") return null;
+                    if (key === "items" && Array.isArray(value)) {
+                      return (
+                        <div key={key} className="space-y-2">
+                          {(value as any[]).map((item, i) => (
+                            <div key={i} className="p-3 bg-muted/50 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium">{item.label || item.name || `Item ${i + 1}`}</p>
+                                {item.rating !== undefined && renderStars(item.rating)}
+                              </div>
+                              {item.notes && <p className="text-xs text-muted-foreground mt-1">{item.notes}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    if (typeof value === "object" && value !== null) {
+                      return (
+                        <div key={key} className="p-3 bg-muted/50 rounded-lg">
+                          <p className="text-xs font-medium text-muted-foreground mb-1">{key}</p>
+                          <pre className="text-xs text-foreground whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={key} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
+                        <p className="text-sm text-muted-foreground">{key}</p>
+                        <p className="text-sm font-medium">{String(value)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Action buttons — same as admin */}
+            {canEditDelete && (
+              <div className="flex justify-end gap-2 pt-3 border-t mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => setDeleteConfirmId(selectedReport.id)}
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                  Delete Report
+                </Button>
+              </div>
+            )}
+
+            {/* Close button */}
+            <div className="flex justify-end mt-3">
+              <Button variant="outline" size="sm" onClick={() => setSelectedReport(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation */}
       {deleteConfirmId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
           <div className="bg-card rounded-xl p-6 max-w-sm mx-4 shadow-xl">
             <h3 className="text-lg font-serif text-red-600 mb-2">Delete Report</h3>
             <p className="text-sm text-muted-foreground mb-4">
