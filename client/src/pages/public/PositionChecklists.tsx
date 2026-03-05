@@ -836,8 +836,8 @@ function generateWeekOptions(count = 12): { label: string; value: string; start:
   const iso = (dt: Date) => dt.toISOString().split("T")[0];
   for (let i = 1; i <= count; i++) {
     const mon = new Date(thisMon); mon.setDate(thisMon.getDate() - i * 7);
-    const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
-    weeks.push({ label: `${fmt(mon)} - ${fmt(fri)}`, value: iso(mon), start: iso(mon), end: iso(fri) });
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    weeks.push({ label: `${fmt(mon)} - ${fmt(sun)}`, value: iso(mon), start: iso(mon), end: iso(sun) });
   }
   return weeks;
 }
@@ -968,7 +968,7 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack }: { 
             <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" />
           </div>
           <div className="space-y-1.5">
-            <Label>Date</Label>
+            <Label>Date Completed</Label>
             <Input type="date" value={dateEntered} onChange={(e) => setDateEntered(e.target.value)} />
           </div>
           <div className="space-y-1.5">
