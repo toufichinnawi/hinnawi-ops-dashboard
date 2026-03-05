@@ -346,21 +346,51 @@ async function startServer() {
     }
   }
 
-  // Schedule: check every minute if it's midnight (00:00)
-  let lastSyncDate = "";
+  // ─── Sync Schedule (locked in) ─────────────────────────────────
+  // 1. Every 5 minutes between 7:00 AM and 8:00 PM daily
+  // 2. One-time sync at 9:00 PM daily
+  // 3. One-time sync at 12:00 AM (midnight) daily
+  const syncLog = new Set<string>(); // track "HH:MM-YYYY-MM-DD" to avoid double-fires
+
   setInterval(() => {
     const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const dateStr = now.toISOString().split("T")[0];
-    // Trigger at 00:00 (midnight), once per day
-    if (hours === 0 && minutes === 0 && dateStr !== lastSyncDate) {
-      lastSyncDate = dateStr;
-      runAutoSync();
-    }
-  }, 60_000); // Check every 60 seconds
+    const h = now.getHours();
+    const m = now.getMinutes();
+    const key = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}-${now.toISOString().split("T")[0]}`;
 
-  console.log("[AutoSync] Midnight auto-sync scheduler active");
+    if (syncLog.has(key)) return;
+
+    let shouldSync = false;
+
+    // Rule 1: Every 5 minutes between 7:00 AM and 8:00 PM (inclusive of 7:00, last at 20:00)
+    if (h >= 7 && h <= 20 && m % 5 === 0) {
+      shouldSync = true;
+    }
+
+    // Rule 2: One-time sync at 9:00 PM (21:00)
+    if (h === 21 && m === 0) {
+      shouldSync = true;
+    }
+
+    // Rule 3: One-time sync at 12:00 AM (00:00)
+    if (h === 0 && m === 0) {
+      shouldSync = true;
+    }
+
+    if (shouldSync) {
+      syncLog.add(key);
+      console.log(`[AutoSync] Triggered at ${now.toLocaleTimeString()} (${key})`);
+      runAutoSync();
+
+      // Clean up old entries to prevent memory growth (keep only today)
+      const today = now.toISOString().split("T")[0];
+      Array.from(syncLog).forEach(entry => {
+        if (!entry.endsWith(today)) syncLog.delete(entry);
+      });
+    }
+  }, 30_000); // Check every 30 seconds for precision
+
+  console.log("[AutoSync] Sync schedule active: every 5min 7AM-8PM + 9PM + 12AM daily");
 }
 
 startServer().catch(console.error);

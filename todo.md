@@ -707,3 +707,10 @@
 
 - [x] Investigate Noujad's missing weekly report for PK (report exists in DB dated Mar 4, was hidden by Today default filter)
 - [x] Make Manager portal report editing match admin dashboard template (same edit UI — detail dialog with star ratings, items, metadata, delete)
+
+# Auto-Sync Schedule — March 5 (locked in)
+
+- [x] Auto-sync every 5 minutes between 7AM and 8PM daily
+- [x] One-time sync at 9PM daily
+- [x] One-time sync at 12AM daily
+- [x] Replace old midnight-only sync with new schedule
