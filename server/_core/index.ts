@@ -499,6 +499,219 @@ async function startServer() {
   }, 30_000); // Check every 30 seconds for precision
 
   console.log("[AutoSync] Sync schedule active: every 5min 7AM-8PM + 9PM + 12AM daily");
+
+  // ─── Daily Sales & Labour Report (8 PM) ──────────────────────
+  async function sendDailyReport() {
+    console.log(`[DailyReport] Building daily sales & labour report...`);
+    try {
+      const { listWebhooks, getKoomiSalesByDateRange, getSevenShiftsSalesByDateRange, getExcelLabourByDateRange } = await import("../db");
+      const { sendDailySalesLabourReport } = await import("../teams");
+      const { createAlertHistoryEntry } = await import("../db");
+      type StoreReportType = import("../teams").StoreReport;
+
+      // Get today's date in EST
+      const now = new Date();
+      const estDate = now.toLocaleDateString("en-CA", { timeZone: "America/Toronto" }); // YYYY-MM-DD
+      const displayDate = now.toLocaleDateString("en-US", { timeZone: "America/Toronto", year: "numeric", month: "long", day: "2-digit" });
+
+      // Store config (server-side mirror of client/src/lib/data.ts)
+      const STORES = [
+        { id: "tunnel", name: "Cathcart (Tunnel)", labourTarget: 24, koomiId: "1036" },
+        { id: "ontario", name: "Ontario", labourTarget: 28 },
+        { id: "mk", name: "Mackay", labourTarget: 23, koomiId: "2207" },
+        { id: "pk", name: "President Kennedy", labourTarget: 18, koomiId: "1037" },
+      ];
+
+      // Fetch data from all sources
+      const koomiData = await getKoomiSalesByDateRange(estDate, estDate);
+      const sevenData = await getSevenShiftsSalesByDateRange(estDate, estDate);
+      const excelData = await getExcelLabourByDateRange(estDate, estDate);
+
+      const storeReports: StoreReportType[] = [];
+
+      for (const store of STORES) {
+        let netSales = 0;
+        let labourPercent = 0;
+        let hasData = false;
+
+        // Koomi data (PK, Mackay, Tunnel)
+        if (store.koomiId) {
+          const koomiRow = koomiData.find(k => k.koomiLocationId === store.koomiId);
+          if (koomiRow) {
+            netSales = Number(koomiRow.netSales) || 0;
+            labourPercent = Number(koomiRow.labourPercent) || 0;
+            hasData = true;
+          }
+        }
+
+        // 7shifts data (Ontario)
+        if (store.id === "ontario") {
+          const sevenRow = sevenData.find(s => s.date === estDate);
+          if (sevenRow) {
+            netSales = Number(sevenRow.totalSales) || 0;
+            labourPercent = Number(sevenRow.labourPercent) || 0;
+            hasData = true;
+          }
+        }
+
+        // Excel labour data override (if available, more accurate)
+        const excelRow = excelData.find(e => e.storeId === store.id);
+        if (excelRow) {
+          if (Number(excelRow.netSales) > 0) netSales = Number(excelRow.netSales);
+          if (Number(excelRow.labourPercent) > 0) labourPercent = Number(excelRow.labourPercent);
+          hasData = true;
+        }
+
+        if (hasData) {
+          storeReports.push({
+            storeName: store.name,
+            netSales,
+            labourPercent,
+            labourTarget: store.labourTarget,
+          });
+        }
+      }
+
+      if (storeReports.length === 0) {
+        console.log("[DailyReport] No store data available for today, skipping report.");
+        return;
+      }
+
+      // Send to all active webhooks
+      const webhooks = await listWebhooks();
+      const activeWebhooks = webhooks.filter(w => w.isActive);
+
+      for (const webhook of activeWebhooks) {
+        const result = await sendDailySalesLabourReport(webhook.webhookUrl, displayDate, storeReports);
+        console.log(`[DailyReport] Sent to webhook ${webhook.id} (${webhook.name}): ${result.success ? "OK" : result.error}`);
+
+        await createAlertHistoryEntry({
+          webhookId: webhook.id,
+          alertType: "daily-sales-labour-report",
+          title: `Daily Sales & Labour Report`,
+          severity: "info",
+          message: `Daily report for ${displayDate}: ${storeReports.length} stores, $${storeReports.reduce((s, r) => s + r.netSales, 0).toFixed(2)} total sales`,
+          delivered: result.success,
+          errorMessage: result.error || null,
+        });
+      }
+
+      console.log(`[DailyReport] Completed. Sent to ${activeWebhooks.length} webhook(s).`);
+    } catch (err: any) {
+      console.error("[DailyReport] Failed:", err.message);
+    }
+  }
+
+  // ─── High Labour Alert (after each sync) ─────────────────────
+  async function checkHighLabourAlerts() {
+    console.log(`[LabourAlert] Checking labour thresholds...`);
+    try {
+      const { listWebhooks, getKoomiSalesByDateRange, getSevenShiftsSalesByDateRange, getExcelLabourByDateRange, createAlertHistoryEntry } = await import("../db");
+      const { sendTeamsAlert, buildHighLabourAlert } = await import("../teams");
+
+      const now = new Date();
+      const estDate = now.toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+
+      const STORES = [
+        { id: "tunnel", name: "Cathcart (Tunnel)", labourTarget: 24, koomiId: "1036" },
+        { id: "ontario", name: "Ontario", labourTarget: 28 },
+        { id: "mk", name: "Mackay", labourTarget: 23, koomiId: "2207" },
+        { id: "pk", name: "President Kennedy", labourTarget: 18, koomiId: "1037" },
+      ];
+
+      const koomiData = await getKoomiSalesByDateRange(estDate, estDate);
+      const sevenData = await getSevenShiftsSalesByDateRange(estDate, estDate);
+      const excelData = await getExcelLabourByDateRange(estDate, estDate);
+
+      const webhooks = await listWebhooks();
+      const activeWebhooks = webhooks.filter(w => w.isActive);
+      if (activeWebhooks.length === 0) return;
+
+      for (const store of STORES) {
+        let netSales = 0;
+        let labourPercent = 0;
+        let hasData = false;
+
+        if (store.koomiId) {
+          const koomiRow = koomiData.find(k => k.koomiLocationId === store.koomiId);
+          if (koomiRow) {
+            netSales = Number(koomiRow.netSales) || 0;
+            labourPercent = Number(koomiRow.labourPercent) || 0;
+            hasData = true;
+          }
+        }
+        if (store.id === "ontario") {
+          const sevenRow = sevenData.find(s => s.date === estDate);
+          if (sevenRow) {
+            netSales = Number(sevenRow.totalSales) || 0;
+            labourPercent = Number(sevenRow.labourPercent) || 0;
+            hasData = true;
+          }
+        }
+        const excelRow = excelData.find(e => e.storeId === store.id);
+        if (excelRow) {
+          if (Number(excelRow.netSales) > 0) netSales = Number(excelRow.netSales);
+          if (Number(excelRow.labourPercent) > 0) labourPercent = Number(excelRow.labourPercent);
+          hasData = true;
+        }
+
+        if (!hasData || labourPercent <= store.labourTarget) continue;
+
+        // Labour is above target — send alert
+        const alertPayload = buildHighLabourAlert(store.name, labourPercent, store.labourTarget, netSales, estDate);
+
+        for (const webhook of activeWebhooks) {
+          const result = await sendTeamsAlert(webhook.webhookUrl, alertPayload);
+          console.log(`[LabourAlert] ${store.name}: ${labourPercent.toFixed(1)}% > ${store.labourTarget}% → webhook ${webhook.id}: ${result.success ? "OK" : result.error}`);
+
+          await createAlertHistoryEntry({
+            webhookId: webhook.id,
+            alertType: "high-labour",
+            title: `High Labour Alert — ${store.name}`,
+            severity: alertPayload.severity,
+            message: `${store.name}: Labour ${labourPercent.toFixed(1)}% exceeds target ${store.labourTarget}%`,
+            delivered: result.success,
+            errorMessage: result.error || null,
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error("[LabourAlert] Failed:", err.message);
+    }
+  }
+
+  // ─── Schedule: Daily Report at 8 PM + Labour Alerts after sync ─
+  // Add to the existing interval checker
+  const reportLog = new Set<string>();
+
+  setInterval(() => {
+    const now = new Date();
+    // Use EST timezone
+    const estHour = parseInt(now.toLocaleString("en-US", { timeZone: "America/Toronto", hour: "numeric", hour12: false }));
+    const estMin = parseInt(now.toLocaleString("en-US", { timeZone: "America/Toronto", minute: "numeric" }));
+    const estDate = now.toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+    const reportKey = `report-${estDate}`;
+    const labourKey = `labour-${estHour}-${estDate}`;
+
+    // Daily report at 8 PM EST
+    if (estHour === 20 && estMin === 0 && !reportLog.has(reportKey)) {
+      reportLog.add(reportKey);
+      sendDailyReport();
+    }
+
+    // Labour alert check every hour between 10 AM and 9 PM EST (not too frequent to avoid spam)
+    if (estMin === 30 && estHour >= 10 && estHour <= 21 && !reportLog.has(labourKey)) {
+      reportLog.add(labourKey);
+      checkHighLabourAlerts();
+    }
+
+    // Clean up old entries
+    Array.from(reportLog).forEach(entry => {
+      if (!entry.includes(estDate)) reportLog.delete(entry);
+    });
+  }, 30_000);
+
+  console.log("[Schedule] Daily report at 8PM EST + Labour alerts hourly 10AM-9PM EST");
 }
 
 startServer().catch(console.error);

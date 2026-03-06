@@ -800,3 +800,18 @@
 - [x] Add photo upload UI to Ops Manager checklist (camera + photo library) in all 3 form locations
 - [x] Display uploaded photos in ReportDetailRenderer for audit report detail views
 - [x] Write tests for photo upload functionality
+
+# Daily Sales & Labour Report to Teams
+
+- [x] Build daily report message builder (per-store Net Sales + Labour %, formatted like user example)
+- [x] Create Teams Adaptive Card template for daily report
+- [x] Add tRPC endpoint to trigger daily report send
+- [x] Schedule automatic send at 8 PM daily (8 PM EST)
+- [x] Write tests for daily report builder (15 tests)
+
+# Automatic High Labour Alert to Teams
+
+- [x] Build labour threshold checker (compare each store's labour % to target)
+- [x] Create Teams alert message for high labour warning
+- [x] Trigger alert automatically hourly 10AM-9PM when labour exceeds target
+- [x] Write tests for labour threshold alert

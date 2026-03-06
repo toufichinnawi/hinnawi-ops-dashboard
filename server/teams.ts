@@ -207,4 +207,167 @@ export function buildDailySummaryAlert(
   };
 }
 
+// ─── Daily Sales & Labour Report Card ────────────────────────────
+
+export interface StoreReport {
+  storeName: string;
+  netSales: number;
+  labourPercent: number;
+  labourTarget?: number;
+}
+
+/**
+ * Builds a formatted Adaptive Card for the daily sales & labour report.
+ * Format matches the user's requested style:
+ *   Store: Tunnel
+ *   Net Sales: $902.98
+ *   Labour%: 15.66
+ */
+export function buildDailySalesLabourCard(date: string, stores: StoreReport[]) {
+  const body: any[] = [
+    {
+      type: "TextBlock",
+      text: `\u{1F4CA} Daily Sales & Labour Report`,
+      weight: "Bolder",
+      size: "Medium",
+      color: "accent",
+      wrap: true,
+    },
+    {
+      type: "TextBlock",
+      text: date,
+      weight: "Bolder",
+      size: "Default",
+      spacing: "Small",
+    },
+  ];
+
+  stores.forEach((store, i) => {
+    const isOverTarget = store.labourTarget !== undefined && store.labourPercent > store.labourTarget;
+    const labourColor = isOverTarget ? "attention" : "default";
+
+    if (i > 0) {
+      body.push({
+        type: "TextBlock",
+        text: "────────────────────────",
+        spacing: "Small",
+        isSubtle: true,
+        size: "Small",
+      });
+    }
+
+    body.push({
+      type: "FactSet",
+      facts: [
+        { title: "Store", value: store.storeName },
+        { title: "Net Sales", value: `$${store.netSales.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+        { title: "Labour%", value: `${store.labourPercent.toFixed(2)}%${isOverTarget ? " \u{26A0}\u{FE0F}" : ""}` },
+      ],
+      spacing: i === 0 ? "Medium" : "Small",
+    });
+  });
+
+  // Total summary row
+  const totalSales = stores.reduce((sum, s) => sum + s.netSales, 0);
+  const avgLabour = stores.length > 0
+    ? stores.reduce((sum, s) => sum + s.labourPercent, 0) / stores.length
+    : 0;
+
+  body.push(
+    {
+      type: "TextBlock",
+      text: "════════════════════════",
+      spacing: "Small",
+      isSubtle: true,
+      size: "Small",
+    },
+    {
+      type: "FactSet",
+      facts: [
+        { title: "Total Net Sales", value: `$${totalSales.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+        { title: "Avg Labour%", value: `${avgLabour.toFixed(2)}%` },
+      ],
+      spacing: "Small",
+    },
+    {
+      type: "TextBlock",
+      text: "Hinnawi Bros Operations Dashboard",
+      size: "Small",
+      isSubtle: true,
+      spacing: "Medium",
+      horizontalAlignment: "Right",
+    }
+  );
+
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        contentUrl: null,
+        content: {
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+          type: "AdaptiveCard",
+          version: "1.4",
+          body,
+        },
+      },
+    ],
+  };
+}
+
+/**
+ * Sends the daily sales & labour report card to a webhook URL.
+ */
+export async function sendDailySalesLabourReport(
+  webhookUrl: string,
+  date: string,
+  stores: StoreReport[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const card = buildDailySalesLabourCard(date, stores);
+    const response = await axios.post(webhookUrl, card, {
+      headers: { "Content-Type": "application/json" },
+      timeout: AXIOS_TIMEOUT_MS,
+    });
+    if (response.status >= 200 && response.status < 300) {
+      return { success: true };
+    }
+    return { success: false, error: `Unexpected status: ${response.status}` };
+  } catch (err: any) {
+    const errorMsg = err.response?.data
+      ? JSON.stringify(err.response.data)
+      : err.message || "Unknown error";
+    console.error("[Teams] Failed to send daily report:", errorMsg);
+    return { success: false, error: errorMsg };
+  }
+}
+
+// ─── High Labour Alert (per-store, automatic) ───────────────────
+
+/**
+ * Builds and sends a high labour alert for a specific store.
+ * Triggered automatically when labour % exceeds the store's target.
+ */
+export function buildHighLabourAlert(
+  storeName: string,
+  labourPercent: number,
+  labourTarget: number,
+  netSales: number,
+  date: string
+): AlertPayload {
+  const overBy = labourPercent - labourTarget;
+  const severity = overBy > 10 ? "critical" : "warning";
+  return {
+    title: `High Labour Alert — ${storeName}`,
+    message: `Labour at ${storeName} is ${overBy.toFixed(1)}% above the ${labourTarget}% target.`,
+    severity,
+    storeName,
+    metric: "Labour %",
+    currentValue: `${labourPercent.toFixed(2)}% (Target: ${labourTarget}%)`,
+    threshold: `Net Sales: $${netSales.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    timestamp: date,
+  };
+}
+
 export type { AlertPayload };
