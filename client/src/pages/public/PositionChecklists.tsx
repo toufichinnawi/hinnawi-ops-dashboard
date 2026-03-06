@@ -15,6 +15,7 @@ import { CheckCircle2, ClipboardCheck, ArrowLeft, ChevronRight, Save } from "luc
 import { toast } from "sonner";
 import { useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PhotoUpload, type UploadedPhoto } from "@/components/PhotoUpload";
 
 // ─── Save Draft Hook ───
 
@@ -607,6 +608,7 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
   const setComments = (v: string) => setDraft((d) => ({ ...d, comments: v }));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
   const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
   const totalScore = useRating
@@ -628,7 +630,15 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
         reportType,
         location: storeName,
         reportDate: isWeekly ? weekStart : dateOfSubmission,
-        data: { ...(isWeekly ? { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd } : {}), sections: sections.map((s, si) => ({ title: s.title, items: s.items.map((item, ii) => ({ item, ...data[si][ii] })) })), comments, submittedVia: `Public - ${positionLabel}` },
+        data: (() => {
+          const photoUrls: Record<string, string[]> = {};
+          for (const [section, photos] of Object.entries(sectionPhotos)) {
+            const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
+            if (urls.length > 0) photoUrls[section] = urls;
+          }
+          const photosData = Object.keys(photoUrls).length > 0 ? { photos: photoUrls } : {};
+          return { ...(isWeekly ? { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd } : {}), sections: sections.map((s, si) => ({ title: s.title, items: s.items.map((item, ii) => ({ item, ...data[si][ii] })) })), comments, submittedVia: `Public - ${positionLabel}`, ...photosData };
+        })(),
         totalScore,
       },
       () => { setSubmitted(true); clearDraft(); toast.success(`${title} submitted!`); },
@@ -674,6 +684,17 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
               </div>
             ))}
           </CardContent>
+          {reportType === "Operations Manager Checklist (Weekly Audit)" && (
+            <div className="px-6 pb-6">
+              <PhotoUpload
+                photos={sectionPhotos[section.title] || []}
+                onChange={(photos) => setSectionPhotos(prev => ({ ...prev, [section.title]: photos }))}
+                maxPhotos={5}
+                label="Attach Photos"
+                sectionLabel={section.title}
+              />
+            </div>
+          )}
         </Card>
       ))}
       <Card><CardContent className="pt-6"><Label>Comments</Label><Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Additional comments..." /></CardContent></Card>

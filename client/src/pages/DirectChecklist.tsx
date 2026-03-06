@@ -26,6 +26,7 @@ import { StarRating } from "@/components/StarRating";
 import { CheckCircle2, Send, DollarSign, Users2, MessageSquare, Utensils } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { PhotoUpload, type UploadedPhoto } from "@/components/PhotoUpload";
 
 // ─── Checklist Data Definitions (same as ChecklistViewer) ───
 
@@ -280,6 +281,7 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
   const [weekEnd, setWeekEnd] = useState(defaultWeekAudit.end);
   const [ratings, setRatings] = useState<Record<string, Record<number, number>>>({});
   const [notes, setNotes] = useState("");
+  const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = () => {
@@ -287,7 +289,13 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
     // Compute average score across all sections
     const allRatings = Object.values(ratings).flatMap(section => Object.values(section));
     const avg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 0;
-    const payload = { reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate: weekStart, data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, ratings, notes }, totalScore: avg.toFixed(2) };
+    // Collect photo URLs per section
+    const photoUrls: Record<string, string[]> = {};
+    for (const [section, photos] of Object.entries(sectionPhotos)) {
+      const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
+      if (urls.length > 0) photoUrls[section] = urls;
+    }
+    const payload = { reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate: weekStart, data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, ratings, notes, photos: photoUrls }, totalScore: avg.toFixed(2) };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Audit submitted!");
@@ -322,7 +330,17 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
               <StarRating value={ratings[section.title]?.[i] || 0} onChange={(v) => setRatings((prev) => ({ ...prev, [section.title]: { ...prev[section.title], [i]: v } }))} />
             </div>
           ))}
-        </CardContent></Card>
+        </CardContent>
+          <div className="px-6 pb-6">
+            <PhotoUpload
+              photos={sectionPhotos[section.title] || []}
+              onChange={(photos) => setSectionPhotos(prev => ({ ...prev, [section.title]: photos }))}
+              maxPhotos={5}
+              label="Attach Photos"
+              sectionLabel={section.title}
+            />
+          </div>
+        </Card>
       ))}
       <Card><CardContent className="pt-6 space-y-3"><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} /></CardContent></Card>
       <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Audit</Button></div>

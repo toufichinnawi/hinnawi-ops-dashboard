@@ -290,6 +290,35 @@ async function startServer() {
     }
   });
 
+  // Public API endpoint for uploading photos (used by checklist forms)
+  app.post("/api/public/upload-photo", async (req, res) => {
+    try {
+      const { base64, fileName, contentType } = req.body;
+      if (!base64 || !fileName || !contentType) {
+        return res.status(400).json({ error: "Missing required fields: base64, fileName, contentType" });
+      }
+      // Validate it's an image
+      if (!contentType.startsWith("image/")) {
+        return res.status(400).json({ error: "Only image files are allowed" });
+      }
+      // Limit to 10MB
+      const buffer = Buffer.from(base64, "base64");
+      if (buffer.length > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "File too large (max 10MB)" });
+      }
+      const { storagePut } = await import("../storage");
+      const suffix = Math.random().toString(36).substring(2, 10);
+      const ext = fileName.split(".").pop() || "jpg";
+      const key = `checklist-photos/${Date.now()}-${suffix}.${ext}`;
+      const { url } = await storagePut(key, buffer, contentType);
+      console.log(`[Photo Upload] Uploaded ${key} (${(buffer.length / 1024).toFixed(1)}KB)`);
+      res.json({ success: true, url });
+    } catch (err) {
+      console.error("[Photo Upload] Error:", err);
+      res.status(500).json({ error: "Failed to upload photo" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

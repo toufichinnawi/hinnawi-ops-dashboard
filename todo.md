@@ -793,3 +793,10 @@
 
 - [x] Remove 'Store Evaluation Checklist' (store-manager-checklist) from entire system
 - [x] Remove 'Weekly Deep Cleaning' (weekly-deep-cleaning) from entire system
+
+# Photo Upload for Ops Manager Weekly Audit
+
+- [x] Build server-side photo upload endpoint (S3 storage)
+- [x] Add photo upload UI to Ops Manager checklist (camera + photo library) in all 3 form locations
+- [x] Display uploaded photos in ReportDetailRenderer for audit report detail views
+- [x] Write tests for photo upload functionality

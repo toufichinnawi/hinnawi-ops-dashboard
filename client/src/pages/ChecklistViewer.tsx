@@ -37,6 +37,7 @@ import { StarRating } from "@/components/StarRating";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PhotoUpload, type UploadedPhoto } from "@/components/PhotoUpload";
 
 // ─── Checklist Data Definitions (same as public page) ───
 
@@ -674,6 +675,7 @@ function SectionChecklistForm({
   const [weekEnd, setWeekEnd] = useState(defaultWeekSec.end);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
 
   const allItems = sections.flatMap((s) => s.items);
@@ -707,9 +709,18 @@ function SectionChecklistForm({
         reportType,
         location: selectedStore,
         reportDate: isWeekly ? weekStart : new Date().toISOString().split("T")[0],
-        data: useRating
-          ? { ...(isWeekly ? { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd } : {}), ratings, notes, sections }
-          : { ...(isWeekly ? { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd } : {}), checked, notes, sections },
+        data: (() => {
+          const photoUrls: Record<string, string[]> = {};
+          for (const [section, photos] of Object.entries(sectionPhotos)) {
+            const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
+            if (urls.length > 0) photoUrls[section] = urls;
+          }
+          const base = isWeekly ? { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd } : {};
+          const photosData = Object.keys(photoUrls).length > 0 ? { photos: photoUrls } : {};
+          return useRating
+            ? { ...base, ratings, notes, sections, ...photosData }
+            : { ...base, checked, notes, sections, ...photosData };
+        })(),
         totalScore: avgScore,
       });
       setSubmitted(true);
@@ -819,6 +830,17 @@ function SectionChecklistForm({
                 );
               })}
             </div>
+            {reportType === "Operations Manager Checklist (Weekly Audit)" && (
+              <div className="mt-4 pt-3 border-t border-border/30">
+                <PhotoUpload
+                  photos={sectionPhotos[section.title] || []}
+                  onChange={(photos) => setSectionPhotos(prev => ({ ...prev, [section.title]: photos }))}
+                  maxPhotos={5}
+                  label="Attach Photos"
+                  sectionLabel={section.title}
+                />
+              </div>
+            )}
           </div>
         ))}
 

@@ -6,6 +6,7 @@
 import { Star, CheckCircle2, XCircle, Minus, AlertTriangle, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { PhotoGallery } from "@/components/PhotoUpload";
 
 // ─── Star Rating Display ─────────────────────────────────────────
 function Stars({ rating, max = 5 }: { rating: number; max?: number }) {
@@ -156,6 +157,11 @@ function SectionChecklistDetail({ data }: { data: any }) {
                 </div>
               ))}
             </div>
+            {data.photos && data.photos[section.title] && (
+              <div className="mt-2">
+                <PhotoGallery photos={data.photos[section.title]} label={`${section.title} Photos`} />
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -180,6 +186,11 @@ function SectionChecklistDetail({ data }: { data: any }) {
                 </div>
               ))}
             </div>
+            {data.photos && data.photos[sectionKey] && (
+              <div className="mt-2">
+                <PhotoGallery photos={data.photos[sectionKey]} label={`${sectionKey} Photos`} />
+              </div>
+            )}
           </div>
         ))}
       </div>
