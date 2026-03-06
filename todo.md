@@ -826,3 +826,11 @@
 - [x] Fix store ID mapping (mk → mackay)
 - [x] Make alertHistory.webhookId nullable for chat-based alerts
 - [x] Write tests for Teams chat module (5 tests)
+
+- [x] Fix high labour alerts to only send at 8 PM (not hourly)
+- [x] Send test daily report for yesterday to TRD Management
+- [x] Update labour alert template to user's exact format
+- [x] Send test labour alerts to stores above target from yesterday
+- [x] Update labour alert to approved merged template format
+- [x] Change routing: store-specific chats get only their own alert, TRD gets full report + all alerts
+- [x] Ensure everything runs at 8 PM EST daily

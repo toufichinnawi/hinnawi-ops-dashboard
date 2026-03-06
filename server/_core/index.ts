@@ -621,11 +621,12 @@ async function startServer() {
   async function checkHighLabourAlerts() {
     console.log(`[LabourAlert] Checking labour thresholds...`);
     try {
-      const { listWebhooks, getKoomiSalesByDateRange, getSevenShiftsSalesByDateRange, getExcelLabourByDateRange, createAlertHistoryEntry } = await import("../db");
-      const { sendTeamsAlert, buildHighLabourAlert } = await import("../teams");
+      const { getKoomiSalesByDateRange, getSevenShiftsSalesByDateRange, getExcelLabourByDateRange, createAlertHistoryEntry } = await import("../db");
+      const { sendAllLabourAlerts } = await import("../teamsChat");
 
       const now = new Date();
       const estDate = now.toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+      const displayDate = now.toLocaleDateString("en-US", { timeZone: "America/Toronto", year: "numeric", month: "long", day: "2-digit" });
 
       const STORES = [
         { id: "tunnel", name: "Cathcart (Tunnel)", labourTarget: 24, koomiId: "1036" },
@@ -638,9 +639,7 @@ async function startServer() {
       const sevenData = await getSevenShiftsSalesByDateRange(estDate, estDate);
       const excelData = await getExcelLabourByDateRange(estDate, estDate);
 
-      const webhooks = await listWebhooks();
-      const activeWebhooks = webhooks.filter(w => w.isActive);
-      if (activeWebhooks.length === 0) return;
+      const storesAboveTarget: Array<{ storeId: string; storeName: string; labourPercent: number; labourTarget: number; netSales: number; labourCost: number }> = [];
 
       for (const store of STORES) {
         let netSales = 0;
@@ -672,38 +671,39 @@ async function startServer() {
 
         if (!hasData || labourPercent <= store.labourTarget) continue;
 
-        // Labour is above target — send alert to Teams group chats
-        const { sendLabourAlertToChats } = await import("../teamsChat");
-        const chatResults = await sendLabourAlertToChats(store.id, store.name, labourPercent, store.labourTarget, netSales, estDate);
-        console.log(`[LabourAlert] ${store.name}: ${labourPercent.toFixed(1)}% > ${store.labourTarget}% → TRD: ${chatResults.trd.success ? "OK" : chatResults.trd.error}, Store: ${chatResults.store?.success ? "OK" : chatResults.store?.error || "N/A"}`);
+        const labourCost = (labourPercent / 100) * netSales;
+        storesAboveTarget.push({
+          storeId: store.id,
+          storeName: store.name,
+          labourPercent,
+          labourTarget: store.labourTarget,
+          netSales,
+          labourCost,
+        });
+      }
 
+      if (storesAboveTarget.length === 0) {
+        console.log("[LabourAlert] No stores above target. No alerts sent.");
+        return;
+      }
+
+      // Send all alerts: TRD gets all, each store gets its own
+      const results = await sendAllLabourAlerts(displayDate, storesAboveTarget);
+
+      for (const store of storesAboveTarget) {
+        console.log(`[LabourAlert] ${store.storeName}: ${store.labourPercent.toFixed(1)}% > ${store.labourTarget}%`);
         await createAlertHistoryEntry({
           webhookId: null,
           alertType: "high-labour",
-          title: `High Labour Alert — ${store.name}`,
-          severity: labourPercent > store.labourTarget + 10 ? "critical" : "warning",
-          message: `${store.name}: Labour ${labourPercent.toFixed(1)}% exceeds target ${store.labourTarget}%`,
-          delivered: chatResults.trd.success,
-          errorMessage: chatResults.trd.error || null,
+          title: `High Labour Alert \u2014 ${store.storeName}`,
+          severity: store.labourPercent > store.labourTarget + 10 ? "critical" : "warning",
+          message: `${store.storeName}: Labour ${store.labourPercent.toFixed(1)}% exceeds target ${store.labourTarget}%`,
+          delivered: true,
+          errorMessage: null,
         });
-
-        // Also send to webhook(s) if configured
-        const alertPayload = buildHighLabourAlert(store.name, labourPercent, store.labourTarget, netSales, estDate);
-        for (const webhook of activeWebhooks) {
-          const result = await sendTeamsAlert(webhook.webhookUrl, alertPayload);
-          console.log(`[LabourAlert] ${store.name} → webhook ${webhook.id}: ${result.success ? "OK" : result.error}`);
-
-          await createAlertHistoryEntry({
-            webhookId: webhook.id,
-            alertType: "high-labour",
-            title: `High Labour Alert — ${store.name}`,
-            severity: alertPayload.severity,
-            message: `${store.name}: Labour ${labourPercent.toFixed(1)}% exceeds target ${store.labourTarget}%`,
-            delivered: result.success,
-            errorMessage: result.error || null,
-          });
-        }
       }
+
+      console.log(`[LabourAlert] Sent ${storesAboveTarget.length} alert(s) to Teams chats.`);
     } catch (err: any) {
       console.error("[LabourAlert] Failed:", err.message);
     }
@@ -720,7 +720,7 @@ async function startServer() {
     const estMin = parseInt(now.toLocaleString("en-US", { timeZone: "America/Toronto", minute: "numeric" }));
     const estDate = now.toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
     const reportKey = `report-${estDate}`;
-    const labourKey = `labour-${estHour}-${estDate}`;
+
 
     // Daily report at 8 PM EST
     if (estHour === 20 && estMin === 0 && !reportLog.has(reportKey)) {
@@ -728,8 +728,9 @@ async function startServer() {
       sendDailyReport();
     }
 
-    // Labour alert check every hour between 10 AM and 9 PM EST (not too frequent to avoid spam)
-    if (estMin === 30 && estHour >= 10 && estHour <= 21 && !reportLog.has(labourKey)) {
+    // Labour alert check at 8 PM EST (same time as daily report)
+    const labourKey = `labour-${estDate}`;
+    if (estHour === 20 && estMin === 0 && !reportLog.has(labourKey)) {
       reportLog.add(labourKey);
       checkHighLabourAlerts();
     }
@@ -740,7 +741,7 @@ async function startServer() {
     });
   }, 30_000);
 
-  console.log("[Schedule] Daily report at 8PM EST + Labour alerts hourly 10AM-9PM EST");
+  console.log("[Schedule] Daily report + Labour alerts at 8PM EST");
 }
 
 startServer().catch(console.error);

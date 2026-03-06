@@ -167,50 +167,63 @@ function buildLabourAlertHtml(
   labourPercent: number,
   labourTarget: number,
   netSales: number,
+  labourCost: number,
   date: string
 ): string {
   const overBy = labourPercent - labourTarget;
-  const emoji = overBy > 10 ? "🚨" : "⚠️";
-  const severity = overBy > 10 ? "CRITICAL" : "WARNING";
 
-  let html = `<b>${emoji} High Labour Alert — ${storeName}</b><br><br>`;
-  html += `<b>Severity:</b> ${severity}<br>`;
+  let html = `🚨 <b>LABOUR ABOVE TARGET</b><br><br>`;
   html += `<b>Store:</b> ${storeName}<br>`;
-  html += `<b>Labour%:</b> ${labourPercent.toFixed(2)}% (Target: ${labourTarget}%)<br>`;
-  html += `<b>Over by:</b> ${overBy.toFixed(1)}%<br>`;
-  html += `<b>Net Sales:</b> ${formatCurrency(netSales)}<br>`;
   html += `<b>Date:</b> ${date}<br><br>`;
-  html += `<em>Hinnawi Bros Operations Dashboard</em>`;
+  html += `<b>Sales:</b> ${formatCurrency(netSales)}<br>`;
+  html += `<b>Labour %:</b> ${labourPercent.toFixed(2)}% (Target: ${labourTarget}%)<br>`;
+  html += `<b>Over by:</b> ${overBy.toFixed(1)}%<br>`;
+  html += `<b>Labour $:</b> ${formatCurrency(labourCost)}<br><br>`;
+  html += `<b>Action Required:</b><br>`;
+  html += `Review staffing immediately.`;
 
   return html;
 }
 
+export interface LabourAlertStore {
+  storeId: string;
+  storeName: string;
+  labourPercent: number;
+  labourTarget: number;
+  netSales: number;
+  labourCost: number;
+}
+
 /**
- * Sends a high labour alert to both the TRD Management chat
- * AND the store-specific management chat.
+ * Sends labour alerts at 8 PM:
+ * - TRD Management gets alerts for ALL stores above target
+ * - Each store-specific chat gets only its own alert
  */
-export async function sendLabourAlertToChats(
-  storeId: string,
-  storeName: string,
-  labourPercent: number,
-  labourTarget: number,
-  netSales: number,
-  date: string
-): Promise<{ trd: SendResult; store: SendResult | null }> {
-  const html = buildLabourAlertHtml(storeName, labourPercent, labourTarget, netSales, date);
+export async function sendAllLabourAlerts(
+  date: string,
+  storesAboveTarget: LabourAlertStore[]
+): Promise<{ trd: SendResult[]; stores: Record<string, SendResult> }> {
+  const trdResults: SendResult[] = [];
+  const storeResults: Record<string, SendResult> = {};
 
-  console.log(`[TeamsChat] Sending labour alert for ${storeName} to TRD Management...`);
-  const trdResult = await sendChatMessage(TEAMS_CHAT_IDS.trd, html);
+  for (const store of storesAboveTarget) {
+    const html = buildLabourAlertHtml(store.storeName, store.labourPercent, store.labourTarget, store.netSales, store.labourCost, date);
 
-  // Also send to the store-specific chat
-  const storeChatKey = STORE_TO_CHAT[storeId];
-  let storeResult: SendResult | null = null;
-  if (storeChatKey) {
-    console.log(`[TeamsChat] Sending labour alert for ${storeName} to ${storeChatKey} management...`);
-    storeResult = await sendChatMessage(TEAMS_CHAT_IDS[storeChatKey], html);
+    // Send to TRD Management
+    console.log(`[TeamsChat] Sending labour alert for ${store.storeName} to TRD Management...`);
+    const trdResult = await sendChatMessage(TEAMS_CHAT_IDS.trd, html);
+    trdResults.push(trdResult);
+
+    // Send to store-specific chat only
+    const storeChatKey = STORE_TO_CHAT[store.storeId];
+    if (storeChatKey) {
+      console.log(`[TeamsChat] Sending labour alert for ${store.storeName} to ${storeChatKey} management...`);
+      const storeResult = await sendChatMessage(TEAMS_CHAT_IDS[storeChatKey], html);
+      storeResults[store.storeId] = storeResult;
+    }
   }
 
-  return { trd: trdResult, store: storeResult };
+  return { trd: trdResults, stores: storeResults };
 }
 
 /**
