@@ -116,8 +116,9 @@ const EQUIP_MONTHLY = [
 ];
 
 const BAGEL_TYPES = [
-  "Plain", "Sesame", "Poppy", "Everything", "Cinnamon Raisin", "Whole Wheat",
-  "Multigrain", "Blueberry", "Jalapeño", "Onion", "Garlic", "Salt",
+  "Sesame Bagel", "Everything Bagel", "Plain Bagel", "Mini-Bagel Plain",
+  "Poppy Seeds Bagel", "Multigrain Bagel", "Cheese Bagel", "Rosemary Bagel",
+  "Cinnamon Sugar Bagel", "Cinnamon Raisin Bagel", "Blueberry Bagel", "Coconut Bagel",
 ];
 
 const TRAINING_AREAS = [
@@ -1045,19 +1046,18 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
 }
 
 function BagelOrdersForm({ onBack }: { onBack: () => void }) {
-  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [ordererName, setOrdererName] = useState("");
-  const [orderDate, setOrderDate] = useState("");
-  const [orders, setOrders] = useState(() => BAGEL_TYPES.map(() => DAYS.map(() => "")));
+  const [orderForDate, setOrderForDate] = useState("");
+  const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])));
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = () => {
-    if (!ordererName.trim() || !selectedStore || !orderDate) { toast.error("Please fill required fields"); return; }
+    if (!ordererName.trim() || !selectedStore || !orderForDate) { toast.error("Please fill required fields"); return; }
     const payload = {
-      reportType: "bagel-orders", location: selectedStore, submitterName: ordererName, reportDate: orderDate,
-      data: { orders: BAGEL_TYPES.map((type, i) => ({ type, quantities: Object.fromEntries(DAYS.map((d, j) => [d, orders[i][j]])) })) },
+      reportType: "bagel-orders", location: selectedStore, submitterName: ordererName, reportDate: orderForDate,
+      data: { orderForDate, unit: "dozen", orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0" })) },
     };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
@@ -1077,31 +1077,23 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Your Name</Label><Input value={ordererName} onChange={(e) => setOrdererName(e.target.value)} placeholder="Enter your name" /></div>
-        <div className="space-y-1.5"><Label>Week Starting</Label><Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} /></div>
+        <div className="space-y-1.5"><Label>Order for Date</Label><Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} /></div>
       </CardContent></Card>
       <Card><CardContent className="pt-6 space-y-4">
-        <h3 className="font-serif text-lg">Order Quantities by Day</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2 pr-2 font-medium">Type</th>
-                {DAYS.map((d) => <th key={d} className="text-center py-2 px-1 font-medium text-xs">{d.slice(0, 3)}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {BAGEL_TYPES.map((type, ti) => (
-                <tr key={type} className="border-b">
-                  <td className="py-1 pr-2 text-sm">{type}</td>
-                  {DAYS.map((_, di) => (
-                    <td key={di} className="py-1 px-1">
-                      <Input type="number" min="0" placeholder="0" value={orders[ti][di]} onChange={(e) => setOrders((p) => p.map((r, ri) => ri === ti ? r.map((c, ci) => ci === di ? e.target.value : c) : r))} className="h-7 w-12 text-center text-xs" />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div>
+          <h3 className="font-serif text-lg">Order Quantities</h3>
+          <p className="text-sm text-amber-600 font-medium mt-1 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">All quantities are in dozens (12 units per dozen)</p>
+        </div>
+        <div className="space-y-2">
+          {BAGEL_TYPES.map((type) => (
+            <div key={type} className="flex items-center justify-between gap-4 py-1.5 border-b last:border-0">
+              <span className="text-sm">{type}</span>
+              <div className="flex items-center gap-2">
+                <Input type="number" min="0" step="0.5" placeholder="0" value={quantities[type]} onChange={(e) => setQuantities(prev => ({ ...prev, [type]: e.target.value }))} className="h-8 w-20 text-center text-sm" />
+                <span className="text-xs text-muted-foreground w-10">doz.</span>
+              </div>
+            </div>
+          ))}
         </div>
       </CardContent></Card>
       <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Order</Button></div>

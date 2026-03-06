@@ -834,3 +834,11 @@
 - [x] Update labour alert to approved merged template format
 - [x] Change routing: store-specific chats get only their own alert, TRD gets full report + all alerts
 - [x] Ensure everything runs at 8 PM EST daily
+
+# Bagel Orders Update
+- [x] Update bagel items to official 12 items
+- [x] Change from weekly to per-date ordering (Order for Date field)
+- [x] Add Store, Name, Order for Date header fields
+- [x] Change units from individual to dozen with note on top
+- [x] Update all 3 form locations (DirectChecklist, ChecklistViewer, PositionChecklists)
+- [x] Update ReportDetailRenderer for bagel orders display

@@ -420,7 +420,48 @@ function BagelOrdersDetail({ data }: { data: any }) {
   const orders = data.orders || [];
   if (orders.length === 0) return <GenericDetail data={data} />;
 
-  // Get all days from the first order's quantities
+  // Detect format: new format has "quantity" per item, old format has "quantities" (day-based)
+  const isNewFormat = orders[0]?.quantity !== undefined;
+  const unit = data.unit || "dozen";
+  const orderForDate = data.orderForDate;
+
+  if (isNewFormat) {
+    // New per-date format with dozen quantities
+    return (
+      <div className="space-y-3">
+        {orderForDate && (
+          <div className="text-sm">
+            <span className="text-muted-foreground">Order for: </span>
+            <span className="font-medium">{new Date(orderForDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</span>
+          </div>
+        )}
+        <p className="text-sm text-amber-600 font-medium bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">All quantities are in {unit}s (12 units per dozen)</p>
+        <div className="border rounded-lg">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left p-2 font-medium text-xs">Bagel Type</th>
+                <th className="text-center p-2 font-medium text-xs">Qty ({unit}s)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.filter((o: any) => o.quantity && o.quantity !== "0").map((order: any, i: number) => (
+                <tr key={i} className="border-t">
+                  <td className="p-2 text-sm font-medium">{order.type}</td>
+                  <td className="p-2 text-center font-mono text-sm font-semibold">{order.quantity}</td>
+                </tr>
+              ))}
+              {orders.filter((o: any) => o.quantity && o.quantity !== "0").length === 0 && (
+                <tr className="border-t"><td colSpan={2} className="p-3 text-center text-muted-foreground text-sm">No items ordered</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  // Legacy weekly format with day-based quantities
   const days = orders[0]?.quantities ? Object.keys(orders[0].quantities) : [];
 
   return (
@@ -443,7 +484,7 @@ function BagelOrdersDetail({ data }: { data: any }) {
                 <td className="p-2 text-sm font-medium sticky left-0 bg-card">{order.type}</td>
                 {days.map((day) => (
                   <td key={day} className="p-2 text-center font-mono text-sm">
-                    {order.quantities[day] || "—"}
+                    {order.quantities[day] || "\u2014"}
                   </td>
                 ))}
               </tr>

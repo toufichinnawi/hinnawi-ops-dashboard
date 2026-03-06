@@ -132,7 +132,11 @@ const EQUIP_MONTHLY = [
   { equipment: "HVAC / Hood", task: "Replace or clean filters" },
 ];
 
-const BAGEL_TYPES = ["Sesame", "Poppy", "Everything", "Plain", "Whole Wheat", "Blueberry", "Cinnamon Raisin", "Jalapeno", "Multigrain", "Onion"];
+const BAGEL_TYPES = [
+  "Sesame Bagel", "Everything Bagel", "Plain Bagel", "Mini-Bagel Plain",
+  "Poppy Seeds Bagel", "Multigrain Bagel", "Cheese Bagel", "Rosemary Bagel",
+  "Cinnamon Sugar Bagel", "Cinnamon Raisin Bagel", "Blueberry Bagel", "Coconut Bagel",
+];
 const PASTRY_TYPES = ["Croissant", "Pain au Chocolat", "Muffin", "Cookie", "Brownie", "Scone", "Danish", "Cinnamon Roll"];
 const CK_ITEMS = ["Cream Cheese (tubs)", "Hummus (tubs)", "Egg Salad (kg)", "Tuna Salad (kg)", "Chicken Salad (kg)", "Smoked Salmon (packs)", "Avocado (units)"];
 
@@ -1563,33 +1567,33 @@ function TrainingEvaluationForm({ storeCode: initialStoreCode, storeName: _sn6, 
 // ─── Bagel Orders ───
 
 function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positionLabel, onBack }: FormProps) {
-  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
-  const [weekStarting, setWeekStarting] = useState("");
-  const [orders, setOrders] = useState(() => BAGEL_TYPES.map(() => DAYS.map(() => "")));
+  const [orderForDate, setOrderForDate] = useState("");
+  const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
     if (!selectedStore) { toast.error("Please select a store"); return; }
+    if (!orderForDate) { toast.error("Please select the order date"); return; }
     setSubmitting(true);
     try {
       await submitReport({
         submitterName,
         reportType: "Bagel Orders",
         location: selectedStore,
-        reportDate: weekStarting || new Date().toISOString().split("T")[0],
-        data: { orders: BAGEL_TYPES.map((type, i) => ({ type, quantities: Object.fromEntries(DAYS.map((d, j) => [d, orders[i][j]])) })) },
+        reportDate: orderForDate,
+        data: { orderForDate, unit: "dozen", orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0" })) },
       });
       setSubmitted(true);
     } catch { toast.error("Failed to submit"); }
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Bagel orders submitted for ${currentStoreName}`} onNew={() => { setOrders(BAGEL_TYPES.map(() => DAYS.map(() => ""))); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Bagel orders submitted for ${currentStoreName}`} onNew={() => { setQuantities(Object.fromEntries(BAGEL_TYPES.map(t => [t, ""]))); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
@@ -1602,33 +1606,23 @@ function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positio
             <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
           </div>
           <div>
-            <Label className="text-sm font-medium">Week Starting</Label>
-            <Input type="date" value={weekStarting} onChange={(e) => setWeekStarting(e.target.value)} className="mt-1.5" />
+            <Label className="text-sm font-medium">Order for Date</Label>
+            <Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} className="mt-1.5" />
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border/60 p-5">
-          <h3 className="font-semibold mb-3">Order Quantities by Day</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2 pr-2 font-medium">Type</th>
-                  {DAYS.map((d) => <th key={d} className="text-center py-2 px-1 font-medium text-xs">{d.slice(0, 3)}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {BAGEL_TYPES.map((type, ti) => (
-                  <tr key={type} className="border-b">
-                    <td className="py-1 pr-2 text-sm">{type}</td>
-                    {DAYS.map((_, di) => (
-                      <td key={di} className="py-1 px-1">
-                        <Input type="number" min="0" placeholder="0" value={orders[ti][di]} onChange={(e) => setOrders((p) => p.map((r, ri) => ri === ti ? r.map((c, ci) => ci === di ? e.target.value : c) : r))} className="h-7 w-12 text-center text-xs" />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <h3 className="font-semibold mb-1">Order Quantities</h3>
+          <p className="text-sm text-amber-600 font-medium mb-4 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">All quantities are in dozens (12 units per dozen)</p>
+          <div className="space-y-2">
+            {BAGEL_TYPES.map((type) => (
+              <div key={type} className="flex items-center justify-between gap-4 py-1.5 border-b last:border-0">
+                <span className="text-sm">{type}</span>
+                <div className="flex items-center gap-2">
+                  <Input type="number" min="0" step="0.5" placeholder="0" value={quantities[type]} onChange={(e) => setQuantities(prev => ({ ...prev, [type]: e.target.value }))} className="h-8 w-20 text-center text-sm" />
+                  <span className="text-xs text-muted-foreground w-10">doz.</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
         <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white">
