@@ -851,3 +851,8 @@
 - [x] Add tRPC endpoint for querying bagel orders by date range
 - [x] Replace from/to date filter on Bagel Production with single date filter (same as Overview)
 - [x] Allow future dates in DateFilter on Bagel Production page
+
+# Bagel Orders & Portal Updates
+- [x] Add unit toggle (Dozen/Unit) to Bagel Orders form with Dozen as default (all 3 form locations)
+- [x] Add "Sales" as a new location option in Bagel Orders form (all 3 form locations)
+- [x] Add "Bagel Factory" position to Portal with Bagel Production as default/only page, filtered to Today

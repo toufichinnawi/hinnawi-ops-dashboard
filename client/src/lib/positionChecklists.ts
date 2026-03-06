@@ -134,6 +134,11 @@ export const POSITION_CHECKLISTS: Record<
     label: "Staff",
     checklists: ["waste-report"],
   },
+  "bagel-factory": {
+    slug: "bagel-factory",
+    label: "Bagel Factory",
+    checklists: [],
+  },
 };
 
 export function getPositionConfig(

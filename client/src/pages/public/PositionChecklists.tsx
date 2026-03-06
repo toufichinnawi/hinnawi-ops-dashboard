@@ -1248,11 +1248,12 @@ function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack }:
 function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
     `bagel-orders-v2-${storeCode}`,
-    { name: "", orderForDate: new Date().toISOString().split("T")[0], quantities: Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])) }
+    { name: "", orderForDate: new Date().toISOString().split("T")[0], unit: "dozen" as "dozen" | "unit", quantities: Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])) }
   );
-  const { name, orderForDate, quantities } = draft;
+  const { name, orderForDate, unit, quantities } = draft;
   const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
   const setOrderForDate = (v: string) => setDraft((d) => ({ ...d, orderForDate: v }));
+  const setUnit = (v: "dozen" | "unit") => setDraft((d) => ({ ...d, unit: v }));
   const setQuantity = (type: string, val: string) => setDraft((d) => ({ ...d, quantities: { ...d.quantities, [type]: val } }));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -1264,7 +1265,7 @@ function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: { stor
     await submitWithDuplicateCheck(
       {
         submitterName: name.trim(), reportType: "Bagel Orders", location: storeName, reportDate: orderForDate,
-        data: { orderForDate, unit: "dozen", orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0" })), submittedVia: `Public - ${positionLabel}` },
+        data: { orderForDate, unit: unit || "dozen", orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0" })), submittedVia: `Public - ${positionLabel}` },
       },
       () => { setSubmitted(true); clearDraft(); toast.success("Bagel orders submitted!"); },
       (msg) => toast.error(msg),
@@ -1279,11 +1280,17 @@ function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: { stor
       <Card><CardContent className="pt-6 space-y-4">
         <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="space-y-2"><Label>Order for Date *</Label><Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} /></div>
+        <div className="space-y-2"><Label>Unit</Label>
+          <div className="flex gap-2">
+            <button onClick={() => setUnit("dozen")} className={cn("px-4 py-1.5 rounded-md text-sm font-medium border transition-colors", (unit || "dozen") === "dozen" ? "bg-[#faa600] text-white border-[#faa600]" : "bg-background border-border text-foreground hover:bg-accent")}>Dozen</button>
+            <button onClick={() => setUnit("unit")} className={cn("px-4 py-1.5 rounded-md text-sm font-medium border transition-colors", unit === "unit" ? "bg-[#faa600] text-white border-[#faa600]" : "bg-background border-border text-foreground hover:bg-accent")}>Unit</button>
+          </div>
+        </div>
       </CardContent></Card>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Order Quantities</CardTitle>
-          <p className="text-sm text-amber-600 font-medium bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">All quantities are in dozens (12 units per dozen)</p>
+          <p className="text-sm text-amber-600 font-medium bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">{(unit || "dozen") === "dozen" ? "All quantities are in dozens (12 units per dozen)" : "All quantities are in individual units"}</p>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -1292,7 +1299,7 @@ function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: { stor
                 <span className="text-sm">{type}</span>
                 <div className="flex items-center gap-2">
                   <Input type="number" min="0" step="0.5" placeholder="0" value={quantities[type]} onChange={(e) => setQuantity(type, e.target.value)} className="h-8 w-20 text-center text-sm" />
-                  <span className="text-xs text-muted-foreground w-10">doz.</span>
+                  <span className="text-xs text-muted-foreground w-10">{(unit || "dozen") === "dozen" ? "doz." : "pcs"}</span>
                 </div>
               </div>
             ))}

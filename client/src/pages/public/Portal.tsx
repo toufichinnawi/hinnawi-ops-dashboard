@@ -35,6 +35,7 @@ import { ChecklistForm } from "./PositionChecklists";
 import { ScorecardContent } from "@/pages/OperationsScorecard";
 import { ReportDetailRenderer } from "@/components/ReportDetailRenderer";
 import { StorePerformanceContent } from "@/pages/Stores";
+import { BagelProductionContent } from "@/pages/BagelProduction";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -153,6 +154,20 @@ const POSITIONS: PositionDef[] = [
     requiresStore: true,
     sidebarItems: [
       si("waste-report", "Leftovers & Waste", Trash2, "checklist", { checklistType: "waste-report" }),
+    ],
+  },
+  {
+    slug: "bagel-factory",
+    label: "Bagel Factory",
+    icon: <CircleDot className="w-6 h-6" />,
+    color: "text-amber-700",
+    bg: "bg-amber-50",
+    border: "border-amber-200",
+    gradient: "from-amber-500 to-amber-600",
+    requiresPin: true,
+    requiresStore: false,
+    sidebarItems: [
+      si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
     ],
   },
 ];
@@ -953,6 +968,14 @@ function PortalInfoPage({
         loading={loading}
         store={store}
       />
+    );
+  }
+
+  if (pageId === "bagel-production") {
+    return (
+      <div className="max-w-[1400px]">
+        <BagelProductionContent defaultToToday />
+      </div>
     );
   }
 
