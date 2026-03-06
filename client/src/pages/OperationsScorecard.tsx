@@ -490,6 +490,35 @@ export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {})
 
   const { data: reports, isLoading } = trpc.scorecard.getData.useQuery({ fromDate: fromStr, toDate: toStr });
 
+  // ─── Current week audit check (always Mon-Sun of current week) ──
+  const currentWeekMonday = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun, 1=Mon, ...
+    const diff = day === 0 ? 6 : day - 1; // days since Monday
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - diff);
+    return format(monday, "yyyy-MM-dd");
+  }, []);
+  const currentWeekSunday = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? 0 : 7 - day;
+    const sunday = new Date(now);
+    sunday.setDate(now.getDate() + diff);
+    return format(sunday, "yyyy-MM-dd");
+  }, []);
+
+  const { data: currentWeekReports } = trpc.scorecard.getData.useQuery(
+    { fromDate: currentWeekMonday, toDate: currentWeekSunday },
+    { staleTime: 60_000 }
+  );
+
+  // Normalize current week reports to check audit status
+  const normalizedCurrentWeekReports = useMemo(() => {
+    if (!currentWeekReports) return [];
+    return currentWeekReports.map((r) => normalizeReport(r as any)) as typeof currentWeekReports;
+  }, [currentWeekReports]);
+
   // ─── Normalize reports to handle old data formats ──────────────
   const normalizedReports = useMemo(() => {
     if (!reports) return [];
@@ -535,6 +564,11 @@ export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {})
       // Check if weekly audit was done this period
       const hasWeeklyAudit = weeklyAudits > 0;
 
+      // Check if weekly audit was done THIS WEEK (Mon-Sun, resets every Monday)
+      const hasCurrentWeekAudit = normalizedCurrentWeekReports.some(
+        (r) => r.location === code && (REPORT_TYPE_NORMALIZE[r.reportType] || r.reportType) === WEEKLY_AUDIT_TYPE
+      );
+
       // Waste reports for this store
       const wasteReports = storeReports.filter((r) => r.reportType === "waste-report");
 
@@ -547,11 +581,12 @@ export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {})
         weeklyAudits,
         totalSubmissions,
         hasWeeklyAudit,
+        hasCurrentWeekAudit,
         storeReports,
         wasteReports,
       };
     });
-  }, [normalizedReports]);
+  }, [normalizedReports, normalizedCurrentWeekReports]);
 
   // ─── Waste Metrics ────────────────────────────────────────────
 
@@ -598,8 +633,8 @@ export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {})
     const alertList: { store: string; storeColor: string; message: string; severity: "critical" | "warning" }[] = [];
 
     storeScores.forEach((s) => {
-      // Missing weekly audit alert
-      if (!s.hasWeeklyAudit && (filter.mode === "week" || (filter.mode === "range" && filter.label !== "Today" && filter.label !== "Yesterday"))) {
+      // Missing weekly audit alert (always checks current week, resets every Monday)
+      if (!s.hasCurrentWeekAudit) {
         alertList.push({
           store: s.code,
           storeColor: s.storeInfo.color,
@@ -765,18 +800,16 @@ export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {})
                           <p className="text-sm font-semibold" style={{ color: s.storeInfo.color }}>{s.code}</p>
                           <p className="text-xs text-muted-foreground">{s.storeInfo.name}</p>
                         </div>
-                        {filter.mode !== "single" && (
-                          s.hasWeeklyAudit ? (
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] font-medium">
-                              <CheckCircle2 className="w-3 h-3" />
-                              Audited
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-medium">
-                              <ShieldAlert className="w-3 h-3" />
-                              No Audit
-                            </span>
-                          )
+                        {s.hasCurrentWeekAudit ? (
+                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] font-medium">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Audited
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-medium">
+                            <ShieldAlert className="w-3 h-3" />
+                            No Audit
+                          </span>
                         )}
                       </div>
 

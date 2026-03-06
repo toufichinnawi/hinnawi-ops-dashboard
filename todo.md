@@ -786,3 +786,4 @@
 - [x] Update Store Manager Checklist: add Start Date / End Date pickers, rename Date to Date of Submission
 - [x] Update Ops Mgr Weekly Audit: add Start Date / End Date pickers, rename Date to Date of Submission
 - [x] Ensure weekly checklists appear properly in date filters + report detail view shows weekly date fields
+- [x] Fix: Audit badge always visible on Operations Scorecard (even on single-day view), checks current week's audit status, resets every Monday
