@@ -1050,15 +1050,15 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
   const currentStoreName = selectedStore === "sales" ? "Sales" : stores.find(s => s.id === selectedStore)?.shortName || "";
   const [ordererName, setOrdererName] = useState("");
   const [orderForDate, setOrderForDate] = useState("");
-  const [unit, setUnit] = useState<"dozen" | "unit">("dozen");
   const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])));
+  const [itemUnits, setItemUnits] = useState<Record<string, "dozen" | "unit">>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])));
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = () => {
     if (!ordererName.trim() || !selectedStore || !orderForDate) { toast.error("Please fill required fields"); return; }
     const payload = {
       reportType: "bagel-orders", location: selectedStore, submitterName: ordererName, reportDate: orderForDate,
-      data: { orderForDate, unit, orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0" })) },
+      data: { orderForDate, orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })) },
     };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
@@ -1085,17 +1085,12 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
         </div>
         <div className="space-y-1.5"><Label>Your Name</Label><Input value={ordererName} onChange={(e) => setOrdererName(e.target.value)} placeholder="Enter your name" /></div>
         <div className="space-y-1.5"><Label>Order for Date</Label><Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} /></div>
-        <div className="space-y-1.5"><Label>Unit</Label>
-          <div className="flex gap-2">
-            <button onClick={() => setUnit("dozen")} className={cn("px-4 py-1.5 rounded-md text-sm font-medium border transition-colors", unit === "dozen" ? "bg-[#D4A853] text-[#1C1210] border-[#D4A853]" : "bg-background border-border text-foreground hover:bg-accent")}>Dozen</button>
-            <button onClick={() => setUnit("unit")} className={cn("px-4 py-1.5 rounded-md text-sm font-medium border transition-colors", unit === "unit" ? "bg-[#D4A853] text-[#1C1210] border-[#D4A853]" : "bg-background border-border text-foreground hover:bg-accent")}>Unit</button>
-          </div>
-        </div>
+
       </CardContent></Card>
       <Card><CardContent className="pt-6 space-y-4">
         <div>
           <h3 className="font-serif text-lg">Order Quantities</h3>
-          <p className="text-sm text-amber-600 font-medium mt-1 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">{unit === "dozen" ? "All quantities are in dozens (12 units per dozen)" : "All quantities are in individual units"}</p>
+          <p className="text-sm text-amber-600 font-medium mt-1 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">Select dozen or unit per item. Default is dozen (12 units per dozen).</p>
         </div>
         <div className="space-y-2">
           {BAGEL_TYPES.map((type) => (
@@ -1103,7 +1098,10 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
               <span className="text-sm">{type}</span>
               <div className="flex items-center gap-2">
                 <Input type="number" min="0" step="0.5" placeholder="0" value={quantities[type]} onChange={(e) => setQuantities(prev => ({ ...prev, [type]: e.target.value }))} className="h-8 w-20 text-center text-sm" />
-                <span className="text-xs text-muted-foreground w-10">{unit === "dozen" ? "doz." : "pcs"}</span>
+                <select value={itemUnits[type]} onChange={(e) => setItemUnits(prev => ({ ...prev, [type]: e.target.value as "dozen" | "unit" }))} className="h-8 w-16 rounded-md border border-border bg-background px-1 text-xs">
+                  <option value="dozen">doz.</option>
+                  <option value="unit">pcs</option>
+                </select>
               </div>
             </div>
           ))}

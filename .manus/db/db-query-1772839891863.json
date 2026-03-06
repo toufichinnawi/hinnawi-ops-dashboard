@@ -1,0 +1,50 @@
+{
+  "query": "SELECT * FROM store_pins ORDER BY id",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT * FROM store_pins ORDER BY id",
+  "rows": [
+    {
+      "id": "1",
+      "storeCode": "tunnel",
+      "storeName": "Tunnel",
+      "pin": "1234",
+      "isActive": "yes",
+      "updatedBy": "NULL",
+      "createdAt": "2026-03-03 15:21:42",
+      "updatedAt": "2026-03-03 15:21:42"
+    },
+    {
+      "id": "2",
+      "storeCode": "ontario",
+      "storeName": "Ontario",
+      "pin": "1234",
+      "isActive": "yes",
+      "updatedBy": "NULL",
+      "createdAt": "2026-03-03 15:21:42",
+      "updatedAt": "2026-03-03 15:21:42"
+    },
+    {
+      "id": "3",
+      "storeCode": "mk",
+      "storeName": "Mackay",
+      "pin": "1234",
+      "isActive": "yes",
+      "updatedBy": "NULL",
+      "createdAt": "2026-03-03 15:21:42",
+      "updatedAt": "2026-03-03 15:21:42"
+    },
+    {
+      "id": "4",
+      "storeCode": "pk",
+      "storeName": "President Kennedy",
+      "pin": "1234",
+      "isActive": "yes",
+      "updatedBy": "NULL",
+      "createdAt": "2026-03-03 15:21:42",
+      "updatedAt": "2026-03-03 15:21:42"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstoreCode\tstoreName\tpin\tisActive\tupdatedBy\tcreatedAt\tupdatedAt\n1\ttunnel\tTunnel\t1234\tyes\tNULL\t2026-03-03 15:21:42\t2026-03-03 15:21:42\n2\tontario\tOntario\t1234\tyes\tNULL\t2026-03-03 15:21:42\t2026-03-03 15:21:42\n3\tmk\tMackay\t1234\tyes\tNULL\t2026-03-03 15:21:42\t2026-03-03 15:21:42\n4\tpk\tPresident Kennedy\t1234\tyes\tNULL\t2026-03-03 15:21:42\t2026-03-03 15:21:42\n",
+  "stderr": "",
+  "execution_time_ms": 108
+}

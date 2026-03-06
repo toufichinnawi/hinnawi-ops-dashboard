@@ -781,6 +781,7 @@ export async function seedDefaultPositionPins() {
     { positionSlug: "store-manager", positionLabel: "Store Manager", pin: "3597" },
     { positionSlug: "assistant-manager", positionLabel: "Assistant Manager", pin: "6143" },
     { positionSlug: "staff", positionLabel: "Staff", pin: "1234" },
+    { positionSlug: "bagel-factory", positionLabel: "Bagel Factory", pin: "7256" },
   ];
   for (const d of defaults) {
     await db.insert(positionPins).values(d);

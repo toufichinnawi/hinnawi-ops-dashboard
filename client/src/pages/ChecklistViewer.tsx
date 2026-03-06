@@ -1571,8 +1571,8 @@ function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positio
   const currentStoreName = selectedStore === "sales" ? "Sales" : stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
   const [orderForDate, setOrderForDate] = useState("");
-  const [unit, setUnit] = useState<"dozen" | "unit">("dozen");
   const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])));
+  const [itemUnits, setItemUnits] = useState<Record<string, "dozen" | "unit">>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -1587,14 +1587,14 @@ function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positio
         reportType: "Bagel Orders",
         location: selectedStore,
         reportDate: orderForDate,
-        data: { orderForDate, unit, orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0" })) },
+        data: { orderForDate, orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })) },
       });
       setSubmitted(true);
     } catch { toast.error("Failed to submit"); }
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Bagel orders submitted for ${currentStoreName}`} onNew={() => { setQuantities(Object.fromEntries(BAGEL_TYPES.map(t => [t, ""]))); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Bagel orders submitted for ${currentStoreName}`} onNew={() => { setQuantities(Object.fromEntries(BAGEL_TYPES.map(t => [t, ""]))); setItemUnits(Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"]))); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
@@ -1617,24 +1617,21 @@ function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positio
             <Label className="text-sm font-medium">Order for Date</Label>
             <Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} className="mt-1.5" />
           </div>
-          <div>
-            <Label className="text-sm font-medium">Unit</Label>
-            <div className="flex gap-2 mt-1.5">
-              <button onClick={() => setUnit("dozen")} className={cn("px-4 py-1.5 rounded-md text-sm font-medium border transition-colors", unit === "dozen" ? "bg-[#D4A853] text-[#1C1210] border-[#D4A853]" : "bg-background border-border text-foreground hover:bg-accent")}>Dozen</button>
-              <button onClick={() => setUnit("unit")} className={cn("px-4 py-1.5 rounded-md text-sm font-medium border transition-colors", unit === "unit" ? "bg-[#D4A853] text-[#1C1210] border-[#D4A853]" : "bg-background border-border text-foreground hover:bg-accent")}>Unit</button>
-            </div>
-          </div>
+
         </div>
         <div className="bg-card rounded-xl border border-border/60 p-5">
           <h3 className="font-semibold mb-1">Order Quantities</h3>
-          <p className="text-sm text-amber-600 font-medium mb-4 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">{unit === "dozen" ? "All quantities are in dozens (12 units per dozen)" : "All quantities are in individual units"}</p>
+          <p className="text-sm text-amber-600 font-medium mb-4 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">Select dozen or unit per item. Default is dozen (12 units per dozen).</p>
           <div className="space-y-2">
             {BAGEL_TYPES.map((type) => (
               <div key={type} className="flex items-center justify-between gap-4 py-1.5 border-b last:border-0">
                 <span className="text-sm">{type}</span>
                 <div className="flex items-center gap-2">
                   <Input type="number" min="0" step="0.5" placeholder="0" value={quantities[type]} onChange={(e) => setQuantities(prev => ({ ...prev, [type]: e.target.value }))} className="h-8 w-20 text-center text-sm" />
-                  <span className="text-xs text-muted-foreground w-10">{unit === "dozen" ? "doz." : "pcs"}</span>
+                  <select value={itemUnits[type]} onChange={(e) => setItemUnits(prev => ({ ...prev, [type]: e.target.value as "dozen" | "unit" }))} className="h-8 w-16 rounded-md border border-border bg-background px-1 text-xs">
+                    <option value="dozen">doz.</option>
+                    <option value="unit">pcs</option>
+                  </select>
                 </div>
               </div>
             ))}

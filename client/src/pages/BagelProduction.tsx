@@ -48,8 +48,8 @@ interface BagelOrderRow {
   storeName: string;
   orderDate: string;
   submittedBy: string;
-  orders: { type: string; quantity: string }[];
-  unit: string;
+  orders: { type: string; quantity: string; unit?: string }[];
+  globalUnit: string; // legacy fallback
 }
 
 /**
@@ -88,8 +88,12 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
         storeName: getStoreName(storeId),
         orderDate: data?.orderForDate || r.reportDate,
         submittedBy: data?.submittedVia || "Dashboard",
-        orders: data?.orders || [],
-        unit: data?.unit || "dozen",
+        orders: (data?.orders || []).map((o: any) => ({
+          type: o.type,
+          quantity: o.quantity,
+          unit: o.unit || data?.unit || "dozen",
+        })),
+        globalUnit: data?.unit || "dozen",
       };
     });
   }, [rawOrders]);
@@ -101,14 +105,17 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
   }, [orders, selectedStore]);
 
   // Aggregate: total dozens per bagel type across all filtered orders
+  // Convert units to dozens for aggregation: 1 unit = 1/12 dozen
   const aggregatedByType = useMemo(() => {
     const totals: Record<string, number> = {};
     BAGEL_TYPES.forEach(t => { totals[t] = 0; });
     filteredOrders.forEach(order => {
       order.orders.forEach((item: any) => {
         const qty = parseFloat(item.quantity) || 0;
+        const itemUnit = item.unit || order.globalUnit || "dozen";
+        const dozenQty = itemUnit === "unit" ? qty / 12 : qty;
         if (totals[item.type] !== undefined) {
-          totals[item.type] += qty;
+          totals[item.type] += dozenQty;
         }
       });
     });
@@ -127,8 +134,10 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
       }
       order.orders.forEach((item: any) => {
         const qty = parseFloat(item.quantity) || 0;
+        const itemUnit = item.unit || order.globalUnit || "dozen";
+        const dozenQty = itemUnit === "unit" ? qty / 12 : qty;
         if (storeMap[order.storeId][item.type] !== undefined) {
-          storeMap[order.storeId][item.type] += qty;
+          storeMap[order.storeId][item.type] += dozenQty;
         }
       });
     });
@@ -312,14 +321,14 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
                             </span>
                           </div>
                           <span className="text-xs font-mono font-semibold bg-[#D4A853]/10 text-[#D4A853] px-2 py-0.5 rounded">
-                            {orderTotal % 1 === 0 ? orderTotal : orderTotal.toFixed(1)} {order.unit === "unit" ? "units" : "doz."}
+                            {orderTotal % 1 === 0 ? orderTotal : orderTotal.toFixed(1)} items
                           </span>
                         </div>
                         {nonZeroItems.length > 0 ? (
                           <div className="flex flex-wrap gap-2">
                             {nonZeroItems.map((item: any, i: number) => (
                               <span key={i} className="text-xs bg-muted px-2 py-1 rounded">
-                                {item.type}: <span className="font-mono font-semibold">{item.quantity}</span>
+                                {item.type}: <span className="font-mono font-semibold">{item.quantity}</span> <span className="text-muted-foreground">{item.unit === "unit" ? "pcs" : "doz."}</span>
                               </span>
                             ))}
                           </div>

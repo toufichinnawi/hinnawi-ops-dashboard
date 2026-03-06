@@ -856,3 +856,6 @@
 - [x] Add unit toggle (Dozen/Unit) to Bagel Orders form with Dozen as default (all 3 form locations)
 - [x] Add "Sales" as a new location option in Bagel Orders form (all 3 form locations)
 - [x] Add "Bagel Factory" position to Portal with Bagel Production as default/only page, filtered to Today
+- [ ] Lock Bagel Factory PIN (same as other positions)
+- [x] Remove general Dozen/Unit toggle from Bagel Orders, add per-item doz./unit selector next to each bagel item (all 3 forms)
+- [x] Update ReportDetailRenderer and BagelProduction for per-item units

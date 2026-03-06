@@ -422,8 +422,10 @@ function BagelOrdersDetail({ data }: { data: any }) {
 
   // Detect format: new format has "quantity" per item, old format has "quantities" (day-based)
   const isNewFormat = orders[0]?.quantity !== undefined;
-  const unit = data.unit || "dozen";
+  const globalUnit = data.unit || "dozen"; // legacy: global unit
   const orderForDate = data.orderForDate;
+  // New format: each order has its own unit field
+  const hasPerItemUnits = orders.some((o: any) => o.unit);
 
   if (isNewFormat) {
     // New per-date format with dozen quantities
@@ -435,13 +437,14 @@ function BagelOrdersDetail({ data }: { data: any }) {
             <span className="font-medium">{new Date(orderForDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</span>
           </div>
         )}
-        <p className="text-sm text-amber-600 font-medium bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">All quantities are in {unit}s (12 units per dozen)</p>
+        {!hasPerItemUnits && <p className="text-sm text-amber-600 font-medium bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">All quantities are in {globalUnit}s (12 units per dozen)</p>}
         <div className="border rounded-lg">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
                 <th className="text-left p-2 font-medium text-xs">Bagel Type</th>
-                <th className="text-center p-2 font-medium text-xs">Qty ({unit}s)</th>
+                <th className="text-center p-2 font-medium text-xs">Qty</th>
+                <th className="text-center p-2 font-medium text-xs">Unit</th>
               </tr>
             </thead>
             <tbody>
@@ -449,10 +452,11 @@ function BagelOrdersDetail({ data }: { data: any }) {
                 <tr key={i} className="border-t">
                   <td className="p-2 text-sm font-medium">{order.type}</td>
                   <td className="p-2 text-center font-mono text-sm font-semibold">{order.quantity}</td>
+                  <td className="p-2 text-center text-xs text-muted-foreground">{order.unit ? (order.unit === "dozen" ? "doz." : "pcs") : (globalUnit === "dozen" ? "doz." : "pcs")}</td>
                 </tr>
               ))}
               {orders.filter((o: any) => o.quantity && o.quantity !== "0").length === 0 && (
-                <tr className="border-t"><td colSpan={2} className="p-3 text-center text-muted-foreground text-sm">No items ordered</td></tr>
+                <tr className="border-t"><td colSpan={3} className="p-3 text-center text-muted-foreground text-sm">No items ordered</td></tr>
               )}
             </tbody>
           </table>
