@@ -577,7 +577,22 @@ async function startServer() {
         return;
       }
 
-      // Send to all active webhooks
+      // Send to Teams group chat via Graph API
+      const { sendDailyReportToChat } = await import("../teamsChat");
+      const chatResult = await sendDailyReportToChat(displayDate, storeReports);
+      console.log(`[DailyReport] Teams chat (TRD Management): ${chatResult.success ? "OK" : chatResult.error}`);
+
+      await createAlertHistoryEntry({
+        webhookId: null,
+        alertType: "daily-sales-labour-report",
+        title: `Daily Sales & Labour Report`,
+        severity: "info",
+        message: `Daily report for ${displayDate}: ${storeReports.length} stores, $${storeReports.reduce((s, r) => s + r.netSales, 0).toFixed(2)} total sales`,
+        delivered: chatResult.success,
+        errorMessage: chatResult.error || null,
+      });
+
+      // Also send to webhook(s) if configured
       const webhooks = await listWebhooks();
       const activeWebhooks = webhooks.filter(w => w.isActive);
 
@@ -596,7 +611,7 @@ async function startServer() {
         });
       }
 
-      console.log(`[DailyReport] Completed. Sent to ${activeWebhooks.length} webhook(s).`);
+      console.log(`[DailyReport] Completed. Sent to Teams chat + ${activeWebhooks.length} webhook(s).`);
     } catch (err: any) {
       console.error("[DailyReport] Failed:", err.message);
     }
@@ -657,12 +672,26 @@ async function startServer() {
 
         if (!hasData || labourPercent <= store.labourTarget) continue;
 
-        // Labour is above target — send alert
-        const alertPayload = buildHighLabourAlert(store.name, labourPercent, store.labourTarget, netSales, estDate);
+        // Labour is above target — send alert to Teams group chats
+        const { sendLabourAlertToChats } = await import("../teamsChat");
+        const chatResults = await sendLabourAlertToChats(store.id, store.name, labourPercent, store.labourTarget, netSales, estDate);
+        console.log(`[LabourAlert] ${store.name}: ${labourPercent.toFixed(1)}% > ${store.labourTarget}% → TRD: ${chatResults.trd.success ? "OK" : chatResults.trd.error}, Store: ${chatResults.store?.success ? "OK" : chatResults.store?.error || "N/A"}`);
 
+        await createAlertHistoryEntry({
+          webhookId: null,
+          alertType: "high-labour",
+          title: `High Labour Alert — ${store.name}`,
+          severity: labourPercent > store.labourTarget + 10 ? "critical" : "warning",
+          message: `${store.name}: Labour ${labourPercent.toFixed(1)}% exceeds target ${store.labourTarget}%`,
+          delivered: chatResults.trd.success,
+          errorMessage: chatResults.trd.error || null,
+        });
+
+        // Also send to webhook(s) if configured
+        const alertPayload = buildHighLabourAlert(store.name, labourPercent, store.labourTarget, netSales, estDate);
         for (const webhook of activeWebhooks) {
           const result = await sendTeamsAlert(webhook.webhookUrl, alertPayload);
-          console.log(`[LabourAlert] ${store.name}: ${labourPercent.toFixed(1)}% > ${store.labourTarget}% → webhook ${webhook.id}: ${result.success ? "OK" : result.error}`);
+          console.log(`[LabourAlert] ${store.name} → webhook ${webhook.id}: ${result.success ? "OK" : result.error}`);
 
           await createAlertHistoryEntry({
             webhookId: webhook.id,

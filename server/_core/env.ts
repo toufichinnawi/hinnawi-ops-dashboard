@@ -8,6 +8,9 @@ export const ENV = {
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   teamsWebhookUrl: process.env.TEAMS_WEBHOOK_URL ?? "",
+  msGraphUsername: process.env.MS_GRAPH_USERNAME ?? "",
+  msGraphPassword: process.env.MS_GRAPH_PASSWORD ?? "",
+  msGraphClientId: process.env.MS_GRAPH_CLIENT_ID ?? "1fec8e78-bce4-4aaf-ab1b-5451cc387264",
   qboClientId: process.env.QBO_CLIENT_ID ?? "",
   qboClientSecret: process.env.QBO_CLIENT_SECRET ?? "",
 };

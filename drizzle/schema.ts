@@ -61,7 +61,7 @@ export type InsertAlertRule = typeof alertRules.$inferInsert;
 export const alertHistory = mysqlTable("alert_history", {
   id: int("id").autoincrement().primaryKey(),
   ruleId: int("ruleId"),
-  webhookId: int("webhookId").notNull(),
+  webhookId: int("webhookId"),
   alertType: varchar("alertType", { length: 64 }).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),

@@ -815,3 +815,14 @@
 - [x] Create Teams alert message for high labour warning
 - [x] Trigger alert automatically hourly 10AM-9PM when labour exceeds target
 - [x] Write tests for labour threshold alert
+
+# Teams Group Chat Integration (Graph API)
+
+- [x] Log into Microsoft 365 (systems@bagelandcafe.com) and test Graph API access
+- [x] Identify 5 group chat IDs (TRD, Ontario, Tunnel, Mackay, PK)
+- [x] Build teamsChat.ts module with Graph API token management and chat messaging
+- [x] Wire daily report to send to TRD Management group chat
+- [x] Wire labour alerts to send to TRD + store-specific group chats
+- [x] Fix store ID mapping (mk → mackay)
+- [x] Make alertHistory.webhookId nullable for chat-based alerts
+- [x] Write tests for Teams chat module (5 tests)
