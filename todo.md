@@ -789,3 +789,7 @@
 - [x] Fix: Audit badge always visible on Operations Scorecard (even on single-day view), checks current week's audit status, resets every Monday
 - [x] Add waste/leftover detail popup when clicking a store in the Leftovers & Waste section on Operations Scorecard
 - [x] Exclude Performance Evaluation, Training Evaluation, Bagel Orders from uncompleted checklist list and scoring on Operations Scorecard
+- [x] Remove non-existent 'Store Evaluation Checklist' from Operations Scorecard expected checklists
+
+- [x] Remove 'Store Evaluation Checklist' (store-manager-checklist) from entire system
+- [x] Remove 'Weekly Deep Cleaning' (weekly-deep-cleaning) from entire system

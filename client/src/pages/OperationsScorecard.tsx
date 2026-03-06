@@ -33,11 +33,7 @@ const REPORT_TYPE_NORMALIZE: Record<string, string> = {
   "Operations Manager Checklist (Weekly Audit)": "ops-manager-checklist",
   "Ops. Mgr Weekly Audit": "ops-manager-checklist",
   "Weekly Store Audit": "ops-manager-checklist",
-  "Deep Cleaning": "weekly-deep-cleaning",
-  "Weekly Deep Cleaning": "weekly-deep-cleaning",
   "Assistant Manager Checklist": "assistant-manager-checklist",
-  "Store Manager Checklist": "store-manager-checklist",
-  "Store Evaluation Checklist": "store-manager-checklist",
   "Leftovers & Waste Report": "waste-report",
   "Leftovers & Waste": "waste-report",
   "Equipment & Maintenance": "equipment-maintenance",
@@ -64,7 +60,7 @@ function normalizeReport(r: { reportType: string; location: string; [key: string
 }
 
 // Report types that have numeric scores (out of 5)
-const SCORED_TYPES = ["manager-checklist", "ops-manager-checklist", "store-manager-checklist", "assistant-manager-checklist"];
+const SCORED_TYPES = ["manager-checklist", "ops-manager-checklist", "assistant-manager-checklist"];
 const WEEKLY_AUDIT_TYPE = "ops-manager-checklist";
 
 // Store codes used in submissions
@@ -76,8 +72,6 @@ const STORE_CODES = ["PK", "MK", "ON", "TN"] as const;
 const STORE_MANAGER_CHECKLISTS: ChecklistType[] = [
   "manager-checklist",
   "weekly-scorecard",
-  "store-manager-checklist",
-  "weekly-deep-cleaning",
   "waste-report",
   "equipment-maintenance",
   "training-evaluation",

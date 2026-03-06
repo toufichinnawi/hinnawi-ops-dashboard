@@ -85,12 +85,6 @@ const SECTION_TASKS = {
   closing: ["Lock doors & flip sign", "Clean all equipment", "Mop floors", "Count registers", "Set alarm", "Final walkthrough"],
 };
 
-const DEEP_CLEANING = [
-  "Clean behind espresso machine", "Descale espresso machine", "Deep clean grinder", "Scrub fridge interior",
-  "Clean oven interior", "Degrease range hood", "Wash floor mats", "Clean light fixtures",
-  "Wipe all shelving", "Sanitize prep surfaces", "Clean ice machine", "Wash windows (inside)",
-];
-
 const EQUIP_DAILY = [
   { equipment: "Grill", task: "Clean surface & grease tray" },
   { equipment: "Grill", task: "Check temperature" },

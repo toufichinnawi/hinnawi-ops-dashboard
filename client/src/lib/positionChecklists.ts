@@ -7,9 +7,7 @@
 export type ChecklistType =
   | "manager-checklist"
   | "ops-manager-checklist"
-  | "weekly-deep-cleaning"
   | "assistant-manager-checklist"
-  | "store-manager-checklist"
   | "waste-report"
   | "equipment-maintenance"
   | "weekly-scorecard"
@@ -39,24 +37,11 @@ export const ALL_CHECKLISTS: Record<ChecklistType, ChecklistInfo> = {
       "Audit exterior, display, bathroom, equipment, product & service",
     icon: "🔍",
   },
-  "weekly-deep-cleaning": {
-    type: "weekly-deep-cleaning",
-    label: "Weekly Deep Cleaning",
-    description: "Deep cleaning checklist for all areas",
-    icon: "🧹",
-  },
   "assistant-manager-checklist": {
     type: "assistant-manager-checklist",
     label: "Assistant Manager Checklist",
     description: "5-star checklist for assistant managers",
     icon: "✅",
-  },
-  "store-manager-checklist": {
-    type: "store-manager-checklist",
-    label: "Store Evaluation Checklist",
-    description:
-      "Morning, afternoon, and closing task checklist",
-    icon: "📝",
   },
   "waste-report": {
     type: "waste-report",

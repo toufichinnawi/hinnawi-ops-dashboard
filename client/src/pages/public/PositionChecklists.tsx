@@ -133,12 +133,6 @@ const AUDIT_SECTIONS = [
   { title: "Service & Staff", items: ["Staff in proper uniform (Hinnawi shirt, hair net)", "Greeting customers promptly", "Line moving efficiently", "Cash area clean and organized", "Team energy and attitude positive"] },
 ];
 
-const DEEP_CLEANING_SECTIONS = [
-  { title: "Kitchen", items: ["Deep clean grill and grease traps", "Clean behind and under all equipment", "Degrease hood and ventilation filters", "Clean all shelving and storage areas", "Sanitize cutting boards and prep surfaces", "Clean freezer interior and organize", "Clean fridge interior and check expiry dates", "Scrub kitchen floor and baseboards", "Clean dishwasher interior and filters"] },
-  { title: "Front of House", items: ["Deep clean espresso machine (backflush with detergent)", "Clean and descale filter coffee machine", "Deep clean grinder burrs", "Clean all display cases inside and out", "Wash all windows inside and out", "Clean and sanitize all tables and chairs", "Vacuum and mop all floor areas", "Clean light fixtures and ceiling fans", "Dust all shelves and decorations", "Clean entrance door and handles"] },
-  { title: "Bathroom", items: ["Deep clean toilet and fixtures", "Scrub floor and grout", "Clean mirror and walls", "Restock all supplies", "Check and clean ventilation"] },
-  { title: "Storage & Back Areas", items: ["Organize dry storage", "Clean storage shelves", "Check and clean garbage area", "Clean staff area", "Check fire extinguisher accessibility"] },
-];
 
 const ASST_MGR_SECTIONS = [
   { title: "Opening Duties", items: ["Arrive 15 minutes before opening", "Check staff attendance and assign positions", "Verify cash float is correct", "Ensure all equipment is turned on and functioning", "Check food prep is ready for service", "Verify display cases are stocked", "Check cleanliness of front of house"] },
@@ -147,11 +141,6 @@ const ASST_MGR_SECTIONS = [
   { title: "Leadership", items: ["Provide feedback to team members", "Address any staff issues or concerns", "Communicate with store manager about the day", "Follow up on previous day's action items", "Ensure staff are following dress code"] },
 ];
 
-const STORE_MGR_SECTIONS = [
-  { title: "In the Morning", items: ["Ensure store is stocked/prepared for lunch service by 9:00 AM.", "Feedback for shift employees.", "Make sure all staff are wearing hair net and clean Hinnawi shirts.", "Prepare feedback for previous closing crew.", "Ensure opening tasks are completed by 6:55 AM"] },
-  { title: "In the Afternoon", items: ["Check coffee station.", "Ensure garbage bins are emptied.", "Ensure pastries display is reorganized.", "Track dessert levels and place orders for new stock.", "Monitor kitchen cleanliness.", "Label leftovers and store appropriately.", "Ensure amazing and quick service at lunch.", "Evaluate labor at 1:00 PM.", "Ensure post-rush duty list is completed by 1:00 PM."] },
-  { title: "Closing Team", items: ["Ensure the coffee station has closed properly.", "Ensure all stock is recorded and store leftovers.", "Ensure a clean cashier area.", "Make sure all prep stations are sanitized and closed by 5:30 PM.", "Complete inventory and ensure all team tasks are finished.", "Ensure closed leaves before 7:30/8:00 PM.", "Entrance & Floor are clean", "No dust and splashes at Coffee & Pastry Areas", "Fridges & Machines are clean and well-maintained", "Bathroom is clean"] },
-];
 
 const EQUIP_DAILY = [
   { equipment: "Grill", task: "Clean surface & grease tray" },
@@ -328,12 +317,8 @@ export function ChecklistForm({ type, storeCode, storeName, positionLabel, onBac
       return <ManagerChecklistForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
     case "ops-manager-checklist":
       return <SectionChecklistForm title="Operations Manager Checklist (Weekly Audit)" sections={AUDIT_SECTIONS} reportType="Operations Manager Checklist (Weekly Audit)" storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} useRating isWeekly />;
-    case "weekly-deep-cleaning":
-      return <SectionChecklistForm title="Weekly Deep Cleaning" sections={DEEP_CLEANING_SECTIONS} reportType="Deep Cleaning" storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
     case "assistant-manager-checklist":
       return <SectionChecklistForm title="Assistant Manager Checklist" sections={ASST_MGR_SECTIONS} reportType="Assistant Manager Checklist" storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} useRating />;
-    case "store-manager-checklist":
-      return <SectionChecklistForm title="Store Evaluation Checklist" sections={STORE_MGR_SECTIONS} reportType="Store Manager Checklist" storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
     case "waste-report":
       return <WasteReportForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
     case "equipment-maintenance":

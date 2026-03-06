@@ -580,11 +580,7 @@ const REPORT_TYPE_NORMALIZE: Record<string, string> = {
   "Operations Manager Checklist (Weekly Audit)": "ops-manager-checklist",
   "Ops. Mgr Weekly Audit": "ops-manager-checklist",
   "Weekly Store Audit": "ops-manager-checklist",
-  "Deep Cleaning": "weekly-deep-cleaning",
-  "Weekly Deep Cleaning": "weekly-deep-cleaning",
   "Assistant Manager Checklist": "assistant-manager-checklist",
-  "Store Manager Checklist": "store-manager-checklist",
-  "Store Evaluation Checklist": "store-manager-checklist",
   "Leftovers & Waste Report": "waste-report",
   "Leftovers & Waste": "waste-report",
   "Equipment & Maintenance": "equipment-maintenance",
@@ -612,9 +608,7 @@ export function ReportDetailRenderer({ reportType, data }: { reportType: string;
       case "manager-checklist":
         return <ManagerChecklistDetail data={payload} />;
       case "ops-manager-checklist":
-      case "weekly-deep-cleaning":
       case "assistant-manager-checklist":
-      case "store-manager-checklist":
         return <SectionChecklistDetail data={payload} />;
       case "weekly-scorecard":
         return <WeeklyScorecardDetail data={payload} />;
