@@ -155,6 +155,19 @@ const TRAINING_AREAS = [
   { title: "Teamwork & Attitude", items: ["Cooperation with team members", "Willingness to learn", "Following instructions", "Punctuality and reliability", "Professional appearance and demeanor"] },
 ];
 
+const EVAL_CRITERIA = [
+  { key: "a", title: "Quality of Work", description: "Measures accuracy, thoroughness, and neatness of work performed." },
+  { key: "b", title: "Productivity", description: "Measures the quantity and efficiency of work produced." },
+  { key: "c", title: "Job Knowledge", description: "Measures employee's knowledge of duties and skills required." },
+  { key: "d", title: "Reliability/Dependability", description: "Does the employee follow through on assigned tasks?" },
+  { key: "e", title: "Attendance/Punctuality", description: "Reports for work on time, provides advance notice of absence." },
+  { key: "f", title: "Initiative", description: "Demonstrates initiative and resourcefulness." },
+  { key: "g", title: "Communication", description: "Effectiveness in listening and expressing ideas." },
+  { key: "h", title: "Teamwork", description: "Gets along with fellow employees and shows cooperative spirit." },
+  { key: "i", title: "Decision Making", description: "Understanding problems and making timely decisions." },
+  { key: "j", title: "Customer Service", description: "Demonstrates commitment to excellent customer service." },
+];
+
 // (SALES_ROWS and LABOR_ROWS removed — replaced by new scorecard sections)
 
 // ─── Store Selector ───
@@ -571,34 +584,19 @@ function ManagerChecklistForm({
   onBack,
 }: FormProps) {
   const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
-  const [ratings, setRatings] = useState<Record<number, number>>({});
-  const [notes, setNotes] = useState("");
+  const [ratings, setRatings] = useState(() => OPS_TASKS.map(() => ({ rating: 0, na: false, comment: "" })));
+  const [finalComments, setFinalComments] = useState("");
   const [submitterName, setSubmitterName] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
 
-  const totalRated = Object.keys(ratings).length;
-  const avgScore =
-    totalRated > 0
-      ? (
-          Object.values(ratings).reduce((a, b) => a + b, 0) / totalRated
-        ).toFixed(2)
-      : "0.00";
+  const ratedItems = ratings.filter((r) => r.rating > 0 && !r.na);
+  const avgScore = ratedItems.length > 0 ? (ratedItems.reduce((s, r) => s + r.rating, 0) / ratedItems.length).toFixed(2) : "0.00";
 
   const handleSubmit = async () => {
-    if (!submitterName.trim()) {
-      toast.error("Please enter your name");
-      return;
-    }
-    if (!selectedStore) {
-      toast.error("Please select a store");
-      return;
-    }
-    if (totalRated < OPS_TASKS.length) {
-      toast.error(`Please rate all ${OPS_TASKS.length} items`);
-      return;
-    }
+    if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
+    if (!selectedStore) { toast.error("Please select a store"); return; }
     setSubmitting(true);
     try {
       await submitReport({
@@ -606,103 +604,61 @@ function ManagerChecklistForm({
         reportType: "Manager Checklist",
         location: selectedStore,
         reportDate: new Date().toISOString().split("T")[0],
-        data: { ratings, notes, tasks: OPS_TASKS },
+        data: { tasks: OPS_TASKS.map((t, i) => ({ ...t, ...ratings[i] })), finalComments },
         totalScore: avgScore,
       });
       setSubmitted(true);
-    } catch {
-      toast.error("Failed to submit");
-    } finally {
-      setSubmitting(false);
-    }
+    } catch { toast.error("Failed to submit"); }
+    finally { setSubmitting(false); }
   };
 
-  if (submitted) {
-    return (
-      <SuccessCard
-        message={`Manager Checklist submitted for ${currentStoreName} with score ${avgScore}/5`}
-        onNew={() => {
-          setRatings({});
-          setNotes("");
-          setSubmitted(false);
-        }}
-        onBack={onBack}
-      />
-    );
-  }
+  if (submitted) return <SuccessCard message={`Manager Checklist submitted for ${currentStoreName} with score ${avgScore}/5`} onNew={() => { setRatings(OPS_TASKS.map(() => ({ rating: 0, na: false, comment: "" }))); setFinalComments(""); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
-      <FormHeader
-        title="Manager Checklist"
-        subtitle={`${positionLabel}`}
-        onBack={onBack}
-      />
-
+      <FormHeader title="Manager Checklist" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
-
         <div className="bg-card rounded-xl border border-border/60 p-5">
           <Label className="text-sm font-medium">Your Name</Label>
-          <Input
-            value={submitterName}
-            onChange={(e) => setSubmitterName(e.target.value)}
-            placeholder="Enter your name"
-            className="mt-1.5"
-          />
+          <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
         </div>
 
+        <Badge variant="outline" className="text-lg px-4 py-2 border-[#D4A853]/30 text-[#D4A853]">Average: {avgScore} / 5</Badge>
+
         <div className="bg-card rounded-xl border border-border/60 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">
-              Rate Each Item ({totalRated}/{OPS_TASKS.length})
-            </h3>
-            <Badge
-              variant="outline"
-              className="border-[#D4A853]/30 text-[#D4A853]"
-            >
-              Avg: {avgScore}/5
-            </Badge>
-          </div>
-          <div className="space-y-3">
+          <h3 className="font-semibold mb-3">Rate Each Item</h3>
+          <div className="space-y-4">
             {OPS_TASKS.map((task, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between gap-4 py-2 border-b border-border/30 last:border-0"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{task.en}</p>
-                  <p className="text-xs text-muted-foreground italic">
-                    {task.fr}
-                  </p>
+              <div key={i} className="space-y-2 pb-3 border-b border-border/20 last:border-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{task.en}</p>
+                    <p className="text-xs text-muted-foreground italic">{task.fr}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Checkbox checked={ratings[i].na} onCheckedChange={(v) => setRatings((p) => p.map((r, ri) => ri === i ? { ...r, na: !!v, rating: v ? 0 : r.rating } : r))} />
+                      N/A
+                    </label>
+                  </div>
                 </div>
-                <StarRating
-                  value={ratings[i] || 0}
-                  onChange={(v) =>
-                    setRatings((prev) => ({ ...prev, [i]: v }))
-                  }
-                />
+                {!ratings[i].na && (
+                  <div className="flex items-center gap-3">
+                    <StarRating value={ratings[i].rating} onChange={(v) => setRatings((p) => p.map((r, ri) => ri === i ? { ...r, rating: v } : r))} />
+                    <Input placeholder="Comment..." value={ratings[i].comment} onChange={(e) => setRatings((p) => p.map((r, ri) => ri === i ? { ...r, comment: e.target.value } : r))} className="flex-1 h-8" />
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
 
         <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Notes (optional)</Label>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Any additional observations..."
-            className="mt-1.5"
-            rows={3}
-          />
+          <Label className="text-sm font-medium">Final Comments</Label>
+          <Textarea value={finalComments} onChange={(e) => setFinalComments(e.target.value)} placeholder="Any additional observations..." className="mt-1.5" rows={3} />
         </div>
-
-        <Button
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white"
-        >
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white">
           {submitting ? "Submitting..." : "Submit Checklist"}
         </Button>
       </div>
@@ -1508,14 +1464,14 @@ function TrainingEvaluationForm({ storeCode: initialStoreCode, storeName: _sn6, 
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
   const [traineeName, setTraineeName] = useState("");
-  const [ratings, setRatings] = useState<Record<string, number>>({});
-  const [notes, setNotes] = useState("");
+  const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [ratings, setRatings] = useState(() => TRAINING_AREAS.map((a) => a.items.map(() => ({ rating: 0, comment: "" }))));
+  const [overallComments, setOverallComments] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const totalRated = Object.keys(ratings).length;
-  const totalItems = TRAINING_AREAS.flatMap((a) => a.items).length;
-  const avgScore = totalRated > 0 ? (Object.values(ratings).reduce((a, b) => a + b, 0) / totalRated).toFixed(2) : "0.00";
+  const allRatings = ratings.flat().filter((r) => r.rating > 0);
+  const avgScore = allRatings.length > 0 ? (allRatings.reduce((s, r) => s + r.rating, 0) / allRatings.length).toFixed(2) : "0.00";
 
   const handleSubmit = async () => {
     if (!submitterName.trim() || !traineeName.trim()) { toast.error("Please enter both names"); return; }
@@ -1526,8 +1482,8 @@ function TrainingEvaluationForm({ storeCode: initialStoreCode, storeName: _sn6, 
         submitterName,
         reportType: "Training Evaluation",
         location: selectedStore,
-        reportDate: new Date().toISOString().split("T")[0],
-        data: { traineeName, ratings, notes, areas: TRAINING_AREAS },
+        reportDate,
+        data: { traineeName, areas: TRAINING_AREAS.map((a, ai) => ({ title: a.title, items: a.items.map((item, ii) => ({ item, ...ratings[ai][ii] })) })), overallComments },
         totalScore: avgScore,
       });
       setSubmitted(true);
@@ -1535,7 +1491,7 @@ function TrainingEvaluationForm({ storeCode: initialStoreCode, storeName: _sn6, 
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Training Evaluation for ${traineeName} submitted (${avgScore}/5)`} onNew={() => { setRatings({}); setNotes(""); setTraineeName(""); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Training Evaluation for ${traineeName} submitted (${avgScore}/5)`} onNew={() => { setRatings(TRAINING_AREAS.map((a) => a.items.map(() => ({ rating: 0, comment: "" })))); setOverallComments(""); setTraineeName(""); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
@@ -1551,33 +1507,34 @@ function TrainingEvaluationForm({ storeCode: initialStoreCode, storeName: _sn6, 
             <Label className="text-sm font-medium">Trainee Name</Label>
             <Input value={traineeName} onChange={(e) => setTraineeName(e.target.value)} placeholder="Enter trainee's name" className="mt-1.5" />
           </div>
+          <div>
+            <Label className="text-sm font-medium">Date</Label>
+            <Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} className="mt-1.5" />
+          </div>
         </div>
 
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>Progress: {totalRated}/{totalItems}</span>
-          <Badge variant="outline" className="border-[#D4A853]/30 text-[#D4A853]">Avg: {avgScore}/5</Badge>
-        </div>
+        <Badge variant="outline" className="text-lg px-4 py-2 border-[#D4A853]/30 text-[#D4A853]">Average: {avgScore} / 5</Badge>
 
-        {TRAINING_AREAS.map((area) => (
+        {TRAINING_AREAS.map((area, ai) => (
           <div key={area.title} className="bg-card rounded-xl border border-border/60 p-5">
             <h3 className="font-semibold mb-3">{area.title}</h3>
-            <div className="space-y-2">
-              {area.items.map((item) => {
-                const key = `${area.title}::${item}`;
-                return (
-                  <div key={key} className="flex items-center justify-between gap-3 py-1.5 border-b border-border/20 last:border-0">
-                    <span className="text-sm flex-1">{item}</span>
-                    <StarRating value={ratings[key] || 0} onChange={(v) => setRatings((prev) => ({ ...prev, [key]: v }))} />
+            <div className="space-y-3">
+              {area.items.map((item, ii) => (
+                <div key={ii} className="space-y-2">
+                  <p className="text-sm">{item}</p>
+                  <div className="flex items-center gap-3">
+                    <StarRating value={ratings[ai][ii].rating} onChange={(v) => setRatings((p) => p.map((a, aj) => aj === ai ? a.map((r, rj) => rj === ii ? { ...r, rating: v } : r) : a))} />
+                    <Input placeholder="Comment..." value={ratings[ai][ii].comment} onChange={(e) => setRatings((p) => p.map((a, aj) => aj === ai ? a.map((r, rj) => rj === ii ? { ...r, comment: e.target.value } : r) : a))} className="flex-1 h-8" />
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </div>
         ))}
 
         <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Notes (optional)</Label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Training observations..." className="mt-1.5" rows={3} />
+          <Label className="text-sm font-medium">Overall Comments</Label>
+          <Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment..." className="mt-1.5" rows={3} />
         </div>
         <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white">
           {submitting ? "Submitting..." : "Submit Evaluation"}
@@ -1590,62 +1547,73 @@ function TrainingEvaluationForm({ storeCode: initialStoreCode, storeName: _sn6, 
 // ─── Bagel Orders ───
 
 function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positionLabel, onBack }: FormProps) {
+  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
-  const [quantities, setQuantities] = useState<Record<string, string>>({});
-  const [notes, setNotes] = useState("");
+  const [weekStarting, setWeekStarting] = useState("");
+  const [orders, setOrders] = useState(() => BAGEL_TYPES.map(() => DAYS.map(() => "")));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  const totalBagels = Object.values(quantities).reduce((sum, v) => sum + (parseInt(v) || 0), 0);
 
   const handleSubmit = async () => {
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
     if (!selectedStore) { toast.error("Please select a store"); return; }
-    if (totalBagels === 0) { toast.error("Please enter at least one bagel quantity"); return; }
     setSubmitting(true);
     try {
       await submitReport({
         submitterName,
         reportType: "Bagel Orders",
         location: selectedStore,
-        reportDate: new Date().toISOString().split("T")[0],
-        data: { quantities, notes, totalBagels },
+        reportDate: weekStarting || new Date().toISOString().split("T")[0],
+        data: { orders: BAGEL_TYPES.map((type, i) => ({ type, quantities: Object.fromEntries(DAYS.map((d, j) => [d, orders[i][j]])) })) },
       });
       setSubmitted(true);
     } catch { toast.error("Failed to submit"); }
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Bagel order (${totalBagels} total) submitted for ${currentStoreName}`} onNew={() => { setQuantities({}); setNotes(""); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Bagel orders submitted for ${currentStoreName}`} onNew={() => { setOrders(BAGEL_TYPES.map(() => DAYS.map(() => ""))); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
       <FormHeader title="Bagel Orders" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Your Name</Label>
-          <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
-        </div>
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">🥯 Bagel Quantities</h3>
-            <Badge variant="outline" className="border-[#D4A853]/30 text-[#D4A853]">Total: {totalBagels}</Badge>
+        <div className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
+          <div>
+            <Label className="text-sm font-medium">Your Name</Label>
+            <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {BAGEL_TYPES.map((type) => (
-              <div key={type} className="flex items-center gap-2">
-                <Label className="text-sm flex-1 min-w-0">{type}</Label>
-                <Input type="number" min="0" className="w-20" placeholder="0" value={quantities[type] || ""} onChange={(e) => setQuantities((prev) => ({ ...prev, [type]: e.target.value }))} />
-              </div>
-            ))}
+          <div>
+            <Label className="text-sm font-medium">Week Starting</Label>
+            <Input type="date" value={weekStarting} onChange={(e) => setWeekStarting(e.target.value)} className="mt-1.5" />
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Notes (optional)</Label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Special requests..." className="mt-1.5" rows={3} />
+          <h3 className="font-semibold mb-3">Order Quantities by Day</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 pr-2 font-medium">Type</th>
+                  {DAYS.map((d) => <th key={d} className="text-center py-2 px-1 font-medium text-xs">{d.slice(0, 3)}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {BAGEL_TYPES.map((type, ti) => (
+                  <tr key={type} className="border-b">
+                    <td className="py-1 pr-2 text-sm">{type}</td>
+                    {DAYS.map((_, di) => (
+                      <td key={di} className="py-1 px-1">
+                        <Input type="number" min="0" placeholder="0" value={orders[ti][di]} onChange={(e) => setOrders((p) => p.map((r, ri) => ri === ti ? r.map((c, ci) => ci === di ? e.target.value : c) : r))} className="h-7 w-12 text-center text-xs" />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
         <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white">
           {submitting ? "Submitting..." : "Submit Order"}
@@ -1662,20 +1630,15 @@ function PerformanceEvaluationForm({ storeCode: initialStoreCode, storeName: _sn
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
   const [employeeName, setEmployeeName] = useState("");
-  const [ratings, setRatings] = useState<Record<string, number>>({});
-  const [notes, setNotes] = useState("");
+  const [employeePosition, setEmployeePosition] = useState("");
+  const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [ratings, setRatings] = useState(() => EVAL_CRITERIA.map(() => ({ rating: 0, comment: "" })));
+  const [overallComments, setOverallComments] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const competencies = [
-    "Quality of Work", "Productivity", "Reliability & Attendance",
-    "Communication", "Teamwork", "Customer Service",
-    "Initiative", "Adaptability", "Cleanliness & Hygiene",
-    "Following Procedures",
-  ];
-
-  const totalRated = Object.keys(ratings).length;
-  const avgScore = totalRated > 0 ? (Object.values(ratings).reduce((a, b) => a + b, 0) / totalRated).toFixed(2) : "0.00";
+  const allRatings = ratings.filter((r) => r.rating > 0);
+  const avgScore = allRatings.length > 0 ? (allRatings.reduce((s, r) => s + r.rating, 0) / allRatings.length).toFixed(2) : "0.00";
 
   const handleSubmit = async () => {
     if (!submitterName.trim() || !employeeName.trim()) { toast.error("Please enter both names"); return; }
@@ -1686,8 +1649,8 @@ function PerformanceEvaluationForm({ storeCode: initialStoreCode, storeName: _sn
         submitterName,
         reportType: "Performance Evaluation",
         location: selectedStore,
-        reportDate: new Date().toISOString().split("T")[0],
-        data: { employeeName, ratings, notes, competencies },
+        reportDate,
+        data: { employeeName, employeePosition, criteria: EVAL_CRITERIA.map((c, i) => ({ ...c, ...ratings[i] })), overallComments },
         totalScore: avgScore,
       });
       setSubmitted(true);
@@ -1695,7 +1658,7 @@ function PerformanceEvaluationForm({ storeCode: initialStoreCode, storeName: _sn
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Performance Evaluation for ${employeeName} submitted (${avgScore}/5)`} onNew={() => { setRatings({}); setNotes(""); setEmployeeName(""); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Performance Evaluation for ${employeeName} submitted (${avgScore}/5)`} onNew={() => { setRatings(EVAL_CRITERIA.map(() => ({ rating: 0, comment: "" }))); setOverallComments(""); setEmployeeName(""); setEmployeePosition(""); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
@@ -1711,28 +1674,39 @@ function PerformanceEvaluationForm({ storeCode: initialStoreCode, storeName: _sn
             <Label className="text-sm font-medium">Employee Name</Label>
             <Input value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} placeholder="Enter employee's name" className="mt-1.5" />
           </div>
+          <div>
+            <Label className="text-sm font-medium">Employee Position</Label>
+            <Input value={employeePosition} onChange={(e) => setEmployeePosition(e.target.value)} placeholder="e.g. Barista, Shift Lead" className="mt-1.5" />
+          </div>
+          <div>
+            <Label className="text-sm font-medium">Date</Label>
+            <Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} className="mt-1.5" />
+          </div>
         </div>
 
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>Progress: {totalRated}/{competencies.length}</span>
-          <Badge variant="outline" className="border-[#D4A853]/30 text-[#D4A853]">Avg: {avgScore}/5</Badge>
-        </div>
+        <Badge variant="outline" className="text-lg px-4 py-2 border-[#D4A853]/30 text-[#D4A853]">Average: {avgScore} / 5</Badge>
 
         <div className="bg-card rounded-xl border border-border/60 p-5">
-          <h3 className="font-semibold mb-3">Competencies</h3>
-          <div className="space-y-3">
-            {competencies.map((comp) => (
-              <div key={comp} className="flex items-center justify-between gap-3 py-1.5 border-b border-border/20 last:border-0">
-                <span className="text-sm flex-1">{comp}</span>
-                <StarRating value={ratings[comp] || 0} onChange={(v) => setRatings((prev) => ({ ...prev, [comp]: v }))} />
+          <h3 className="font-semibold mb-3">Evaluation Criteria</h3>
+          <div className="space-y-4">
+            {EVAL_CRITERIA.map((criterion, i) => (
+              <div key={criterion.key} className="space-y-2 pb-3 border-b border-border/20 last:border-0">
+                <div>
+                  <p className="text-sm font-medium">{criterion.title}</p>
+                  <p className="text-xs text-muted-foreground">{criterion.description}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <StarRating value={ratings[i].rating} onChange={(v) => setRatings((p) => p.map((r, ri) => ri === i ? { ...r, rating: v } : r))} />
+                  <Input placeholder="Comment..." value={ratings[i].comment} onChange={(e) => setRatings((p) => p.map((r, ri) => ri === i ? { ...r, comment: e.target.value } : r))} className="flex-1 h-8" />
+                </div>
               </div>
             ))}
           </div>
         </div>
 
         <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Notes (optional)</Label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Performance observations, goals, areas for improvement..." className="mt-1.5" rows={4} />
+          <Label className="text-sm font-medium">Overall Comments</Label>
+          <Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Performance observations, goals, areas for improvement..." className="mt-1.5" rows={4} />
         </div>
         <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white">
           {submitting ? "Submitting..." : "Submit Evaluation"}

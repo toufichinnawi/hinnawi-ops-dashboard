@@ -91,24 +91,58 @@ const DEEP_CLEANING = [
   "Wipe all shelving", "Sanitize prep surfaces", "Clean ice machine", "Wash windows (inside)",
 ];
 
-const EQUIPMENT_SECTIONS = {
-  daily: ["Espresso machine backflush", "Grinder purge", "Fridge temp check", "Sanitize prep area", "Clean blender"],
-  weekly: ["Descale espresso machine", "Deep clean grinder burrs", "Defrost freezer", "Clean oven racks", "Check fire extinguisher"],
-  monthly: ["Replace water filter", "Calibrate scale", "Inspect gas lines", "Service HVAC filter", "Test emergency lights"],
-};
+const EQUIP_DAILY = [
+  { equipment: "Grill", task: "Clean surface & grease tray" },
+  { equipment: "Grill", task: "Check temperature" },
+  { equipment: "Espresso Machine", task: "Backflush (water)" },
+  { equipment: "Espresso Machine", task: "Clean steam wand" },
+  { equipment: "Espresso Machine", task: "Empty drip tray" },
+  { equipment: "Filter Coffee", task: "Clean brew basket & spray head" },
+  { equipment: "Espresso Grinder", task: "Brush grind chamber" },
+  { equipment: "Drinks Fridge", task: "Temp 2-4 C & clean glass" },
+  { equipment: "Dishwasher", task: "Clean filter & check rinse aid" },
+  { equipment: "Ice Machine", task: "Check ice quality" },
+  { equipment: "POS System", task: "Clean screen" },
+  { equipment: "Security Cameras", task: "Confirm recording" },
+  { equipment: "Fire Extinguisher", task: "Visible & accessible" },
+];
+const EQUIP_WEEKLY = [
+  { equipment: "Grill", task: "Deep clean & degrease" },
+  { equipment: "Espresso Machine", task: "Backflush with detergent & soak portafilters" },
+  { equipment: "Grinder", task: "Deep clean burrs" },
+  { equipment: "Ice Machine", task: "Sanitize interior" },
+  { equipment: "Dishwasher", task: "Run cleaning cycle" },
+];
+const EQUIP_MONTHLY = [
+  { equipment: "Espresso Machine", task: "Inspect gaskets & pressure" },
+  { equipment: "Water Filtration", task: "Replace filter if required" },
+  { equipment: "Refrigeration", task: "Clean condenser coils" },
+  { equipment: "HVAC / Hood", task: "Replace or clean filters" },
+];
 
 const BAGEL_TYPES = [
   "Plain", "Sesame", "Poppy", "Everything", "Cinnamon Raisin", "Whole Wheat",
   "Multigrain", "Blueberry", "Jalapeño", "Onion", "Garlic", "Salt",
 ];
 
-const PERFORMANCE_CATEGORIES = [
-  { name: "Customer Service", desc: "Greeting, friendliness, problem resolution" },
-  { name: "Product Knowledge", desc: "Menu items, ingredients, preparation methods" },
-  { name: "Speed & Efficiency", desc: "Order processing, multitasking, time management" },
-  { name: "Teamwork", desc: "Collaboration, communication, supporting colleagues" },
-  { name: "Cleanliness & Hygiene", desc: "Personal hygiene, workspace cleanliness, food safety" },
-  { name: "Reliability", desc: "Punctuality, attendance, consistency" },
+const TRAINING_AREAS = [
+  { title: "Customer Service", items: ["Greeting customers promptly and warmly", "Taking orders accurately", "Handling complaints professionally", "Upselling and suggestive selling", "Speed of service"] },
+  { title: "Food Preparation", items: ["Bagel preparation and toasting", "Sandwich assembly and presentation", "Coffee preparation (espresso, filter)", "Pastry handling and display", "Food safety and hygiene practices"] },
+  { title: "Operations", items: ["Opening/closing procedures", "Cash handling and POS operation", "Inventory awareness", "Cleaning and sanitation", "Equipment operation and care"] },
+  { title: "Teamwork & Attitude", items: ["Cooperation with team members", "Willingness to learn", "Following instructions", "Punctuality and reliability", "Professional appearance and demeanor"] },
+];
+
+const EVAL_CRITERIA = [
+  { key: "a", title: "Quality of Work", description: "Measures accuracy, thoroughness, and neatness of work performed." },
+  { key: "b", title: "Productivity", description: "Measures the quantity and efficiency of work produced." },
+  { key: "c", title: "Job Knowledge", description: "Measures employee's knowledge of duties and skills required." },
+  { key: "d", title: "Reliability/Dependability", description: "Does the employee follow through on assigned tasks?" },
+  { key: "e", title: "Attendance/Punctuality", description: "Reports for work on time, provides advance notice of absence." },
+  { key: "f", title: "Initiative", description: "Demonstrates initiative and resourcefulness." },
+  { key: "g", title: "Communication", description: "Effectiveness in listening and expressing ideas." },
+  { key: "h", title: "Teamwork", description: "Gets along with fellow employees and shows cooperative spirit." },
+  { key: "i", title: "Decision Making", description: "Understanding problems and making timely decisions." },
+  { key: "j", title: "Customer Service", description: "Demonstrates commitment to excellent customer service." },
 ];
 
 // ─── Store Dropdown Component ───
@@ -165,16 +199,21 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [managerName, setManagerName] = useState("");
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [ratings, setRatings] = useState<Record<number, number>>({});
-  const [notes, setNotes] = useState("");
+  const [tasks, setTasks] = useState(() => OPS_TASKS.map(() => ({ rating: 0, isNA: false, comment: "" })));
+  const [comments, setComments] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  const ratedTasks = tasks.filter((t) => !t.isNA && t.rating > 0);
+  const avg = ratedTasks.length > 0 ? (ratedTasks.reduce((s, t) => s + t.rating, 0) / ratedTasks.length).toFixed(2) : "0.00";
 
   const handleSubmit = () => {
     if (!managerName.trim() || !selectedStore) { toast.error("Please fill in your name and select a store"); return; }
-    const filled = Object.keys(ratings).length;
-    if (filled < OPS_TASKS.length) { toast.error(`Please rate all ${OPS_TASKS.length} items`); return; }
-    const avg = Object.values(ratings).reduce((a, b) => a + b, 0) / OPS_TASKS.length;
-    const payload = { reportType: "manager-checklist", location: selectedStore, submitterName: managerName, reportDate, data: { ratings, notes, averageScore: avg.toFixed(2) }, totalScore: avg.toFixed(2) };
+    if (ratedTasks.length === 0) { toast.error("Please rate at least one item"); return; }
+    const payload = {
+      reportType: "manager-checklist", location: selectedStore, submitterName: managerName, reportDate,
+      data: { tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, averageScore: avg },
+      totalScore: avg,
+    };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Checklist submitted!");
@@ -184,7 +223,7 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
       <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
       <h3 className="text-xl font-serif">Submitted Successfully</h3>
-      <p className="text-muted-foreground">Store Mgr Daily Checklist for {currentStoreName}</p>
+      <p className="text-muted-foreground">Store Mgr Daily Checklist for {currentStoreName} — Average: {avg}/5</p>
       <Button onClick={onBack} variant="outline">Back</Button>
     </motion.div>
   );
@@ -196,18 +235,34 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
         <div className="space-y-1.5"><Label>Your Name</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" /></div>
         <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
       </CardContent></Card>
-      <Card><CardContent className="pt-6 space-y-4">
-        <h3 className="font-serif text-lg">Rate Each Area (1–5 Stars)</h3>
+      <div className="flex items-center gap-2">
+        <span className="text-lg font-serif font-semibold border border-[#D4A853] text-[#D4A853] rounded-md px-4 py-2">Average: {avg} / 5</span>
+      </div>
+      <div className="space-y-3">
         {OPS_TASKS.map((task, i) => (
-          <div key={i} className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
-            <div><p className="text-sm font-medium">{task.en}</p><p className="text-xs text-muted-foreground">{task.fr}</p></div>
-            <StarRating value={ratings[i] || 0} onChange={(v) => setRatings((prev) => ({ ...prev, [i]: v }))} />
-          </div>
+          <Card key={i} className={tasks[i].isNA ? "opacity-50" : ""}>
+            <CardContent className="pt-4 pb-4 space-y-2">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <p className={`font-medium ${tasks[i].isNA ? "line-through text-muted-foreground" : ""}`}>{task.en}</p>
+                  <p className="text-sm text-muted-foreground">{task.fr}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox checked={tasks[i].isNA} onCheckedChange={(c) => setTasks((p) => p.map((t, j) => j === i ? { ...t, isNA: !!c, rating: c ? 0 : t.rating } : t))} />
+                  <span className="text-xs text-muted-foreground">N/A</span>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <StarRating value={tasks[i].rating} onChange={(v) => setTasks((p) => p.map((t, j) => j === i ? { ...t, rating: v } : t))} disabled={tasks[i].isNA} />
+                <Input placeholder="Comment..." value={tasks[i].comment} onChange={(e) => setTasks((p) => p.map((t, j) => j === i ? { ...t, comment: e.target.value } : t))} className="flex-1" disabled={tasks[i].isNA} />
+              </div>
+            </CardContent>
+          </Card>
         ))}
-      </CardContent></Card>
+      </div>
       <Card><CardContent className="pt-6 space-y-3">
-        <Label>Additional Notes</Label>
-        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any observations..." rows={3} />
+        <Label>Final Comments</Label>
+        <Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="General comments..." rows={3} />
       </CardContent></Card>
       <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Checklist</Button></div>
     </div>
@@ -470,15 +525,21 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
   const [evaluatorName, setEvaluatorName] = useState("");
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [employeeName, setEmployeeName] = useState("");
-  const [ratings, setRatings] = useState<Record<number, number>>({});
-  const [strengths, setStrengths] = useState("");
-  const [improvements, setImprovements] = useState("");
+  const [employeePosition, setEmployeePosition] = useState("");
+  const [ratings, setRatings] = useState(() => EVAL_CRITERIA.map(() => ({ rating: 0, comment: "" })));
+  const [overallComments, setOverallComments] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  const rated = ratings.filter((r) => r.rating > 0);
+  const avg = rated.length > 0 ? (rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(2) : "0.00";
 
   const handleSubmit = () => {
     if (!evaluatorName.trim() || !employeeName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
-    const avg = Object.values(ratings).length > 0 ? Object.values(ratings).reduce((a, b) => a + b, 0) / Object.values(ratings).length : 0;
-    const payload = { reportType: "performance-evaluation", location: selectedStore, submitterName: evaluatorName, reportDate, data: { employeeName, ratings, strengths, improvements }, totalScore: avg.toFixed(2) };
+    const payload = {
+      reportType: "performance-evaluation", location: selectedStore, submitterName: evaluatorName, reportDate,
+      data: { employeeName, employeePosition, criteria: EVAL_CRITERIA.map((c, i) => ({ ...c, ...ratings[i] })), overallComments },
+      totalScore: avg,
+    };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Evaluation submitted!");
@@ -487,7 +548,7 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
   if (submitted) return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
       <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" /><h3 className="text-xl font-serif">Evaluation Submitted</h3>
-      <p className="text-muted-foreground">Performance Evaluation for {employeeName} at {currentStoreName}</p>
+      <p className="text-muted-foreground">Performance Evaluation for {employeeName} at {currentStoreName} — Average: {avg}/5</p>
       <Button onClick={onBack} variant="outline">Back</Button>
     </motion.div>
   );
@@ -496,23 +557,29 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
     <div className="space-y-6">
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
-        <div className="space-y-1.5"><Label>Evaluator Name</Label><Input value={evaluatorName} onChange={(e) => setEvaluatorName(e.target.value)} placeholder="Your name" /></div>
+        <div className="space-y-1.5"><Label>Your Name (Evaluator)</Label><Input value={evaluatorName} onChange={(e) => setEvaluatorName(e.target.value)} placeholder="Your name" /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5"><Label>Employee Name</Label><Input value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} placeholder="Employee name" /></div>
+          <div className="space-y-1.5"><Label>Employee Position</Label><Input value={employeePosition} onChange={(e) => setEmployeePosition(e.target.value)} placeholder="Position" /></div>
+        </div>
         <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
-        <div className="space-y-1.5"><Label>Employee Name</Label><Input value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} placeholder="Employee being evaluated" /></div>
       </CardContent></Card>
-      <Card><CardContent className="pt-6 space-y-4">
-        <h3 className="font-serif text-lg">Performance Categories</h3>
-        {PERFORMANCE_CATEGORIES.map((cat, i) => (
-          <div key={i} className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
-            <div><p className="text-sm font-medium">{cat.name}</p><p className="text-xs text-muted-foreground">{cat.desc}</p></div>
-            <StarRating value={ratings[i] || 0} onChange={(v) => setRatings((prev) => ({ ...prev, [i]: v }))} />
-          </div>
-        ))}
-      </CardContent></Card>
-      <Card><CardContent className="pt-6 space-y-4">
-        <div className="space-y-1.5"><Label>Key Strengths</Label><Textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={3} /></div>
-        <div className="space-y-1.5"><Label>Areas for Improvement</Label><Textarea value={improvements} onChange={(e) => setImprovements(e.target.value)} rows={3} /></div>
-      </CardContent></Card>
+      <div className="flex items-center gap-2">
+        <span className="text-lg font-serif font-semibold border border-[#D4A853] text-[#D4A853] rounded-md px-4 py-2">Average: {avg} / 5</span>
+      </div>
+      {EVAL_CRITERIA.map((criterion, i) => (
+        <Card key={criterion.key}>
+          <CardContent className="pt-4 pb-4 space-y-2">
+            <p className="font-medium">{criterion.title}</p>
+            <p className="text-xs text-muted-foreground">{criterion.description}</p>
+            <div className="flex items-center gap-3">
+              <StarRating value={ratings[i].rating} onChange={(v) => setRatings((p) => p.map((r, j) => j === i ? { ...r, rating: v } : r))} />
+              <Input placeholder="Comment..." value={ratings[i].comment} onChange={(e) => setRatings((p) => p.map((r, j) => j === i ? { ...r, comment: e.target.value } : r))} className="flex-1 h-8" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+      <Card><CardContent className="pt-6 space-y-3"><Label>Overall Comments</Label><Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment and recommendations..." rows={3} /></CardContent></Card>
       <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Evaluation</Button></div>
     </div>
   );
@@ -826,21 +893,41 @@ function EquipmentMaintenanceForm({ onBack }: { onBack: () => void }) {
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [techName, setTechName] = useState("");
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [checks, setChecks] = useState<Record<string, Record<number, boolean>>>({});
-  const [notes, setNotes] = useState("");
+  const [daily, setDaily] = useState(() => EQUIP_DAILY.map(() => ({ checked: false, initial: "" })));
+  const [weekly, setWeekly] = useState(() => EQUIP_WEEKLY.map(() => ({ checked: false, initial: "" })));
+  const [monthly, setMonthly] = useState(() => EQUIP_MONTHLY.map(() => ({ checked: false, initial: "" })));
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = () => {
     if (!techName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
-    // Compute completion percentage as score
-    const totalItems = Object.values(EQUIPMENT_SECTIONS).flat().length;
-    const checkedItems = Object.values(checks).reduce((sum, section) => sum + Object.values(section).filter(Boolean).length, 0);
-    const score = totalItems > 0 ? ((checkedItems / totalItems) * 5).toFixed(2) : "0";
-    const payload = { reportType: "equipment-maintenance", location: selectedStore, submitterName: techName, reportDate, data: { checks, notes }, totalScore: score };
+    const total = daily.length + weekly.length + monthly.length;
+    const checked = [...daily, ...weekly, ...monthly].filter((i) => i.checked).length;
+    const payload = {
+      reportType: "equipment-maintenance", location: selectedStore, submitterName: techName, reportDate,
+      data: { daily: EQUIP_DAILY.map((e, i) => ({ ...e, ...daily[i] })), weekly: EQUIP_WEEKLY.map((e, i) => ({ ...e, ...weekly[i] })), monthly: EQUIP_MONTHLY.map((e, i) => ({ ...e, ...monthly[i] })) },
+      totalScore: `${checked}/${total}`,
+    };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Maintenance checklist submitted!");
   };
+
+  const renderEquipSection = (sectionTitle: string, items: { equipment: string; task: string }[], data: { checked: boolean; initial: string }[], setData: React.Dispatch<React.SetStateAction<{ checked: boolean; initial: string }[]>>) => (
+    <Card>
+      <CardContent className="pt-6 space-y-3">
+        <h3 className="font-serif text-lg">{sectionTitle}</h3>
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center gap-3 py-1">
+            <Checkbox checked={data[i].checked} onCheckedChange={(c) => setData((p) => p.map((d, j) => j === i ? { ...d, checked: !!c } : d))} />
+            <div className="flex-1">
+              <span className="text-sm font-medium">{item.equipment}</span>
+              <span className="text-sm text-muted-foreground"> — {item.task}</span>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
 
   if (submitted) return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
@@ -857,18 +944,9 @@ function EquipmentMaintenanceForm({ onBack }: { onBack: () => void }) {
         <div className="space-y-1.5"><Label>Your Name</Label><Input value={techName} onChange={(e) => setTechName(e.target.value)} placeholder="Enter your name" /></div>
         <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
       </CardContent></Card>
-      {Object.entries(EQUIPMENT_SECTIONS).map(([period, items]) => (
-        <Card key={period}><CardContent className="pt-6 space-y-3">
-          <h3 className="font-serif text-lg capitalize">{period} Tasks</h3>
-          {items.map((item, i) => (
-            <div key={i} className="flex items-center gap-3 py-1.5">
-              <Checkbox checked={checks[period]?.[i] || false} onCheckedChange={(v) => setChecks((prev) => ({ ...prev, [period]: { ...prev[period], [i]: !!v } }))} />
-              <span className="text-sm">{item}</span>
-            </div>
-          ))}
-        </CardContent></Card>
-      ))}
-      <Card><CardContent className="pt-6 space-y-3"><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} /></CardContent></Card>
+      {renderEquipSection("Daily Checks", EQUIP_DAILY, daily, setDaily)}
+      {renderEquipSection("Weekly Checks", EQUIP_WEEKLY, weekly, setWeekly)}
+      {renderEquipSection("Monthly Checks", EQUIP_MONTHLY, monthly, setMonthly)}
       <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Checklist</Button></div>
     </div>
   );
@@ -880,15 +958,20 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
   const [trainerName, setTrainerName] = useState("");
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [traineeName, setTraineeName] = useState("");
-  const [ratings, setRatings] = useState<Record<number, number>>({});
-  const [notes, setNotes] = useState("");
+  const [ratings, setRatings] = useState(() => TRAINING_AREAS.map((a) => a.items.map(() => ({ rating: 0, comment: "" }))));
+  const [overallComments, setOverallComments] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const areas = ["Product Knowledge", "Equipment Operation", "Customer Interaction", "Speed & Accuracy", "Hygiene & Safety", "Teamwork"];
+
+  const allRatings = ratings.flat().filter((r) => r.rating > 0);
+  const avg = allRatings.length > 0 ? (allRatings.reduce((s, r) => s + r.rating, 0) / allRatings.length).toFixed(2) : "0.00";
 
   const handleSubmit = () => {
     if (!trainerName.trim() || !traineeName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
-    const avg = Object.values(ratings).length > 0 ? Object.values(ratings).reduce((a, b) => a + b, 0) / Object.values(ratings).length : 0;
-    const payload = { reportType: "training-evaluation", location: selectedStore, submitterName: trainerName, reportDate, data: { traineeName, ratings, notes }, totalScore: avg.toFixed(2) };
+    const payload = {
+      reportType: "training-evaluation", location: selectedStore, submitterName: trainerName, reportDate,
+      data: { traineeName, areas: TRAINING_AREAS.map((a, ai) => ({ title: a.title, items: a.items.map((item, ii) => ({ item, ...ratings[ai][ii] })) })), overallComments },
+      totalScore: avg,
+    };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Training evaluation submitted!");
@@ -897,7 +980,7 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
   if (submitted) return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
       <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" /><h3 className="text-xl font-serif">Submitted</h3>
-      <p className="text-muted-foreground">Training Evaluation for {traineeName} at {currentStoreName}</p>
+      <p className="text-muted-foreground">Training Evaluation for {traineeName} at {currentStoreName} — Average: {avg}/5</p>
       <Button onClick={onBack} variant="outline">Back</Button>
     </motion.div>
   );
@@ -906,37 +989,50 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
     <div className="space-y-6">
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
-        <div className="space-y-1.5"><Label>Trainer Name</Label><Input value={trainerName} onChange={(e) => setTrainerName(e.target.value)} placeholder="Your name" /></div>
-        <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
+        <div className="space-y-1.5"><Label>Your Name (Evaluator)</Label><Input value={trainerName} onChange={(e) => setTrainerName(e.target.value)} placeholder="Your name" /></div>
         <div className="space-y-1.5"><Label>Trainee Name</Label><Input value={traineeName} onChange={(e) => setTraineeName(e.target.value)} placeholder="Trainee name" /></div>
+        <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
       </CardContent></Card>
-      <Card><CardContent className="pt-6 space-y-4">
-        <h3 className="font-serif text-lg">Training Areas</h3>
-        {areas.map((area, i) => (
-          <div key={i} className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
-            <p className="text-sm font-medium">{area}</p>
-            <StarRating value={ratings[i] || 0} onChange={(v) => setRatings((prev) => ({ ...prev, [i]: v }))} />
-          </div>
-        ))}
-      </CardContent></Card>
-      <Card><CardContent className="pt-6 space-y-3"><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} /></CardContent></Card>
+      <div className="flex items-center gap-2">
+        <span className="text-lg font-serif font-semibold border border-[#D4A853] text-[#D4A853] rounded-md px-4 py-2">Average: {avg} / 5</span>
+      </div>
+      {TRAINING_AREAS.map((area, ai) => (
+        <Card key={ai}>
+          <CardContent className="pt-6 space-y-3">
+            <h3 className="font-serif text-lg">{area.title}</h3>
+            {area.items.map((item, ii) => (
+              <div key={ii} className="space-y-2">
+                <p className="text-sm">{item}</p>
+                <div className="flex items-center gap-3">
+                  <StarRating value={ratings[ai][ii].rating} onChange={(v) => setRatings((p) => p.map((a, aj) => aj === ai ? a.map((r, rj) => rj === ii ? { ...r, rating: v } : r) : a))} />
+                  <Input placeholder="Comment..." value={ratings[ai][ii].comment} onChange={(e) => setRatings((p) => p.map((a, aj) => aj === ai ? a.map((r, rj) => rj === ii ? { ...r, comment: e.target.value } : r) : a))} className="flex-1 h-8" />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+      <Card><CardContent className="pt-6 space-y-3"><Label>Overall Comments</Label><Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment..." rows={3} /></CardContent></Card>
       <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Evaluation</Button></div>
     </div>
   );
 }
 
 function BagelOrdersForm({ onBack }: { onBack: () => void }) {
+  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [ordererName, setOrdererName] = useState("");
   const [orderDate, setOrderDate] = useState("");
-  const [quantities, setQuantities] = useState<Record<number, string>>({});
-  const [notes, setNotes] = useState("");
+  const [orders, setOrders] = useState(() => BAGEL_TYPES.map(() => DAYS.map(() => "")));
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = () => {
     if (!ordererName.trim() || !selectedStore || !orderDate) { toast.error("Please fill required fields"); return; }
-    const payload = { reportType: "bagel-orders", location: selectedStore, submitterName: ordererName, reportDate: orderDate, data: { orderDate, quantities, notes } };
+    const payload = {
+      reportType: "bagel-orders", location: selectedStore, submitterName: ordererName, reportDate: orderDate,
+      data: { orders: BAGEL_TYPES.map((type, i) => ({ type, quantities: Object.fromEntries(DAYS.map((d, j) => [d, orders[i][j]])) })) },
+    };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Bagel order submitted!");
@@ -955,20 +1051,33 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Your Name</Label><Input value={ordererName} onChange={(e) => setOrdererName(e.target.value)} placeholder="Enter your name" /></div>
-        <div className="space-y-1.5"><Label>Order Date</Label><Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} /></div>
+        <div className="space-y-1.5"><Label>Week Starting</Label><Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} /></div>
       </CardContent></Card>
       <Card><CardContent className="pt-6 space-y-4">
-        <h3 className="font-serif text-lg">Bagel Quantities</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {BAGEL_TYPES.map((type, i) => (
-            <div key={i} className="space-y-1.5">
-              <Label className="text-xs">{type}</Label>
-              <Input type="number" value={quantities[i] || ""} onChange={(e) => setQuantities((prev) => ({ ...prev, [i]: e.target.value }))} placeholder="0" className="h-9" />
-            </div>
-          ))}
+        <h3 className="font-serif text-lg">Order Quantities by Day</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2 pr-2 font-medium">Type</th>
+                {DAYS.map((d) => <th key={d} className="text-center py-2 px-1 font-medium text-xs">{d.slice(0, 3)}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {BAGEL_TYPES.map((type, ti) => (
+                <tr key={type} className="border-b">
+                  <td className="py-1 pr-2 text-sm">{type}</td>
+                  {DAYS.map((_, di) => (
+                    <td key={di} className="py-1 px-1">
+                      <Input type="number" min="0" placeholder="0" value={orders[ti][di]} onChange={(e) => setOrders((p) => p.map((r, ri) => ri === ti ? r.map((c, ci) => ci === di ? e.target.value : c) : r))} className="h-7 w-12 text-center text-xs" />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </CardContent></Card>
-      <Card><CardContent className="pt-6 space-y-3"><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} /></CardContent></Card>
       <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Order</Button></div>
     </div>
   );

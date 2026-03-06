@@ -778,3 +778,6 @@
 - [x] Change Week Of dropdown from Mon-Fri to Mon-Sun ranges
 - [x] Rename 'Date' label to 'Date Completed' on Weekly Scorecard
 - [x] Replace Week Of dropdown with Start Date / End Date pickers (no year-end limitation)
+- [x] Fix: Portal waste form template doesn't match admin dashboard waste form
+- [x] Fix: Portal waste submissions not showing in Operations Scorecard (data format aligned)
+- [x] Audit ALL checklists: ensure every portal form matches admin dashboard counterpart (Manager Checklist, Equipment Maintenance, Training Eval, Bagel Orders, Performance Eval all aligned across all 3 locations)

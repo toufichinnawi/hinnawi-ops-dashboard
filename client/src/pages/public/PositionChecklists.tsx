@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { cn } from "@/lib/utils";
 import { useParams } from "wouter";
 import PinGate from "@/components/PinGate";
 import { getPositionConfig, getChecklistInfo, type ChecklistType } from "@/lib/positionChecklists";
@@ -686,55 +687,185 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
 
 // ─── Waste Report Form ───
 
-function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
-  const initBagels = Object.fromEntries(WASTE_BAGEL_TYPES.map((t) => [t, { leftover: "", waste: "" }]));
-  const initPastries = Object.fromEntries(PASTRY_TYPES.map((t) => [t, { leftover: "", waste: "" }]));
-  const initCk = Object.fromEntries(CK_ITEMS.map((t) => [t, { leftover: "", waste: "" }]));
-  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
-    `waste-report-${storeCode}`,
-    { name: "", date: new Date().toISOString().split("T")[0], bagels: initBagels, pastries: initPastries, ckItems: initCk }
+// ─── Waste Item Types & Helpers (matching admin dashboard) ───
+
+const QTY_TYPES_BAGEL = ["bag", "unit", "dozen"];
+const QTY_TYPES_PASTRY = ["unit"];
+const QTY_TYPES_CK = ["unit", "container"];
+
+interface WasteItemRow {
+  enabled: boolean;
+  leftover: string;
+  leftoverQty: string;
+  waste: string;
+  wasteQty: string;
+  comment: string;
+}
+
+function initWasteRows(items: string[], defaultQty = "bag"): Record<string, WasteItemRow> {
+  const rows: Record<string, WasteItemRow> = {};
+  items.forEach((item) => {
+    rows[item] = { enabled: true, leftover: "", leftoverQty: defaultQty, waste: "", wasteQty: defaultQty, comment: "" };
+  });
+  return rows;
+}
+
+function WasteItemTable({ title, items, rows, onChange, qtyTypes }: {
+  title: string;
+  items: string[];
+  rows: Record<string, WasteItemRow>;
+  onChange: (rows: Record<string, WasteItemRow>) => void;
+  qtyTypes: string[];
+}) {
+  const updateRow = (item: string, field: keyof WasteItemRow, value: string | boolean) => {
+    onChange({ ...rows, [item]: { ...rows[item], [field]: value } });
+  };
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/60">
+                <th className="text-left py-2 pr-2 font-medium text-muted-foreground w-[180px]">Item</th>
+                <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[70px]">Leftover</th>
+                <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[90px]">Qty Type</th>
+                <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[70px]">Waste</th>
+                <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[90px]">Qty Type</th>
+                <th className="text-left py-2 pl-2 font-medium text-muted-foreground">Comment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => {
+                const row = rows[item];
+                if (!row) return null;
+                return (
+                  <tr key={item} className={cn("border-b border-border/30 last:border-0", !row.enabled && "opacity-40")}>
+                    <td className="py-2 pr-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateRow(item, "enabled", !row.enabled)}
+                          className={cn(
+                            "w-8 h-5 rounded-full transition-colors relative flex-shrink-0",
+                            row.enabled ? "bg-[#faa600]" : "bg-muted"
+                          )}
+                        >
+                          <span className={cn(
+                            "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+                            row.enabled ? "translate-x-3.5" : "translate-x-0.5"
+                          )} />
+                        </button>
+                        <span className="text-sm font-medium truncate">{item}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-2">
+                      <Input
+                        type="number" min="0" step="0.1"
+                        value={row.leftover}
+                        onChange={(e) => updateRow(item, "leftover", e.target.value)}
+                        disabled={!row.enabled}
+                        className="h-8 w-[65px] text-sm"
+                        placeholder=""
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <select
+                        value={row.leftoverQty}
+                        onChange={(e) => updateRow(item, "leftoverQty", e.target.value)}
+                        disabled={!row.enabled}
+                        className="h-8 w-[80px] text-sm rounded-md border border-border bg-background px-1.5"
+                      >
+                        {qtyTypes.map((q: string) => <option key={q} value={q}>{q}</option>)}
+                      </select>
+                    </td>
+                    <td className="py-2 px-2">
+                      <Input
+                        type="number" min="0" step="0.1"
+                        value={row.waste}
+                        onChange={(e) => updateRow(item, "waste", e.target.value)}
+                        disabled={!row.enabled}
+                        className="h-8 w-[65px] text-sm"
+                        placeholder=""
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <select
+                        value={row.wasteQty}
+                        onChange={(e) => updateRow(item, "wasteQty", e.target.value)}
+                        disabled={!row.enabled}
+                        className="h-8 w-[80px] text-sm rounded-md border border-border bg-background px-1.5"
+                      >
+                        {qtyTypes.map((q: string) => <option key={q} value={q}>{q}</option>)}
+                      </select>
+                    </td>
+                    <td className="py-2 pl-2">
+                      <Input
+                        value={row.comment}
+                        onChange={(e) => updateRow(item, "comment", e.target.value)}
+                        disabled={!row.enabled}
+                        className="h-8 text-sm"
+                        placeholder="..."
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
-  const { name, date, bagels, pastries, ckItems } = draft;
+}
+
+function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `waste-report-v2-${storeCode}`,
+    { name: "", date: new Date().toISOString().split("T")[0], bagelRows: initWasteRows(WASTE_BAGEL_TYPES, "bag"), pastryRows: initWasteRows(PASTRY_TYPES, "unit"), ckRows: initWasteRows(CK_ITEMS, "unit") }
+  );
+  const { name, date, bagelRows, pastryRows, ckRows } = draft;
   const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
   const setDate = (v: string) => setDraft((d) => ({ ...d, date: v }));
-  const setBagels = (v: Record<string, { leftover: string; waste: string }>) => setDraft((d) => ({ ...d, bagels: v }));
-  const setPastries = (v: Record<string, { leftover: string; waste: string }>) => setDraft((d) => ({ ...d, pastries: v }));
-  const setCkItems = (v: Record<string, { leftover: string; waste: string }>) => setDraft((d) => ({ ...d, ckItems: v }));
+  const setBagelRows = (v: Record<string, WasteItemRow>) => setDraft((d) => ({ ...d, bagelRows: v }));
+  const setPastryRows = (v: Record<string, WasteItemRow>) => setDraft((d) => ({ ...d, pastryRows: v }));
+  const setCkRows = (v: Record<string, WasteItemRow>) => setDraft((d) => ({ ...d, ckRows: v }));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
+  // Collect data in the same format as admin dashboard
+  const collectData = () => {
+    const collect = (rows: Record<string, WasteItemRow>) =>
+      Object.entries(rows)
+        .filter(([, r]) => r.enabled && (r.leftover || r.waste))
+        .map(([item, r]) => ({
+          item,
+          leftover: r.leftover ? `${r.leftover} ${r.leftoverQty}` : "",
+          waste: r.waste ? `${r.waste} ${r.wasteQty}` : "",
+          comment: r.comment,
+        }));
+    return {
+      bagels: collect(bagelRows),
+      pastries: collect(pastryRows),
+      ckItems: collect(ckRows),
+    };
+  };
+
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
+    const data = collectData();
     await submitWithDuplicateCheck(
-      { submitterName: name.trim(), reportType: "Leftovers & Waste", location: storeName, reportDate: date, data: { bagels, pastries, ckItems, submittedVia: `Public - ${positionLabel}` } },
+      { submitterName: name.trim(), reportType: "Leftovers & Waste", location: storeName, reportDate: date, data: { ...data, submittedVia: `Public - ${positionLabel}` } },
       () => { setSubmitted(true); clearDraft(); toast.success("Waste report submitted!"); },
       (msg) => toast.error(msg),
       setSubmitting,
     );
   };
 
-  const renderSection = (sectionTitle: string, items: string[], data: Record<string, { leftover: string; waste: string }>, setData: (d: Record<string, { leftover: string; waste: string }>) => void) => (
-    <Card>
-      <CardHeader><CardTitle className="text-base">{sectionTitle}</CardTitle></CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-[1fr_80px_80px] gap-2 items-center mb-2">
-          <span className="text-xs font-medium text-muted-foreground">Item</span>
-          <span className="text-xs font-medium text-muted-foreground text-center">Leftover</span>
-          <span className="text-xs font-medium text-muted-foreground text-center">Waste</span>
-        </div>
-        {items.map((item) => (
-          <div key={item} className="grid grid-cols-[1fr_80px_80px] gap-2 items-center py-1">
-            <span className="text-sm">{item}</span>
-            <Input type="number" min="0" placeholder="0" value={data[item]?.leftover || ""} onChange={(e) => setData({ ...data, [item]: { ...data[item], leftover: e.target.value } })} className="h-8 text-center text-sm" />
-            <Input type="number" min="0" placeholder="0" value={data[item]?.waste || ""} onChange={(e) => setData({ ...data, [item]: { ...data[item], waste: e.target.value } })} className="h-8 text-center text-sm" />
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-
-  if (submitted) return <SuccessScreen message={`Waste report for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setBagels(Object.fromEntries(WASTE_BAGEL_TYPES.map((t) => [t, { leftover: "", waste: "" }]))); setPastries(Object.fromEntries(PASTRY_TYPES.map((t) => [t, { leftover: "", waste: "" }]))); setCkItems(Object.fromEntries(CK_ITEMS.map((t) => [t, { leftover: "", waste: "" }]))); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Waste report for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setBagelRows(initWasteRows(WASTE_BAGEL_TYPES, "bag")); setPastryRows(initWasteRows(PASTRY_TYPES, "unit")); setCkRows(initWasteRows(CK_ITEMS, "unit")); }} onBack={onBack} />;
 
   return (
     <PublicFormLayout title="Leftovers & Waste Report" subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
@@ -742,9 +873,9 @@ function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: { stor
         <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="space-y-2"><Label>Date</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
       </CardContent></Card>
-      {renderSection("Bagels", WASTE_BAGEL_TYPES, bagels, setBagels)}
-      {renderSection("Pastries", PASTRY_TYPES, pastries, setPastries)}
-      {renderSection("CK Items", CK_ITEMS, ckItems, setCkItems)}
+      <WasteItemTable title="Bagels" items={WASTE_BAGEL_TYPES} rows={bagelRows} onChange={setBagelRows} qtyTypes={QTY_TYPES_BAGEL} />
+      <WasteItemTable title="Pastries" items={PASTRY_TYPES} rows={pastryRows} onChange={setPastryRows} qtyTypes={QTY_TYPES_PASTRY} />
+      <WasteItemTable title="CK Items" items={CK_ITEMS} rows={ckRows} onChange={setCkRows} qtyTypes={QTY_TYPES_CK} />
       <div className="flex flex-col gap-3">
         <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Waste Report"}</Button>
         {draftButton}
