@@ -33,6 +33,9 @@ import {
   Trash2,
   GraduationCap,
   CircleDot,
+  Wheat,
+  CakeSlice,
+  ChefHat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useData } from "@/contexts/DataContext";
@@ -75,6 +78,14 @@ const navSections: NavSection[] = [
     items: [
       { path: "/inventory/items", label: "Inventory Items", icon: Package },
       { path: "/inventory/count", label: "Inventory Count", icon: ClipboardList },
+    ],
+  },
+  {
+    title: "Production",
+    items: [
+      { path: "/production/bagels", label: "Bagel Production", icon: CircleDot },
+      { path: "/production/pastry", label: "Pastry Production", icon: CakeSlice },
+      { path: "/production/ck-preps", label: "CK Preps", icon: ChefHat },
     ],
   },
   {

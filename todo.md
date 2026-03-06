@@ -842,3 +842,10 @@
 - [x] Change units from individual to dozen with note on top
 - [x] Update all 3 form locations (DirectChecklist, ChecklistViewer, PositionChecklists)
 - [x] Update ReportDetailRenderer for bagel orders display
+
+# Production Section
+- [x] Add Production section to admin sidebar with 3 tabs
+- [x] Create Bagel Production page (report of bagel orders by store/item, filterable by date)
+- [x] Add placeholder pages for Pastry Production and CK Preps
+- [x] Add routes in App.tsx
+- [x] Add tRPC endpoint for querying bagel orders by date range

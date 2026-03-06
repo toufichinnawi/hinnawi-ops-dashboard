@@ -1698,6 +1698,27 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // ─── Production ───
+  production: router({
+    bagelOrders: protectedProcedure
+      .input(
+        z.object({
+          fromDate: z.string(),
+          toDate: z.string(),
+        })
+      )
+      .query(async ({ input }) => {
+        const { getReportsByDateRange } = await import("./db");
+        const reports = await getReportsByDateRange(input.fromDate, input.toDate);
+        // Filter to only bagel order reports (handle both report type formats)
+        return reports.filter(
+          (r: any) =>
+            r.reportType === "bagel-orders" ||
+            r.reportType === "Bagel Orders"
+        );
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

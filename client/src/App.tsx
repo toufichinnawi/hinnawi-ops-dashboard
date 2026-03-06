@@ -33,6 +33,9 @@ import ExternalTools from "@/pages/ExternalTools";
 import AdminPanel from "@/pages/AdminPanel";
 import OperationsScorecard from "@/pages/OperationsScorecard";
 import Portal from "@/pages/public/Portal";
+import BagelProduction from "@/pages/BagelProduction";
+import PastryProduction from "@/pages/PastryProduction";
+import CKPreps from "@/pages/CKPreps";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -54,6 +57,11 @@ function Router() {
       {/* Inventory */}
       <Route path="/inventory/items" component={InventoryItems} />
       <Route path="/inventory/count" component={InventoryCount} />
+
+      {/* Production */}
+      <Route path="/production/bagels" component={BagelProduction} />
+      <Route path="/production/pastry" component={PastryProduction} />
+      <Route path="/production/ck-preps" component={CKPreps} />
 
       {/* Reports & Checklists — each checklist type has its own route */}
       <Route path="/checklists" component={Checklists} />
