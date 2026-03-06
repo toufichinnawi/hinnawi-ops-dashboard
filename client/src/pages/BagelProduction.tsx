@@ -145,7 +145,7 @@ export default function BagelProduction() {
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
-            <DateFilter value={dateFilter} onChange={setDateFilter} />
+            <DateFilter value={dateFilter} onChange={setDateFilter} allowFuture />
           </div>
         </div>
 

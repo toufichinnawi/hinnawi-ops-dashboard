@@ -850,3 +850,4 @@
 - [x] Add routes in App.tsx
 - [x] Add tRPC endpoint for querying bagel orders by date range
 - [x] Replace from/to date filter on Bagel Production with single date filter (same as Overview)
+- [x] Allow future dates in DateFilter on Bagel Production page

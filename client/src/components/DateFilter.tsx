@@ -26,6 +26,8 @@ interface DateFilterProps {
   value: DateFilterValue;
   onChange: (value: DateFilterValue) => void;
   className?: string;
+  /** When true, allow selecting future dates (e.g. for production orders) */
+  allowFuture?: boolean;
 }
 
 const today = startOfDay(new Date());
@@ -75,7 +77,7 @@ export function getDefaultDateFilter(): DateFilterValue {
   return PRESETS[0].getValue(); // Today
 }
 
-export function DateFilter({ value, onChange, className }: DateFilterProps) {
+export function DateFilter({ value, onChange, className, allowFuture = false }: DateFilterProps) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<DateFilterMode>(value.mode);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(value.from);
@@ -243,7 +245,7 @@ export function DateFilter({ value, onChange, className }: DateFilterProps) {
                 mode="single"
                 selected={selectedDate}
                 onSelect={handleSingleSelect}
-                disabled={{ after: new Date() }}
+                {...(!allowFuture && { disabled: { after: new Date() } })}
                 defaultMonth={selectedDate}
               />
             ) : (
@@ -252,7 +254,7 @@ export function DateFilter({ value, onChange, className }: DateFilterProps) {
                   mode="range"
                   selected={stagedRange}
                   onSelect={handleRangeSelect}
-                  disabled={{ after: new Date() }}
+                  {...(!allowFuture && { disabled: { after: new Date() } })}
                   defaultMonth={stagedRange?.from}
                   numberOfMonths={1}
                 />
