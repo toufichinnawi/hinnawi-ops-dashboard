@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import { type ChecklistType, ALL_CHECKLISTS, POSITION_CHECKLISTS } from "@/lib/positionChecklists";
 import { ChecklistForm } from "./PositionChecklists";
 import { ScorecardContent } from "@/pages/OperationsScorecard";
+import { ReportDetailRenderer } from "@/components/ReportDetailRenderer";
 import { StorePerformanceContent } from "@/pages/Stores";
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -1750,48 +1751,10 @@ function PortalReportsPage({
               </div>
             </div>
 
-            {/* Detailed Data — same as admin */}
-            {(() => {
-              const payload = parsePayload(selectedReport.data);
-              if (!payload) return <p className="text-sm text-muted-foreground mt-4">No detailed data available</p>;
-              return (
-                <div className="space-y-3 border-t pt-3 mt-4">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Details</p>
-                  {Object.entries(payload).map(([key, value]) => {
-                    if (key === "submitterName") return null;
-                    if (key === "items" && Array.isArray(value)) {
-                      return (
-                        <div key={key} className="space-y-2">
-                          {(value as any[]).map((item, i) => (
-                            <div key={i} className="p-3 bg-muted/50 rounded-lg">
-                              <div className="flex items-center justify-between">
-                                <p className="text-sm font-medium">{item.label || item.name || `Item ${i + 1}`}</p>
-                                {item.rating !== undefined && renderStars(item.rating)}
-                              </div>
-                              {item.notes && <p className="text-xs text-muted-foreground mt-1">{item.notes}</p>}
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    }
-                    if (typeof value === "object" && value !== null) {
-                      return (
-                        <div key={key} className="p-3 bg-muted/50 rounded-lg">
-                          <p className="text-xs font-medium text-muted-foreground mb-1">{key}</p>
-                          <pre className="text-xs text-foreground whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div key={key} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
-                        <p className="text-sm text-muted-foreground">{key}</p>
-                        <p className="text-sm font-medium">{String(value)}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
+            {/* Detailed Data — proper template rendering */}
+            <div className="mt-4">
+              <ReportDetailRenderer reportType={selectedReport.reportType} data={selectedReport.data} />
+            </div>
 
             {/* Action buttons — same as admin */}
             {canEditDelete && (

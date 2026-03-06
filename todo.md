@@ -781,3 +781,5 @@
 - [x] Fix: Portal waste form template doesn't match admin dashboard waste form
 - [x] Fix: Portal waste submissions not showing in Operations Scorecard (data format aligned)
 - [x] Audit ALL checklists: ensure every portal form matches admin dashboard counterpart (Manager Checklist, Equipment Maintenance, Training Eval, Bagel Orders, Performance Eval all aligned across all 3 locations)
+- [x] Fix report detail views: render submitted data in proper template format instead of raw JSON
+- [x] Move notes/comments to top of report detail view for management visibility
