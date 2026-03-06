@@ -358,6 +358,7 @@ function DashboardChecklistForm({
           positionLabel={positionLabel}
           onBack={onBack}
           useRating
+          isWeekly
         />
       );
     case "weekly-deep-cleaning":
@@ -587,6 +588,10 @@ function ManagerChecklistForm({
   const [ratings, setRatings] = useState(() => OPS_TASKS.map(() => ({ rating: 0, na: false, comment: "" })));
   const [finalComments, setFinalComments] = useState("");
   const [submitterName, setSubmitterName] = useState("");
+  const [dateOfSubmission, setDateOfSubmission] = useState(() => new Date().toISOString().split("T")[0]);
+  const defaultWeekMgr = useMemo(() => getDefaultWeekRange(), []);
+  const [weekStart, setWeekStart] = useState(defaultWeekMgr.start);
+  const [weekEnd, setWeekEnd] = useState(defaultWeekMgr.end);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
@@ -603,8 +608,8 @@ function ManagerChecklistForm({
         submitterName,
         reportType: "Manager Checklist",
         location: selectedStore,
-        reportDate: new Date().toISOString().split("T")[0],
-        data: { tasks: OPS_TASKS.map((t, i) => ({ ...t, ...ratings[i] })), finalComments },
+        reportDate: weekStart,
+        data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, tasks: OPS_TASKS.map((t, i) => ({ ...t, ...ratings[i] })), finalComments },
         totalScore: avgScore,
       });
       setSubmitted(true);
@@ -619,9 +624,17 @@ function ManagerChecklistForm({
       <FormHeader title="Manager Checklist" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Your Name</Label>
-          <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
+        <div className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
+          <div><Label className="text-sm font-medium">Your Name</Label>
+          <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" /></div>
+          <div><Label className="text-sm font-medium">Date of Submission</Label>
+          <Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} className="mt-1.5" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label className="text-sm font-medium">Start Date *</Label>
+            <Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} className="mt-1.5" /></div>
+            <div><Label className="text-sm font-medium">End Date *</Label>
+            <Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} className="mt-1.5" /></div>
+          </div>
         </div>
 
         <Badge variant="outline" className="text-lg px-4 py-2 border-[#D4A853]/30 text-[#D4A853]">Average: {avgScore} / 5</Badge>
@@ -673,6 +686,7 @@ interface SectionFormProps extends FormProps {
   sections: { title: string; items: string[] }[];
   reportType: string;
   useRating?: boolean;
+  isWeekly?: boolean;
 }
 
 function SectionChecklistForm({
@@ -684,12 +698,17 @@ function SectionChecklistForm({
   positionLabel,
   onBack,
   useRating,
+  isWeekly,
 }: SectionFormProps) {
   const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState("");
   const [submitterName, setSubmitterName] = useState("");
+  const [dateOfSubmission, setDateOfSubmission] = useState(() => new Date().toISOString().split("T")[0]);
+  const defaultWeekSec = useMemo(() => getDefaultWeekRange(), []);
+  const [weekStart, setWeekStart] = useState(defaultWeekSec.start);
+  const [weekEnd, setWeekEnd] = useState(defaultWeekSec.end);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
@@ -724,10 +743,10 @@ function SectionChecklistForm({
         submitterName,
         reportType,
         location: selectedStore,
-        reportDate: new Date().toISOString().split("T")[0],
+        reportDate: isWeekly ? weekStart : new Date().toISOString().split("T")[0],
         data: useRating
-          ? { ratings, notes, sections }
-          : { checked, notes, sections },
+          ? { ...(isWeekly ? { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd } : {}), ratings, notes, sections }
+          : { ...(isWeekly ? { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd } : {}), checked, notes, sections },
         totalScore: avgScore,
       });
       setSubmitted(true);
@@ -764,14 +783,26 @@ function SectionChecklistForm({
       <div className="space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
 
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Your Name</Label>
+        <div className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
+          <div><Label className="text-sm font-medium">Your Name</Label>
           <Input
             value={submitterName}
             onChange={(e) => setSubmitterName(e.target.value)}
             placeholder="Enter your name"
             className="mt-1.5"
-          />
+          /></div>
+          {isWeekly && (
+            <>
+              <div><Label className="text-sm font-medium">Date of Submission</Label>
+              <Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} className="mt-1.5" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-sm font-medium">Start Date *</Label>
+                <Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} className="mt-1.5" /></div>
+                <div><Label className="text-sm font-medium">End Date *</Label>
+                <Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} className="mt-1.5" /></div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">

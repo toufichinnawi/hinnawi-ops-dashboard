@@ -783,3 +783,6 @@
 - [x] Audit ALL checklists: ensure every portal form matches admin dashboard counterpart (Manager Checklist, Equipment Maintenance, Training Eval, Bagel Orders, Performance Eval all aligned across all 3 locations)
 - [x] Fix report detail views: render submitted data in proper template format instead of raw JSON
 - [x] Move notes/comments to top of report detail view for management visibility
+- [x] Update Store Manager Checklist: add Start Date / End Date pickers, rename Date to Date of Submission
+- [x] Update Ops Mgr Weekly Audit: add Start Date / End Date pickers, rename Date to Date of Submission
+- [x] Ensure weekly checklists appear properly in date filters + report detail view shows weekly date fields

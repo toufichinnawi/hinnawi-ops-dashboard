@@ -327,7 +327,7 @@ export function ChecklistForm({ type, storeCode, storeName, positionLabel, onBac
     case "manager-checklist":
       return <ManagerChecklistForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
     case "ops-manager-checklist":
-      return <SectionChecklistForm title="Operations Manager Checklist (Weekly Audit)" sections={AUDIT_SECTIONS} reportType="Operations Manager Checklist (Weekly Audit)" storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} useRating />;
+      return <SectionChecklistForm title="Operations Manager Checklist (Weekly Audit)" sections={AUDIT_SECTIONS} reportType="Operations Manager Checklist (Weekly Audit)" storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} useRating isWeekly />;
     case "weekly-deep-cleaning":
       return <SectionChecklistForm title="Weekly Deep Cleaning" sections={DEEP_CLEANING_SECTIONS} reportType="Deep Cleaning" storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
     case "assistant-manager-checklist":
@@ -518,13 +518,16 @@ function useDuplicateCheck() {
 // ─── Manager Checklist Form (formerly Operations Checklist) ───
 
 function ManagerChecklistForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
+  const defaultWeekMgr = useMemo(() => getDefaultWeekRange(), []);
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
     `manager-checklist-${storeCode}`,
-    { name: "", date: new Date().toISOString().split("T")[0], tasks: OPS_TASKS.map(() => ({ rating: 0, isNA: false, comment: "" })), comments: "" }
+    { name: "", dateOfSubmission: new Date().toISOString().split("T")[0], weekStart: defaultWeekMgr.start, weekEnd: defaultWeekMgr.end, tasks: OPS_TASKS.map(() => ({ rating: 0, isNA: false, comment: "" })), comments: "" }
   );
-  const { name, date, tasks, comments } = draft;
+  const { name, dateOfSubmission, weekStart, weekEnd, tasks, comments } = draft;
   const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
-  const setDate = (v: string) => setDraft((d) => ({ ...d, date: v }));
+  const setDateOfSubmission = (v: string) => setDraft((d) => ({ ...d, dateOfSubmission: v }));
+  const setWeekStart = (v: string) => setDraft((d) => ({ ...d, weekStart: v }));
+  const setWeekEnd = (v: string) => setDraft((d) => ({ ...d, weekEnd: v }));
   const setTasks = (fn: (prev: typeof tasks) => typeof tasks) => setDraft((d) => ({ ...d, tasks: fn(d.tasks) }));
   const setComments = (v: string) => setDraft((d) => ({ ...d, comments: v }));
   const [submitted, setSubmitted] = useState(false);
@@ -542,8 +545,8 @@ function ManagerChecklistForm({ storeCode, storeName, positionLabel, onBack }: {
         submitterName: name.trim(),
         reportType: "Manager Checklist",
         location: storeName,
-        reportDate: date,
-        data: { tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, submittedVia: `Public - ${positionLabel}` },
+        reportDate: weekStart,
+        data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, submittedVia: `Public - ${positionLabel}` },
         totalScore: avg,
       },
       () => { setSubmitted(true); clearDraft(); toast.success("Checklist submitted!"); },
@@ -559,7 +562,11 @@ function ManagerChecklistForm({ storeCode, storeName, positionLabel, onBack }: {
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
-          <div className="space-y-2"><Label>Date</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+          <div className="space-y-2"><Label>Date of Submission</Label><Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2"><Label>Start Date *</Label><Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} /></div>
+            <div className="space-y-2"><Label>End Date *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
+          </div>
         </CardContent>
       </Card>
       <Badge variant="outline" className="text-lg px-4 py-2 border-[#faa600] text-[#faa600]">Average: {avg} / 5</Badge>
@@ -597,17 +604,20 @@ function ManagerChecklistForm({ storeCode, storeName, positionLabel, onBack }: {
 
 // ─── Section-based Checklist Form (Audit, Deep Cleaning, Asst Mgr, Store Mgr) ───
 
-function SectionChecklistForm({ title, sections, reportType, storeCode, storeName, positionLabel, onBack, useRating }: {
-  title: string; sections: { title: string; items: string[] }[]; reportType: string; storeCode: string; storeName: string; positionLabel: string; onBack: () => void; useRating?: boolean;
+function SectionChecklistForm({ title, sections, reportType, storeCode, storeName, positionLabel, onBack, useRating, isWeekly }: {
+  title: string; sections: { title: string; items: string[] }[]; reportType: string; storeCode: string; storeName: string; positionLabel: string; onBack: () => void; useRating?: boolean; isWeekly?: boolean;
 }) {
   const initData = sections.map((s) => s.items.map(() => useRating ? { rating: 0, comment: "" } : { checked: false }));
+  const defaultWeekSec = useMemo(() => getDefaultWeekRange(), []);
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
     `${reportType}-${storeCode}`,
-    { name: "", date: new Date().toISOString().split("T")[0], data: initData, comments: "" }
+    { name: "", dateOfSubmission: new Date().toISOString().split("T")[0], weekStart: defaultWeekSec.start, weekEnd: defaultWeekSec.end, data: initData, comments: "" }
   );
-  const { name, date, data, comments } = draft;
+  const { name, dateOfSubmission, weekStart, weekEnd, data, comments } = draft;
   const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
-  const setDate = (v: string) => setDraft((d) => ({ ...d, date: v }));
+  const setDateOfSubmission = (v: string) => setDraft((d) => ({ ...d, dateOfSubmission: v }));
+  const setWeekStart = (v: string) => setDraft((d) => ({ ...d, weekStart: v }));
+  const setWeekEnd = (v: string) => setDraft((d) => ({ ...d, weekEnd: v }));
   const setData = (fn: (prev: any[][]) => any[][]) => setDraft((d) => ({ ...d, data: fn(d.data) }));
   const setComments = (v: string) => setDraft((d) => ({ ...d, comments: v }));
   const [submitted, setSubmitted] = useState(false);
@@ -632,8 +642,8 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
         submitterName: name.trim(),
         reportType,
         location: storeName,
-        reportDate: date,
-        data: { sections: sections.map((s, si) => ({ title: s.title, items: s.items.map((item, ii) => ({ item, ...data[si][ii] })) })), comments, submittedVia: `Public - ${positionLabel}` },
+        reportDate: isWeekly ? weekStart : dateOfSubmission,
+        data: { ...(isWeekly ? { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd } : {}), sections: sections.map((s, si) => ({ title: s.title, items: s.items.map((item, ii) => ({ item, ...data[si][ii] })) })), comments, submittedVia: `Public - ${positionLabel}` },
         totalScore,
       },
       () => { setSubmitted(true); clearDraft(); toast.success(`${title} submitted!`); },
@@ -649,7 +659,13 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
-          <div className="space-y-2"><Label>Date</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+          <div className="space-y-2"><Label>{isWeekly ? "Date of Submission" : "Date"}</Label><Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} /></div>
+          {isWeekly && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Start Date *</Label><Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} /></div>
+              <div className="space-y-2"><Label>End Date *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
+            </div>
+          )}
         </CardContent>
       </Card>
       <Badge variant="outline" className="text-lg px-4 py-2 border-[#faa600] text-[#faa600]">Score: {totalScore}{useRating ? " / 5" : ""}</Badge>

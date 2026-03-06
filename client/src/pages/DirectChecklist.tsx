@@ -198,7 +198,10 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [managerName, setManagerName] = useState("");
-  const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [dateOfSubmission, setDateOfSubmission] = useState(() => new Date().toISOString().split("T")[0]);
+  const defaultWeekMgr = useMemo(() => getDefaultWeekRange(), []);
+  const [weekStart, setWeekStart] = useState(defaultWeekMgr.start);
+  const [weekEnd, setWeekEnd] = useState(defaultWeekMgr.end);
   const [tasks, setTasks] = useState(() => OPS_TASKS.map(() => ({ rating: 0, isNA: false, comment: "" })));
   const [comments, setComments] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -210,8 +213,8 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
     if (!managerName.trim() || !selectedStore) { toast.error("Please fill in your name and select a store"); return; }
     if (ratedTasks.length === 0) { toast.error("Please rate at least one item"); return; }
     const payload = {
-      reportType: "manager-checklist", location: selectedStore, submitterName: managerName, reportDate,
-      data: { tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, averageScore: avg },
+      reportType: "manager-checklist", location: selectedStore, submitterName: managerName, reportDate: weekStart,
+      data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, averageScore: avg },
       totalScore: avg,
     };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -233,7 +236,11 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Your Name</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" /></div>
-        <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
+        <div className="space-y-1.5"><Label>Date of Submission</Label><Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} /></div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5"><Label>Start Date *</Label><Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>End Date *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
+        </div>
       </CardContent></Card>
       <div className="flex items-center gap-2">
         <span className="text-lg font-serif font-semibold border border-[#D4A853] text-[#D4A853] rounded-md px-4 py-2">Average: {avg} / 5</span>
@@ -273,7 +280,10 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [auditorName, setAuditorName] = useState("");
-  const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [dateOfSubmission, setDateOfSubmission] = useState(() => new Date().toISOString().split("T")[0]);
+  const defaultWeekAudit = useMemo(() => getDefaultWeekRange(), []);
+  const [weekStart, setWeekStart] = useState(defaultWeekAudit.start);
+  const [weekEnd, setWeekEnd] = useState(defaultWeekAudit.end);
   const [ratings, setRatings] = useState<Record<string, Record<number, number>>>({});
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -283,7 +293,7 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
     // Compute average score across all sections
     const allRatings = Object.values(ratings).flatMap(section => Object.values(section));
     const avg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 0;
-    const payload = { reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate, data: { ratings, notes }, totalScore: avg.toFixed(2) };
+    const payload = { reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate: weekStart, data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, ratings, notes }, totalScore: avg.toFixed(2) };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Audit submitted!");
@@ -303,7 +313,11 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Auditor Name</Label><Input value={auditorName} onChange={(e) => setAuditorName(e.target.value)} placeholder="Enter your name" /></div>
-        <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
+        <div className="space-y-1.5"><Label>Date of Submission</Label><Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} /></div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5"><Label>Start Date *</Label><Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>End Date *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
+        </div>
       </CardContent></Card>
       {AUDIT_SECTIONS.map((section) => (
         <Card key={section.title}><CardContent className="pt-6 space-y-4">

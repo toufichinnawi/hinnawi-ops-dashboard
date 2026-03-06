@@ -38,6 +38,38 @@ function NotesBanner({ notes, label = "Notes / Comments" }: { notes: string; lab
   );
 }
 
+// ─── Weekly Date Fields Banner ──────────────────────────────────
+function WeeklyDateBanner({ data }: { data: any }) {
+  const dateOfSubmission = data.dateOfSubmission || data.dateCompleted || "";
+  const weekOfStart = data.weekOfStart || data.weekStart || "";
+  const weekOfEnd = data.weekOfEnd || data.weekEnd || "";
+  if (!dateOfSubmission && !weekOfStart) return null;
+  return (
+    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+      <div className="grid grid-cols-3 gap-3 text-sm">
+        {dateOfSubmission && (
+          <div>
+            <p className="text-xs text-blue-600 font-medium">Date of Submission</p>
+            <p className="font-medium text-blue-900">{dateOfSubmission}</p>
+          </div>
+        )}
+        {weekOfStart && (
+          <div>
+            <p className="text-xs text-blue-600 font-medium">Start Date</p>
+            <p className="font-medium text-blue-900">{weekOfStart}</p>
+          </div>
+        )}
+        {weekOfEnd && (
+          <div>
+            <p className="text-xs text-blue-600 font-medium">End Date</p>
+            <p className="font-medium text-blue-900">{weekOfEnd}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Check/X icon ────────────────────────────────────────────────
 function CheckIcon({ checked }: { checked: boolean }) {
   return checked
@@ -53,6 +85,7 @@ function ManagerChecklistDetail({ data }: { data: any }) {
 
   return (
     <div className="space-y-3">
+      <WeeklyDateBanner data={data} />
       <NotesBanner notes={comments} label="Manager Comments" />
       {avgScore && (
         <div className="flex items-center gap-2 mb-2">
@@ -101,6 +134,7 @@ function SectionChecklistDetail({ data }: { data: any }) {
     // New format with sections array
     return (
       <div className="space-y-3">
+        <WeeklyDateBanner data={data} />
         <NotesBanner notes={notes} label="Auditor Notes" />
         {sections.map((section: any, si: number) => (
           <div key={si}>
