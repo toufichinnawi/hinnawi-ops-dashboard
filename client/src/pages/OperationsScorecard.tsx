@@ -64,7 +64,7 @@ function normalizeReport(r: { reportType: string; location: string; [key: string
 }
 
 // Report types that have numeric scores (out of 5)
-const SCORED_TYPES = ["manager-checklist", "ops-manager-checklist", "performance-evaluation", "store-manager-checklist", "assistant-manager-checklist"];
+const SCORED_TYPES = ["manager-checklist", "ops-manager-checklist", "store-manager-checklist", "assistant-manager-checklist"];
 const WEEKLY_AUDIT_TYPE = "ops-manager-checklist";
 
 // Store codes used in submissions
@@ -89,11 +89,18 @@ const OPS_MANAGER_CHECKLISTS: ChecklistType[] = [
   "performance-evaluation",
 ];
 
-// All expected checklists for a store
+// Checklists that are NOT required daily (should not appear in uncompleted list or affect score)
+const NON_DAILY_CHECKLISTS: ChecklistType[] = [
+  "performance-evaluation",
+  "training-evaluation",
+  "bagel-orders",
+];
+
+// Daily expected checklists for a store (excludes non-daily ones)
 const ALL_EXPECTED_CHECKLISTS: ChecklistType[] = [
   ...STORE_MANAGER_CHECKLISTS,
   ...OPS_MANAGER_CHECKLISTS,
-];
+].filter((type) => !NON_DAILY_CHECKLISTS.includes(type));
 
 function getStoreInfo(code: string) {
   const s = stores.find((s) => s.shortName === code || s.id === code.toLowerCase());
@@ -484,6 +491,7 @@ function DrillDownDialog({ open, onClose, storeCode, storeName, storeColor, avgS
 export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {}) {
   const [filter, setFilter] = useState<FilterValue>(PRESETS[0].getValue()); // Today
   const [drillDownStore, setDrillDownStore] = useState<string | null>(null);
+  const [wasteDetailStore, setWasteDetailStore] = useState<string | null>(null);
 
   const fromStr = format(filter.from, "yyyy-MM-dd");
   const toStr = format(filter.to, "yyyy-MM-dd");
@@ -924,7 +932,7 @@ export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {})
                     <div className="p-5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {wasteMetrics.map((wm) => (
-                          <div key={wm.code} className="rounded-xl border border-border/40 bg-card p-4 relative overflow-hidden">
+                          <div key={wm.code} className="rounded-xl border border-border/40 bg-card p-4 relative overflow-hidden cursor-pointer hover:border-border hover:shadow-md transition-all" onClick={() => setWasteDetailStore(wm.code)}>
                             <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ backgroundColor: wm.storeInfo.color }} />
                             <div className="flex items-center justify-between mb-3">
                               <div>
@@ -994,6 +1002,135 @@ export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {})
                     </div>
                   )}
                 </div>
+
+                {/* ─── Waste Detail Dialog ────────────────── */}
+                <Dialog open={!!wasteDetailStore} onOpenChange={(open) => !open && setWasteDetailStore(null)}>
+                  <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                    {(() => {
+                      const storeCode = wasteDetailStore;
+                      if (!storeCode) return null;
+                      const storeInfo = getStoreInfo(storeCode);
+                      const storeData = storeScores.find((s) => s.code === storeCode);
+                      const wasteReports = storeData?.wasteReports || [];
+
+                      return (
+                        <>
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: storeInfo.color + "20" }}>
+                                <Trash2 className="w-4 h-4" style={{ color: storeInfo.color }} />
+                              </div>
+                              <div>
+                                <span style={{ color: storeInfo.color }}>{storeCode}</span>
+                                <span className="text-muted-foreground"> — {storeInfo.name}</span>
+                              </div>
+                            </DialogTitle>
+                            <DialogDescription>
+                              Leftovers & Waste details · {wasteReports.length} report{wasteReports.length !== 1 ? "s" : ""} · {filter.label}
+                            </DialogDescription>
+                          </DialogHeader>
+
+                          {wasteReports.length === 0 ? (
+                            <div className="py-8 text-center">
+                              <Trash2 className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                              <p className="text-sm text-muted-foreground">No waste reports for this period</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {wasteReports.map((report: any, idx: number) => {
+                                const data = report.data as any;
+                                if (!data) return null;
+                                const reportDate = report.reportDate || report.date || "";
+                                const submitter = (data.managerName || data.name || data.submittedBy || "Unknown");
+
+                                const sections = [
+                                  { key: "bagels", label: "Bagels", icon: "🥯" },
+                                  { key: "pastries", label: "Pastry", icon: "🥐" },
+                                  { key: "ckItems", label: "CK Items", icon: "🍳" },
+                                ];
+
+                                return (
+                                  <div key={report.id || idx} className="rounded-xl border border-border/60 overflow-hidden">
+                                    <div className="px-4 py-3 bg-muted/30 border-b border-border/40 flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-medium text-muted-foreground">Report #{idx + 1}</span>
+                                        {reportDate && <span className="text-xs text-muted-foreground">· {reportDate}</span>}
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">by {submitter}</span>
+                                    </div>
+
+                                    {/* Notes/Comments at top */}
+                                    {data.notes && (
+                                      <div className="px-4 py-2 bg-amber-50 border-b border-amber-200/50">
+                                        <p className="text-xs font-medium text-amber-800">Notes:</p>
+                                        <p className="text-xs text-amber-700 mt-0.5">{data.notes}</p>
+                                      </div>
+                                    )}
+
+                                    <div className="p-4 space-y-4">
+                                      {sections.map(({ key, label, icon }) => {
+                                        const items = data[key];
+                                        if (!Array.isArray(items) || items.length === 0) return null;
+                                        const hasData = items.some((i: any) => i.waste || i.leftover);
+                                        if (!hasData) return null;
+
+                                        return (
+                                          <div key={key}>
+                                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                              <span>{icon}</span> {label}
+                                            </h4>
+                                            <div className="rounded-lg border border-border/40 overflow-hidden">
+                                              <table className="w-full text-xs">
+                                                <thead>
+                                                  <tr className="bg-muted/40">
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Item</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-orange-600 w-24">Waste</th>
+                                                    <th className="text-center px-3 py-2 font-medium text-blue-600 w-24">Leftover</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Comment</th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {items.filter((i: any) => i.waste || i.leftover).map((item: any, j: number) => (
+                                                    <tr key={j} className={j % 2 === 0 ? "" : "bg-muted/20"}>
+                                                      <td className="px-3 py-1.5 font-medium">{item.item || item.name || `Item ${j + 1}`}</td>
+                                                      <td className="px-3 py-1.5 text-center">
+                                                        {item.waste ? (
+                                                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 font-mono font-medium">
+                                                            {item.waste}{item.wasteQty ? ` ${item.wasteQty}` : ""}
+                                                          </span>
+                                                        ) : (
+                                                          <span className="text-muted-foreground/40">—</span>
+                                                        )}
+                                                      </td>
+                                                      <td className="px-3 py-1.5 text-center">
+                                                        {item.leftover ? (
+                                                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-mono font-medium">
+                                                            {item.leftover}{item.leftoverQty ? ` ${item.leftoverQty}` : ""}
+                                                          </span>
+                                                        ) : (
+                                                          <span className="text-muted-foreground/40">—</span>
+                                                        )}
+                                                      </td>
+                                                      <td className="px-3 py-1.5 text-muted-foreground">{item.comment || "—"}</td>
+                                                    </tr>
+                                                  ))}
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </DialogContent>
+                </Dialog>
               </>
             )}
           </TabsContent>
