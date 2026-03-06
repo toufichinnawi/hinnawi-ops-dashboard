@@ -1,13 +1,12 @@
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { stores } from "@/lib/data";
-import { CircleDot, Calendar, Filter, Package } from "lucide-react";
+import { CircleDot, Filter, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DateFilter, getDefaultDateFilter, type DateFilterValue } from "@/components/DateFilter";
+import { format } from "date-fns";
 
 const BAGEL_TYPES = [
   "Sesame Bagel", "Everything Bagel", "Plain Bagel", "Mini-Bagel Plain",
@@ -50,11 +49,11 @@ interface BagelOrderRow {
 }
 
 export default function BagelProduction() {
-  const today = new Date().toISOString().split("T")[0];
-  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
-  const [fromDate, setFromDate] = useState(weekAgo);
-  const [toDate, setToDate] = useState(today);
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>(getDefaultDateFilter);
   const [selectedStore, setSelectedStore] = useState<string>("all");
+
+  const fromDate = format(dateFilter.from, "yyyy-MM-dd");
+  const toDate = format(dateFilter.to, "yyyy-MM-dd");
 
   const { data: rawOrders, isLoading } = trpc.production.bagelOrders.useQuery(
     { fromDate, toDate },
@@ -125,50 +124,30 @@ export default function BagelProduction() {
     <DashboardLayout>
       <div className="p-6 lg:p-8 space-y-6 max-w-[1400px]">
         {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#D4A853]/10 flex items-center justify-center">
-            <CircleDot className="w-5 h-5 text-[#D4A853]" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#D4A853]/10 flex items-center justify-center">
+              <CircleDot className="w-5 h-5 text-[#D4A853]" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-serif text-foreground">Bagel Production</h1>
+              <p className="text-sm text-muted-foreground">View bagel orders by store and item</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-serif text-foreground">Bagel Production</h1>
-            <p className="text-sm text-muted-foreground">View bagel orders by store and item</p>
+          <div className="flex items-center gap-3">
+            <select
+              value={selectedStore}
+              onChange={e => setSelectedStore(e.target.value)}
+              className="h-9 rounded-md border border-border bg-background px-3 text-sm"
+            >
+              <option value="all">All Stores</option>
+              {stores.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            <DateFilter value={dateFilter} onChange={setDateFilter} />
           </div>
         </div>
-
-        {/* Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" /> From Date
-                </Label>
-                <Input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-40" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" /> To Date
-                </Label>
-                <Input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-40" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium flex items-center gap-1.5">
-                  <Filter className="w-3.5 h-3.5" /> Store
-                </Label>
-                <select
-                  value={selectedStore}
-                  onChange={e => setSelectedStore(e.target.value)}
-                  className="h-9 rounded-md border border-border bg-background px-3 text-sm"
-                >
-                  <option value="all">All Stores</option>
-                  {stores.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -208,8 +187,8 @@ export default function BagelProduction() {
           <Card>
             <CardContent className="py-12 text-center">
               <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground">No bagel orders found for the selected date range.</p>
-              <p className="text-xs text-muted-foreground mt-1">Try adjusting the date filters or submit bagel orders through the checklists.</p>
+              <p className="text-muted-foreground">No bagel orders found for the selected period.</p>
+              <p className="text-xs text-muted-foreground mt-1">Try adjusting the date filter or submit bagel orders through the checklists.</p>
             </CardContent>
           </Card>
         ) : (
@@ -219,11 +198,11 @@ export default function BagelProduction() {
               <CardHeader>
                 <CardTitle className="text-base">Total Orders by Bagel Type</CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  {fromDate} to {toDate} — All quantities in dozens
+                  {dateFilter.label} — All quantities in dozens
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="border rounded-lg overflow-hidden">
+                <div className="border rounded-lg overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50">
                       <tr>

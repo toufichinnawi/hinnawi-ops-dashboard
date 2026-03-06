@@ -849,3 +849,4 @@
 - [x] Add placeholder pages for Pastry Production and CK Preps
 - [x] Add routes in App.tsx
 - [x] Add tRPC endpoint for querying bagel orders by date range
+- [x] Replace from/to date filter on Bagel Production with single date filter (same as Overview)
