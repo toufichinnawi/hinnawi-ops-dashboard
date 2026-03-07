@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/StarRating";
-import { CheckCircle2, Send, DollarSign, Users2, MessageSquare, Utensils } from "lucide-react";
+import { CheckCircle2, Send, DollarSign, Users2, MessageSquare, Utensils, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { PhotoUpload, type UploadedPhoto } from "@/components/PhotoUpload";
@@ -1053,16 +1053,46 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
   const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])));
   const [itemUnits, setItemUnits] = useState<Record<string, "dozen" | "unit">>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])));
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [dupOpen, setDupOpen] = useState(false);
+  const [dupExisting, setDupExisting] = useState<any>(null);
+  const [dupOverwriting, setDupOverwriting] = useState(false);
 
-  const handleSubmit = () => {
+  const buildPayload = (overwrite = false) => ({
+    reportType: "bagel-orders", location: selectedStore, submitterName: ordererName, reportDate: orderForDate,
+    data: { orderForDate, orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })) },
+    overwrite,
+  });
+
+  const handleSubmit = async () => {
     if (!ordererName.trim() || !selectedStore || !orderForDate) { toast.error("Please fill required fields"); return; }
-    const payload = {
-      reportType: "bagel-orders", location: selectedStore, submitterName: ordererName, reportDate: orderForDate,
-      data: { orderForDate, orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })) },
-    };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    setSubmitted(true);
-    toast.success("Bagel order submitted!");
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload(false)) });
+      if (res.status === 409) {
+        const body = await res.json();
+        setDupExisting(body.existingReport);
+        setDupOpen(true);
+        return;
+      }
+      if (!res.ok) throw new Error("Submit failed");
+      setSubmitted(true);
+      toast.success("Bagel order submitted!");
+    } catch { toast.error("Failed to submit"); }
+    finally { setSubmitting(false); }
+  };
+
+  const handleOverwrite = async () => {
+    setDupOverwriting(true);
+    try {
+      const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload(true)) });
+      if (!res.ok) throw new Error("Overwrite failed");
+      setDupOpen(false);
+      setDupExisting(null);
+      setSubmitted(true);
+      toast.success("Bagel order updated!");
+    } catch { toast.error("Failed to overwrite"); }
+    finally { setDupOverwriting(false); }
   };
 
   if (submitted) return (
@@ -1107,7 +1137,29 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
           ))}
         </div>
       </CardContent></Card>
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Order</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Order"}</Button></div>
+      {dupOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
+            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mx-auto">
+              <AlertTriangle className="h-6 w-6 text-amber-600" />
+            </div>
+            <h3 className="text-lg font-bold text-center">Order Already Exists</h3>
+            <p className="text-sm text-muted-foreground text-center">
+              A bagel order for <strong>{currentStoreName}</strong> on <strong>{orderForDate}</strong> was already submitted{dupExisting?.submitterName ? ` by ${dupExisting.submitterName}` : ""}{dupExisting?.createdAt ? ` (${new Date(dupExisting.createdAt).toLocaleString()})` : ""}.
+            </p>
+            <p className="text-sm text-center text-muted-foreground">
+              Would you like to <strong>overwrite</strong> the existing order with your new data?
+            </p>
+            <div className="flex gap-3 justify-center pt-2">
+              <Button variant="outline" onClick={() => { setDupOpen(false); setDupExisting(null); }} disabled={dupOverwriting}>Cancel</Button>
+              <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={handleOverwrite} disabled={dupOverwriting}>
+                {dupOverwriting ? "Overwriting..." : "Overwrite"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

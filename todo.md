@@ -859,3 +859,8 @@
 - [ ] Lock Bagel Factory PIN (same as other positions)
 - [x] Remove general Dozen/Unit toggle from Bagel Orders, add per-item doz./unit selector next to each bagel item (all 3 forms)
 - [x] Update ReportDetailRenderer and BagelProduction for per-item units
+
+# Duplicate Bagel Order Detection
+- [x] Add backend endpoint to check for existing bagel orders by date + store
+- [x] Add duplicate detection prompt to Bagel Orders form (all 3 locations: DirectChecklist, ChecklistViewer, PositionChecklists)
+- [x] Show previous submission details and option to overwrite or cancel
