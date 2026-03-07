@@ -869,3 +869,5 @@
 - [x] Add DZ/Units labels alongside numbers in Bagel Production table
 - [x] Smart conversion: whole numbers and .5 stay as DZ, everything else converts to Units (×12)
 - [x] Apply same logic to per-store columns and Total column
+
+- [x] Total column on Bagel Production should always display in dozens (DZ)

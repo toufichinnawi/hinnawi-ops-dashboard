@@ -69,6 +69,16 @@ function formatDozenValue(dozenVal: number): { display: string; isDz: boolean } 
   }
 }
 
+/**
+ * Always format as dozens — used for the Total column.
+ * Shows the value in DZ with up to 1 decimal place.
+ */
+function formatAlwaysDZ(dozenVal: number): string {
+  if (dozenVal === 0) return "—";
+  const formatted = dozenVal % 1 === 0 ? dozenVal.toString() : dozenVal.toFixed(1);
+  return `${formatted} DZ`;
+}
+
 interface BagelOrderRow {
   storeId: string;
   storeName: string;
@@ -278,7 +288,6 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
                   <tbody>
                     {BAGEL_TYPES.map(type => {
                       const rowTotal = storeIds.reduce((sum, id) => sum + (byStore[id]?.[type] || 0), 0);
-                      const totalFormatted = formatDozenValue(rowTotal);
                       return (
                         <tr key={type} className="border-t hover:bg-muted/30 transition-colors">
                           <td className="p-3 text-sm font-medium">{type}</td>
@@ -298,7 +307,7 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
                             );
                           })}
                           <td className="p-3 text-center font-mono text-sm font-semibold bg-muted/30">
-                            {rowTotal > 0 ? totalFormatted.display : "—"}
+                            {formatAlwaysDZ(rowTotal)}
                           </td>
                         </tr>
                       );
@@ -316,7 +325,7 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
                         );
                       })}
                       <td className="p-3 text-center font-mono text-sm bg-[#D4A853]/10 text-[#D4A853]">
-                        {totalDozens > 0 ? formatDozenValue(totalDozens).display : "—"}
+                        {formatAlwaysDZ(totalDozens)}
                       </td>
                     </tr>
                   </tbody>
