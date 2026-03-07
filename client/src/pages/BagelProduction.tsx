@@ -43,6 +43,32 @@ function getStoreColor(storeId: string): string {
   return store?.color || "#6B7280";
 }
 
+/**
+ * Smart DZ/Units formatter:
+ * - Whole numbers (1, 2, 3...) → "1 DZ", "2 DZ"
+ * - Whole + 0.5 (0.5, 1.5, 2.5...) → "0.5 DZ", "1.5 DZ"
+ * - Anything else (0.3, 1.3, 5.7...) → convert to units (×12) → "4 Units", "16 Units"
+ *
+ * The value coming in is always in dozens.
+ */
+function formatDozenValue(dozenVal: number): { display: string; isDz: boolean } {
+  if (dozenVal === 0) return { display: "—", isDz: true };
+
+  // Check if the value is a clean dozen amount (whole number or .5)
+  const remainder = dozenVal % 1;
+  const isCleanDz = remainder === 0 || Math.abs(remainder) === 0.5;
+
+  if (isCleanDz) {
+    // Show as DZ
+    const formatted = dozenVal % 1 === 0 ? dozenVal.toString() : dozenVal.toFixed(1);
+    return { display: `${formatted} DZ`, isDz: true };
+  } else {
+    // Convert to units
+    const units = Math.round(dozenVal * 12);
+    return { display: `${units} Units`, isDz: false };
+  }
+}
+
 interface BagelOrderRow {
   storeId: string;
   storeName: string;
@@ -229,7 +255,7 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
             <CardHeader>
               <CardTitle className="text-base">Total Orders by Bagel Type</CardTitle>
               <p className="text-xs text-muted-foreground">
-                {dateFilter.label} — All quantities in dozens
+                {dateFilter.label} — Quantities shown as DZ (dozens) or Units
               </p>
             </CardHeader>
             <CardContent>
@@ -252,25 +278,27 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
                   <tbody>
                     {BAGEL_TYPES.map(type => {
                       const rowTotal = storeIds.reduce((sum, id) => sum + (byStore[id]?.[type] || 0), 0);
+                      const totalFormatted = formatDozenValue(rowTotal);
                       return (
                         <tr key={type} className="border-t hover:bg-muted/30 transition-colors">
                           <td className="p-3 text-sm font-medium">{type}</td>
-                          {storeIds.map(id => (
-                            <td key={id} className="p-3 text-center font-mono text-sm">
-                              {byStore[id]?.[type] ? (
-                                <span className={cn(
-                                  "font-semibold",
-                                  byStore[id][type] > 0 ? "text-foreground" : "text-muted-foreground"
-                                )}>
-                                  {byStore[id][type] % 1 === 0 ? byStore[id][type] : byStore[id][type].toFixed(1)}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground/40">—</span>
-                              )}
-                            </td>
-                          ))}
-                          <td className="p-3 text-center font-mono text-sm font-bold bg-muted/30">
-                            {rowTotal > 0 ? (rowTotal % 1 === 0 ? rowTotal : rowTotal.toFixed(1)) : "—"}
+                          {storeIds.map(id => {
+                            const val = byStore[id]?.[type] || 0;
+                            const formatted = formatDozenValue(val);
+                            return (
+                              <td key={id} className="p-3 text-center font-mono text-sm">
+                                {val > 0 ? (
+                                  <span className="font-semibold text-foreground">
+                                    {formatted.display}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground/40">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td className="p-3 text-center font-mono text-sm font-semibold bg-muted/30">
+                            {rowTotal > 0 ? totalFormatted.display : "—"}
                           </td>
                         </tr>
                       );
@@ -280,14 +308,15 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
                       <td className="p-3 text-sm">TOTAL</td>
                       {storeIds.map(id => {
                         const storeTotal = BAGEL_TYPES.reduce((sum, t) => sum + (byStore[id]?.[t] || 0), 0);
+                        const formatted = formatDozenValue(storeTotal);
                         return (
                           <td key={id} className="p-3 text-center font-mono text-sm">
-                            {storeTotal > 0 ? (storeTotal % 1 === 0 ? storeTotal : storeTotal.toFixed(1)) : "—"}
+                            {storeTotal > 0 ? formatted.display : "—"}
                           </td>
                         );
                       })}
                       <td className="p-3 text-center font-mono text-sm bg-[#D4A853]/10 text-[#D4A853]">
-                        {totalDozens > 0 ? (totalDozens % 1 === 0 ? totalDozens : totalDozens.toFixed(1)) : "—"}
+                        {totalDozens > 0 ? formatDozenValue(totalDozens).display : "—"}
                       </td>
                     </tr>
                   </tbody>
@@ -308,7 +337,6 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
                   .sort((a, b) => b.orderDate.localeCompare(a.orderDate))
                   .map((order, idx) => {
                     const nonZeroItems = order.orders.filter((o: any) => parseFloat(o.quantity) > 0);
-                    const orderTotal = nonZeroItems.reduce((sum: number, o: any) => sum + (parseFloat(o.quantity) || 0), 0);
                     return (
                       <div key={idx} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
                         <div className="flex items-center justify-between mb-2">
@@ -320,17 +348,21 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
                               {new Date(order.orderDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                             </span>
                           </div>
-                          <span className="text-xs font-mono font-semibold bg-[#D4A853]/10 text-[#D4A853] px-2 py-0.5 rounded">
-                            {orderTotal % 1 === 0 ? orderTotal : orderTotal.toFixed(1)} items
-                          </span>
                         </div>
                         {nonZeroItems.length > 0 ? (
                           <div className="flex flex-wrap gap-2">
-                            {nonZeroItems.map((item: any, i: number) => (
-                              <span key={i} className="text-xs bg-muted px-2 py-1 rounded">
-                                {item.type}: <span className="font-mono font-semibold">{item.quantity}</span> <span className="text-muted-foreground">{item.unit === "unit" ? "pcs" : "doz."}</span>
-                              </span>
-                            ))}
+                            {nonZeroItems.map((item: any, i: number) => {
+                              const qty = parseFloat(item.quantity) || 0;
+                              const itemUnit = item.unit || order.globalUnit || "dozen";
+                              // Convert to dozens first, then format
+                              const dozenVal = itemUnit === "unit" ? qty / 12 : qty;
+                              const formatted = formatDozenValue(dozenVal);
+                              return (
+                                <span key={i} className="text-xs bg-muted px-2 py-1 rounded">
+                                  {item.type}: <span className="font-mono font-semibold">{formatted.display}</span>
+                                </span>
+                              );
+                            })}
                           </div>
                         ) : (
                           <p className="text-xs text-muted-foreground">No items ordered</p>

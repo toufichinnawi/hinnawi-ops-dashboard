@@ -864,3 +864,8 @@
 - [x] Add backend endpoint to check for existing bagel orders by date + store
 - [x] Add duplicate detection prompt to Bagel Orders form (all 3 locations: DirectChecklist, ChecklistViewer, PositionChecklists)
 - [x] Show previous submission details and option to overwrite or cancel
+
+# Bagel Production DZ/Units Display
+- [x] Add DZ/Units labels alongside numbers in Bagel Production table
+- [x] Smart conversion: whole numbers and .5 stay as DZ, everything else converts to Units (×12)
+- [x] Apply same logic to per-store columns and Total column
