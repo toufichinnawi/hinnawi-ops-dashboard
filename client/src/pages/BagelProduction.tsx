@@ -14,6 +14,11 @@ const BAGEL_TYPES = [
   "Cinnamon Sugar Bagel", "Cinnamon Raisin Bagel", "Blueberry Bagel", "Coconut Bagel",
 ];
 
+// White Dough bagels: 1 DZ = 1 Kg
+const WHITE_DOUGH_TYPES = [
+  "Sesame Bagel", "Everything Bagel", "Plain Bagel", "Poppy Seeds Bagel",
+];
+
 // Map various location formats to a canonical store ID
 function normalizeLocation(loc: string): string {
   const lower = loc.toLowerCase().trim();
@@ -160,6 +165,9 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
 
   const totalDozens = Object.values(aggregatedByType).reduce((a, b) => a + b, 0);
 
+  // White Dough total in Kg (1 DZ = 1 Kg)
+  const whiteDoughKg = WHITE_DOUGH_TYPES.reduce((sum, t) => sum + (aggregatedByType[t] || 0), 0);
+
   // Aggregate by store: for each store, total dozens per type
   const byStore = useMemo(() => {
     const storeMap: Record<string, Record<string, number>> = {};
@@ -217,7 +225,7 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-4 pb-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Orders</p>
@@ -234,6 +242,13 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
           <CardContent className="pt-4 pb-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Units</p>
             <p className="text-2xl font-mono font-bold mt-1">{(totalDozens * 12).toFixed(0)}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-[#D4A853]/30 bg-[#D4A853]/5">
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs text-[#D4A853] uppercase tracking-wide font-medium">White Dough</p>
+            <p className="text-2xl font-mono font-bold mt-1">{whiteDoughKg % 1 === 0 ? whiteDoughKg : whiteDoughKg.toFixed(1)} <span className="text-sm font-semibold">Kg</span></p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Sesame, Everything, Plain, Poppy</p>
           </CardContent>
         </Card>
         <Card>

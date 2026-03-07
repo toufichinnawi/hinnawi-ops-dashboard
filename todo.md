@@ -871,3 +871,5 @@
 - [x] Apply same logic to per-store columns and Total column
 
 - [x] Total column on Bagel Production should always display in dozens (DZ)
+
+- [x] Add White Dough (Kg) summary card to Bagel Production (Sesame + Everything + Plain + Poppy, 1 DZ = 1 Kg)
