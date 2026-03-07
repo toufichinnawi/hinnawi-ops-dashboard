@@ -873,3 +873,7 @@
 - [x] Total column on Bagel Production should always display in dozens (DZ)
 
 - [x] Add White Dough (Kg) summary card to Bagel Production (Sesame + Everything + Plain + Poppy, 1 DZ = 1 Kg)
+
+# Bagel Production Portal Tabs
+- [x] Add Bagel Production tab to Operations Manager portal (all stores view)
+- [x] Add Bagel Production tab to Store Manager portal (filtered by their store)

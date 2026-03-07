@@ -98,6 +98,7 @@ const POSITIONS: PositionDef[] = [
       si("reports", "Reports", FileText, "info", { infoContent: "reports" }),
       si("ops-audit", "Ops. Mgr Weekly Audit", ClipboardCheck, "checklist", { checklistType: "ops-manager-checklist" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
+      si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
     ],
   },
   {
@@ -121,6 +122,7 @@ const POSITIONS: PositionDef[] = [
       si("equipment", "Equipment & Maintenance", Wrench, "checklist", { checklistType: "equipment-maintenance" }),
       si("training", "Training Evaluation", GraduationCap, "checklist", { checklistType: "training-evaluation" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
+      si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
     ],
   },
   {
@@ -972,9 +974,11 @@ function PortalInfoPage({
   }
 
   if (pageId === "bagel-production") {
+    // Ops Manager and Bagel Factory see all stores; Store/Asst Manager see only their store
+    const bagelStoreFilter = store?.storeCode || undefined;
     return (
       <div className="max-w-[1400px]">
-        <BagelProductionContent defaultToToday />
+        <BagelProductionContent defaultToToday storeFilter={bagelStoreFilter} />
       </div>
     );
   }

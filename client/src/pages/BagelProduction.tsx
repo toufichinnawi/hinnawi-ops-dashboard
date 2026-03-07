@@ -96,8 +96,9 @@ interface BagelOrderRow {
 /**
  * Reusable Bagel Production content — used in both admin dashboard and portal.
  * @param defaultToToday - If true, defaults the date filter to "Today" instead of "Last 7 Days"
+ * @param storeFilter - If set, locks the view to a specific store (e.g. "pk", "mk") and hides the store selector
  */
-export function BagelProductionContent({ defaultToToday }: { defaultToToday?: boolean } = {}) {
+export function BagelProductionContent({ defaultToToday, storeFilter }: { defaultToToday?: boolean; storeFilter?: string } = {}) {
   const [dateFilter, setDateFilter] = useState<DateFilterValue>(() => {
     if (defaultToToday) {
       const today = new Date();
@@ -108,7 +109,7 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
     }
     return getDefaultDateFilter();
   });
-  const [selectedStore, setSelectedStore] = useState<string>("all");
+  const [selectedStore, setSelectedStore] = useState<string>(storeFilter || "all");
 
   const fromDate = format(dateFilter.from, "yyyy-MM-dd");
   const toDate = format(dateFilter.to, "yyyy-MM-dd");
@@ -210,16 +211,18 @@ export function BagelProductionContent({ defaultToToday }: { defaultToToday?: bo
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <select
-            value={selectedStore}
-            onChange={e => setSelectedStore(e.target.value)}
-            className="h-9 rounded-md border border-border bg-background px-3 text-sm"
-          >
-            <option value="all">All Stores</option>
-            {allStoreOptions.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+          {!storeFilter && (
+            <select
+              value={selectedStore}
+              onChange={e => setSelectedStore(e.target.value)}
+              className="h-9 rounded-md border border-border bg-background px-3 text-sm"
+            >
+              <option value="all">All Stores</option>
+              {allStoreOptions.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          )}
           <DateFilter value={dateFilter} onChange={setDateFilter} allowFuture />
         </div>
       </div>
