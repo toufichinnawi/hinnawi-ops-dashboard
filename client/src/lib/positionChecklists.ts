@@ -32,7 +32,7 @@ export const ALL_CHECKLISTS: Record<ChecklistType, ChecklistInfo> = {
   },
   "ops-manager-checklist": {
     type: "ops-manager-checklist",
-    label: "Ops. Mgr Weekly Audit",
+    label: "Store Manager Weekly Audit",
     description:
       "Audit exterior, display, bathroom, equipment, product & service",
     icon: "🔍",
@@ -95,7 +95,7 @@ export interface PositionConfig {
 /**
  * Position → Checklist assignments (updated per user request)
  *
- * Operations Manager: Ops. Mgr Weekly Audit
+ * Operations Manager: Store Manager Weekly Audit
  * Store Manager: Store Mgr Daily Checklist, Weekly Scorecard, Performance Evaluation, Bagel Orders
  * Assistant Manager: Equipment & Maintenance, Training Evaluation
  * Staff: Leftovers & Waste

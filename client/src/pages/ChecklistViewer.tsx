@@ -342,9 +342,9 @@ function DashboardChecklistForm({
     case "ops-manager-checklist":
       return (
         <SectionChecklistForm
-          title="Operations Manager Checklist (Weekly Audit)"
+          title="Store Manager Weekly Audit"
           sections={AUDIT_SECTIONS}
-          reportType="Operations Manager Checklist (Weekly Audit)"
+          reportType="Store Manager Weekly Audit"
           storeCode={storeCode}
           storeName={storeName}
           positionLabel={positionLabel}
@@ -834,7 +834,7 @@ function SectionChecklistForm({
                 );
               })}
             </div>
-            {reportType === "Operations Manager Checklist (Weekly Audit)" && (
+            {(reportType === "Store Manager Weekly Audit" || reportType === "Operations Manager Checklist (Weekly Audit)") && (
               <div className="mt-4 pt-3 border-t border-border/30">
                 <PhotoUpload
                   photos={sectionPhotos[section.title] || []}

@@ -96,7 +96,7 @@ const POSITIONS: PositionDef[] = [
       si("scorecard", "Operations Scorecard", BarChart3, "info", { infoContent: "scorecard" }),
       si("store-perf", "Store Performance", TrendingUp, "info", { infoContent: "store-performance" }),
       si("reports", "Reports", FileText, "info", { infoContent: "reports" }),
-      si("ops-audit", "Ops. Mgr Weekly Audit", ClipboardCheck, "checklist", { checklistType: "ops-manager-checklist" }),
+      si("ops-audit", "Store Manager Weekly Audit", ClipboardCheck, "checklist", { checklistType: "ops-manager-checklist" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
       si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
     ],

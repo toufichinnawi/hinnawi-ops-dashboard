@@ -877,3 +877,5 @@
 # Bagel Production Portal Tabs
 - [x] Add Bagel Production tab to Operations Manager portal (all stores view)
 - [x] Add Bagel Production tab to Store Manager portal (filtered by their store)
+
+- [x] Rename "Ops. Mgr Weekly Audit" to "Store Manager Weekly Audit" across entire app

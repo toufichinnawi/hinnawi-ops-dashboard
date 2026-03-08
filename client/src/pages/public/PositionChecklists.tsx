@@ -321,7 +321,7 @@ export function ChecklistForm({ type, storeCode, storeName, positionLabel, onBac
     case "manager-checklist":
       return <ManagerChecklistForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
     case "ops-manager-checklist":
-      return <SectionChecklistForm title="Operations Manager Checklist (Weekly Audit)" sections={AUDIT_SECTIONS} reportType="Operations Manager Checklist (Weekly Audit)" storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} useRating isWeekly />;
+      return <SectionChecklistForm title="Store Manager Weekly Audit" sections={AUDIT_SECTIONS} reportType="Store Manager Weekly Audit" storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} useRating isWeekly />;
     case "assistant-manager-checklist":
       return <SectionChecklistForm title="Assistant Manager Checklist" sections={ASST_MGR_SECTIONS} reportType="Assistant Manager Checklist" storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} useRating />;
     case "waste-report":
@@ -688,7 +688,7 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
               </div>
             ))}
           </CardContent>
-          {reportType === "Operations Manager Checklist (Weekly Audit)" && (
+          {(reportType === "Store Manager Weekly Audit" || reportType === "Operations Manager Checklist (Weekly Audit)") && (
             <div className="px-6 pb-6">
               <PhotoUpload
                 photos={sectionPhotos[section.title] || []}
