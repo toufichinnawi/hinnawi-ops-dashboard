@@ -35,6 +35,7 @@ const REPORT_TYPE_NORMALIZE: Record<string, string> = {
   "Operations Manager Checklist (Weekly Audit)": "ops-manager-checklist",
   "Ops. Mgr Weekly Audit": "ops-manager-checklist",
   "Store Manager Weekly Audit": "ops-manager-checklist",
+  "Store Weekly Audit": "ops-manager-checklist",
   "Weekly Store Audit": "ops-manager-checklist",
   "Assistant Manager Checklist": "assistant-manager-checklist",
   "Leftovers & Waste Report": "waste-report",
@@ -643,7 +644,7 @@ export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {})
         alertList.push({
           store: s.code,
           storeColor: s.storeInfo.color,
-          message: "Store Manager Weekly Audit has NOT been completed",
+          message: "Store Weekly Audit has NOT been completed",
           severity: "critical",
         });
       }

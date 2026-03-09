@@ -125,13 +125,13 @@ const OPS_TASKS = [
   { en: "Entrance steps", fr: "Marches d'entrée" },
 ];
 
-const AUDIT_SECTIONS = [
-  { title: "Exterior", items: ["Signage clean and visible", "Entrance clean and inviting", "Windows clean", "Outdoor seating area clean (if applicable)", "Garbage area clean"] },
-  { title: "Display & Merchandising", items: ["Pastry display full and attractive", "Coffee bags display organized", "Drink fridge stocked and clean", "Menu boards clean and updated", "Prices displayed for all items"] },
-  { title: "Bathroom", items: ["Clean and sanitized", "Soap and paper towels stocked", "Mirror clean", "Floor clean", "No odor"] },
-  { title: "Equipment", items: ["Espresso machine clean and functioning", "Grinder clean", "Filter coffee machine clean", "Grill clean and at temp", "Fridge temps in range", "Dishwasher clean and functioning"] },
-  { title: "Product Quality", items: ["Bagels fresh and properly stored", "Vegetables fresh and crisp", "Cream cheese and spreads fresh", "Coffee taste test passed", "Pastries fresh and displayed well"] },
-  { title: "Service & Staff", items: ["Staff in proper uniform (Hinnawi shirt, hair net)", "Greeting customers promptly", "Line moving efficiently", "Cash area clean and organized", "Team energy and attitude positive"] },
+const AUDIT_SECTIONS_SIMPLE = [
+  "Exterior",
+  "Display",
+  "Bathroom",
+  "Equipment",
+  "Product Quality",
+  "Service Quality",
 ];
 
 
@@ -321,7 +321,7 @@ export function ChecklistForm({ type, storeCode, storeName, positionLabel, onBac
     case "manager-checklist":
       return <ManagerChecklistForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
     case "ops-manager-checklist":
-      return <SectionChecklistForm title="Store Manager Weekly Audit" sections={AUDIT_SECTIONS} reportType="Store Manager Weekly Audit" storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} useRating isWeekly />;
+      return <SimpleAuditFormPublic storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
     case "assistant-manager-checklist":
       return <SectionChecklistForm title="Assistant Manager Checklist" sections={ASST_MGR_SECTIONS} reportType="Assistant Manager Checklist" storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} useRating />;
     case "waste-report":
@@ -592,6 +592,126 @@ function ManagerChecklistForm({ storeCode, storeName, positionLabel, onBack }: {
   );
 }
 
+// ─── Simple Audit Form (6 sections: rating + comment + photo) ───
+
+function SimpleAuditFormPublic({ storeCode, storeName, positionLabel, onBack }: {
+  storeCode: string; storeName: string; positionLabel: string; onBack: () => void;
+}) {
+  const defaultWeek = useMemo(() => getDefaultWeekRange(), []);
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `store-weekly-audit-${storeCode}`,
+    { name: "", dateOfSubmission: new Date().toISOString().split("T")[0], weekStart: defaultWeek.start, weekEnd: defaultWeek.end, ratings: {} as Record<string, number>, sectionComments: {} as Record<string, string>, notes: "" }
+  );
+  const { name, dateOfSubmission, weekStart, weekEnd, ratings, sectionComments, notes } = draft;
+  const setName = (v: string) => setDraft(d => ({ ...d, name: v }));
+  const setDateOfSubmission = (v: string) => setDraft(d => ({ ...d, dateOfSubmission: v }));
+  const setWeekStart = (v: string) => setDraft(d => ({ ...d, weekStart: v }));
+  const setWeekEnd = (v: string) => setDraft(d => ({ ...d, weekEnd: v }));
+  const setRating = (section: string, v: number) => setDraft(d => ({ ...d, ratings: { ...d.ratings, [section]: v } }));
+  const setComment = (section: string, v: string) => setDraft(d => ({ ...d, sectionComments: { ...d.sectionComments, [section]: v } }));
+  const setNotes = (v: string) => setDraft(d => ({ ...d, notes: v }));
+  const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
+
+  const allRatings = Object.values(ratings).filter(v => v > 0);
+  const avg = allRatings.length > 0 ? (allRatings.reduce((a, b) => a + b, 0) / allRatings.length).toFixed(2) : "0.00";
+
+  const handleSubmit = async () => {
+    if (!name.trim()) { toast.error("Please enter your name"); return; }
+    const photoUrls: Record<string, string[]> = {};
+    for (const [section, photos] of Object.entries(sectionPhotos)) {
+      const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
+      if (urls.length > 0) photoUrls[section] = urls;
+    }
+    await submitWithDuplicateCheck(
+      {
+        submitterName: name.trim(),
+        reportType: "Store Weekly Audit",
+        location: storeName,
+        reportDate: weekStart,
+        data: {
+          dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd,
+          sections: AUDIT_SECTIONS_SIMPLE.map(s => ({ title: s, rating: ratings[s] || 0, comment: sectionComments[s] || "", photos: photoUrls[s] || [] })),
+          notes, averageScore: avg, submittedVia: `Public - ${positionLabel}`,
+        },
+        totalScore: avg,
+      },
+      () => { setSubmitted(true); clearDraft(); toast.success("Store Weekly Audit submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
+  };
+
+  if (submitted) return <SuccessScreen message={`Store Weekly Audit for ${storeName} submitted. Score: ${avg}/5`} onNew={() => { setSubmitted(false); setDraft(d => ({ ...d, ratings: {}, sectionComments: {}, notes: "" })); setSectionPhotos({}); }} onBack={onBack} />;
+
+  return (
+    <PublicFormLayout title="Store Weekly Audit" subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div className="space-y-2"><Label>Date of Submission</Label><Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2"><Label>Start Date *</Label><Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} /></div>
+            <div className="space-y-2"><Label>End Date *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
+          </div>
+        </CardContent>
+      </Card>
+      <Badge variant="outline" className="text-lg px-4 py-2 border-[#faa600] text-[#faa600]">Score: {avg} / 5</Badge>
+      {AUDIT_SECTIONS_SIMPLE.map((section) => {
+        const photos = sectionPhotos[section] || [];
+        const photoCount = photos.filter(p => p.status === "success").length;
+        return (
+          <Card key={section}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">{section}</CardTitle>
+                <StarRating value={ratings[section] || 0} onChange={(v) => setRating(section, v)} />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea
+                value={sectionComments[section] || ""}
+                onChange={(e) => setComment(section, e.target.value)}
+                placeholder={`Comments about ${section.toLowerCase()}...`}
+                rows={2}
+              />
+              <div>
+                <button
+                  type="button"
+                  onClick={() => { if (!sectionPhotos[section]) setSectionPhotos(prev => ({ ...prev, [section]: [] })); }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors mb-2",
+                    photoCount > 0 ? "bg-[#faa600]/15 text-[#faa600] hover:bg-[#faa600]/25" : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  {photoCount > 0 ? `${photoCount} photo${photoCount > 1 ? "s" : ""}` : "Attach Photo"}
+                </button>
+                {sectionPhotos[section] !== undefined && (
+                  <PhotoUpload
+                    photos={photos}
+                    onChange={(newPhotos) => setSectionPhotos(prev => ({ ...prev, [section]: newPhotos }))}
+                    maxPhotos={5}
+                    label={`${section} Photos`}
+                  />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+      <Card><CardContent className="pt-6"><Label>Additional Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="General notes..." /></CardContent></Card>
+      <div className="flex flex-col gap-3">
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Audit"}</Button>
+        {draftButton}
+      </div>
+      {duplicateDialog}
+    </PublicFormLayout>
+  );
+}
+
 // ─── Section-based Checklist Form (Audit, Deep Cleaning, Asst Mgr, Store Mgr) ───
 
 function SectionChecklistForm({ title, sections, reportType, storeCode, storeName, positionLabel, onBack, useRating, isWeekly }: {
@@ -687,7 +807,7 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
               const photos = itemPhotos[photoKey] || [];
               const photoCount = photos.filter(p => p.status === "success").length;
               const isExpanded = expandedPhotoItem === photoKey;
-              const isAuditForm = reportType === "Store Manager Weekly Audit" || reportType === "Operations Manager Checklist (Weekly Audit)";
+              const isAuditForm = reportType === "Store Weekly Audit" || reportType === "Operations Manager Checklist (Weekly Audit)";
               return (
                 <div key={ii} className="space-y-2">
                   {useRating ? (

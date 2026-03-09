@@ -140,34 +140,53 @@ function SectionChecklistDetail({ data }: { data: any }) {
         {sections.map((section: any, si: number) => (
           <div key={si}>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{section.title}</p>
-            <div className="space-y-1.5">
-              {(section.items || []).map((item: any, ii: number) => {
-                const itemPhotoKey = `${section.title}::${ii}`;
-                const itemPhotosArr = data.itemPhotos?.[itemPhotoKey];
-                return (
-                  <div key={ii}>
-                    <div className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
-                      <p className="text-sm">{item.item || item.label || `Item ${ii + 1}`}</p>
-                      <div className="flex items-center gap-2">
-                        {item.rating !== undefined ? (
-                          <Stars rating={item.rating} />
-                        ) : item.checked !== undefined ? (
-                          <CheckIcon checked={item.checked} />
-                        ) : null}
-                        {item.comment && (
-                          <span className="text-xs text-muted-foreground italic max-w-[200px] truncate">"{item.comment}"</span>
-                        )}
-                      </div>
-                    </div>
-                    {itemPhotosArr && itemPhotosArr.length > 0 && (
-                      <div className="mt-1 ml-2">
-                        <PhotoGallery photos={itemPhotosArr} />
-                      </div>
-                    )}
+            {/* Simple format: section has direct rating + comment (no sub-items) */}
+            {!section.items || section.items.length === 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
+                  <p className="text-sm font-medium">{section.title}</p>
+                  {section.rating !== undefined && <Stars rating={section.rating} />}
+                </div>
+                {section.comment && (
+                  <p className="text-sm text-muted-foreground italic pl-2">"{section.comment}"</p>
+                )}
+                {section.photos && section.photos.length > 0 && (
+                  <div className="mt-1 ml-2">
+                    <PhotoGallery photos={section.photos} label={`${section.title} Photos`} />
                   </div>
-                );
-              })}
-            </div>
+                )}
+              </div>
+            ) : (
+              /* Detailed format: section has sub-items */
+              <div className="space-y-1.5">
+                {(section.items || []).map((item: any, ii: number) => {
+                  const itemPhotoKey = `${section.title}::${ii}`;
+                  const itemPhotosArr = data.itemPhotos?.[itemPhotoKey];
+                  return (
+                    <div key={ii}>
+                      <div className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
+                        <p className="text-sm">{item.item || item.label || `Item ${ii + 1}`}</p>
+                        <div className="flex items-center gap-2">
+                          {item.rating !== undefined ? (
+                            <Stars rating={item.rating} />
+                          ) : item.checked !== undefined ? (
+                            <CheckIcon checked={item.checked} />
+                          ) : null}
+                          {item.comment && (
+                            <span className="text-xs text-muted-foreground italic max-w-[200px] truncate">"{item.comment}"</span>
+                          )}
+                        </div>
+                      </div>
+                      {itemPhotosArr && itemPhotosArr.length > 0 && (
+                        <div className="mt-1 ml-2">
+                          <PhotoGallery photos={itemPhotosArr} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {data.photos && data.photos[section.title] && (
               <div className="mt-2">
                 <PhotoGallery photos={data.photos[section.title]} label={`${section.title} Photos`} />
@@ -660,6 +679,7 @@ const REPORT_TYPE_NORMALIZE: Record<string, string> = {
   "Operations Manager Checklist (Weekly Audit)": "ops-manager-checklist",
   "Ops. Mgr Weekly Audit": "ops-manager-checklist",
   "Store Manager Weekly Audit": "ops-manager-checklist",
+  "Store Weekly Audit": "ops-manager-checklist",
   "Weekly Store Audit": "ops-manager-checklist",
   "Assistant Manager Checklist": "assistant-manager-checklist",
   "Leftovers & Waste Report": "waste-report",

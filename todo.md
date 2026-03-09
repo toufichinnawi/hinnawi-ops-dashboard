@@ -894,3 +894,12 @@
 - [x] Apply to all form locations (DirectChecklist, ChecklistViewer, PositionChecklists)
 
 - [x] Rename "Store Mgr Daily Checklist" to "Store Weekly Checklist" across dashboard and portal
+
+# Store Weekly Audit Rename & Update
+- [x] Rename "Store Manager Weekly Audit" to "Store Weekly Audit" across entire app
+- [x] Update audit to 6-section format matching legacy app (Exterior, Display, Bathroom, Equipment, Product Quality, Service Quality)
+- [x] Each section: 5-star rating + comments textarea + photo upload (no sub-items)
+- [x] Updated all 3 form locations (DirectChecklist, ChecklistViewer, PositionChecklists)
+- [x] Updated ReportDetailRenderer to display new simple section format (backward compat for old sub-item format)
+- [x] Ensure per-item photo/image attachment feature works on updated audit
+- [x] All 132 tests passing

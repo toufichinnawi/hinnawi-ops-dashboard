@@ -54,30 +54,12 @@ const OPS_TASKS = [
 ];
 
 const AUDIT_SECTIONS = [
-  {
-    title: "Exterior & Entrance",
-    items: ["Signage visible & clean", "Entrance swept & inviting", "Outdoor seating tidy", "Windows streak-free"],
-  },
-  {
-    title: "Display & Merchandising",
-    items: ["Pastry case fully stocked", "Price tags accurate", "Coffee bags neatly arranged", "Seasonal promos displayed"],
-  },
-  {
-    title: "Bathroom & Cleanliness",
-    items: ["Bathroom spotless", "Soap & paper stocked", "Floors mopped", "Trash emptied"],
-  },
-  {
-    title: "Equipment",
-    items: ["Espresso machine clean", "Grinder calibrated", "Fridge temps logged", "Oven functioning"],
-  },
-  {
-    title: "Product Quality",
-    items: ["Bagels fresh & warm", "Cream cheese portioned", "Coffee taste-tested", "Pastries within sell-by"],
-  },
-  {
-    title: "Service & Staff",
-    items: ["Staff in uniform", "Greeting within 10s", "Order accuracy checked", "Upselling observed"],
-  },
+  "Exterior",
+  "Display",
+  "Bathroom",
+  "Equipment",
+  "Product Quality",
+  "Service Quality",
 ];
 
 const SECTION_TASKS = {
@@ -179,7 +161,7 @@ const SLUG_TO_CHECKLIST: Record<string, ChecklistType> = {
 
 const SLUG_TO_LABEL: Record<string, string> = {
   "operations": "Store Weekly Checklist",
-  "weekly-audit": "Store Manager Weekly Audit",
+  "weekly-audit": "Store Weekly Audit",
   "weekly-scorecard": "Weekly Scorecard",
   "performance": "Performance Evaluation",
   "waste": "Leftovers & Waste",
@@ -280,32 +262,33 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
   const defaultWeekAudit = useMemo(() => getDefaultWeekRange(), []);
   const [weekStart, setWeekStart] = useState(defaultWeekAudit.start);
   const [weekEnd, setWeekEnd] = useState(defaultWeekAudit.end);
-  const [ratings, setRatings] = useState<Record<string, Record<number, number>>>({});
+  const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [sectionComments, setSectionComments] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
-  // Per-item photos: key is "sectionTitle::itemIndex"
-  const [itemPhotos, setItemPhotos] = useState<Record<string, UploadedPhoto[]>>({});
-  const [expandedPhotoItem, setExpandedPhotoItem] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = () => {
     if (!auditorName.trim() || !selectedStore) { toast.error("Please fill in your name and select a store"); return; }
     // Compute average score across all sections
-    const allRatings = Object.values(ratings).flatMap(section => Object.values(section));
+    const allRatings = Object.values(ratings).filter(v => v > 0);
     const avg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 0;
-    // Collect photo URLs per section (legacy)
+    // Collect photo URLs per section
     const photoUrls: Record<string, string[]> = {};
     for (const [section, photos] of Object.entries(sectionPhotos)) {
       const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
       if (urls.length > 0) photoUrls[section] = urls;
     }
-    // Collect per-item photo URLs
-    const itemPhotoUrls: Record<string, string[]> = {};
-    for (const [key, photos] of Object.entries(itemPhotos)) {
-      const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
-      if (urls.length > 0) itemPhotoUrls[key] = urls;
-    }
-    const payload = { reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate: weekStart, data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, ratings, notes, photos: photoUrls, itemPhotos: itemPhotoUrls }, totalScore: avg.toFixed(2) };
+    const payload = {
+      reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate: weekStart,
+      data: {
+        dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd,
+        sections: AUDIT_SECTIONS.map(s => ({ title: s, rating: ratings[s] || 0, comment: sectionComments[s] || "", photos: photoUrls[s] || [] })),
+        notes,
+        averageScore: avg.toFixed(2),
+      },
+      totalScore: avg.toFixed(2),
+    };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Audit submitted!");
@@ -315,7 +298,7 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
       <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
       <h3 className="text-xl font-serif">Audit Submitted</h3>
-      <p className="text-muted-foreground">Store Manager Weekly Audit for {currentStoreName}</p>
+      <p className="text-muted-foreground">Store Weekly Audit for {currentStoreName}</p>
       <Button onClick={onBack} variant="outline">Back</Button>
     </motion.div>
   );
@@ -331,51 +314,50 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
           <div className="space-y-1.5"><Label>End Date *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
         </div>
       </CardContent></Card>
-      {AUDIT_SECTIONS.map((section) => (
-        <Card key={section.title}><CardContent className="pt-6 space-y-4">
-          <h3 className="font-serif text-lg">{section.title}</h3>
-          {section.items.map((item, i) => {
-            const photoKey = `${section.title}::${i}`;
-            const photos = itemPhotos[photoKey] || [];
-            const photoCount = photos.filter(p => p.status === "success").length;
-            const isExpanded = expandedPhotoItem === photoKey;
-            return (
-              <div key={i} className="border-b border-border/40 last:border-0">
-                <div className="flex items-center justify-between py-2">
-                  <p className="text-sm flex-1">{item}</p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedPhotoItem(isExpanded ? null : photoKey)}
-                      className={cn(
-                        "flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors",
-                        photoCount > 0
-                          ? "bg-[#D4A853]/15 text-[#D4A853] hover:bg-[#D4A853]/25"
-                          : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      <Camera className="w-3.5 h-3.5" />
-                      {photoCount > 0 && <span>{photoCount}</span>}
-                    </button>
-                    <StarRating value={ratings[section.title]?.[i] || 0} onChange={(v) => setRatings((prev) => ({ ...prev, [section.title]: { ...prev[section.title], [i]: v } }))} />
-                  </div>
-                </div>
-                {isExpanded && (
-                  <div className="pb-3 pl-2">
-                    <PhotoUpload
-                      photos={photos}
-                      onChange={(newPhotos) => setItemPhotos(prev => ({ ...prev, [photoKey]: newPhotos }))}
-                      maxPhotos={3}
-                      label="Item Photos"
-                    />
-                  </div>
+      {AUDIT_SECTIONS.map((section) => {
+        const photos = sectionPhotos[section] || [];
+        const photoCount = photos.filter(p => p.status === "success").length;
+        return (
+          <Card key={section}><CardContent className="pt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-serif text-lg">{section}</h3>
+              <StarRating value={ratings[section] || 0} onChange={(v) => setRatings(prev => ({ ...prev, [section]: v }))} />
+            </div>
+            <Textarea
+              value={sectionComments[section] || ""}
+              onChange={(e) => setSectionComments(prev => ({ ...prev, [section]: e.target.value }))}
+              placeholder={`Comments about ${section.toLowerCase()}...`}
+              rows={2}
+            />
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!sectionPhotos[section]) setSectionPhotos(prev => ({ ...prev, [section]: [] }));
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors mb-2",
+                  photoCount > 0
+                    ? "bg-[#D4A853]/15 text-[#D4A853] hover:bg-[#D4A853]/25"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
-              </div>
-            );
-          })}
-        </CardContent></Card>
-      ))}
-      <Card><CardContent className="pt-6 space-y-3"><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} /></CardContent></Card>
+              >
+                <Camera className="w-3.5 h-3.5" />
+                {photoCount > 0 ? `${photoCount} photo${photoCount > 1 ? "s" : ""}` : "Attach Photo"}
+              </button>
+              {sectionPhotos[section] !== undefined && (
+                <PhotoUpload
+                  photos={photos}
+                  onChange={(newPhotos) => setSectionPhotos(prev => ({ ...prev, [section]: newPhotos }))}
+                  maxPhotos={5}
+                  label={`${section} Photos`}
+                />
+              )}
+            </div>
+          </CardContent></Card>
+        );
+      })}
+      <Card><CardContent className="pt-6 space-y-3"><Label>Additional Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="General notes..." rows={3} /></CardContent></Card>
       <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Audit</Button></div>
     </div>
   );

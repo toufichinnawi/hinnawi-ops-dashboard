@@ -94,7 +94,7 @@ const navSections: NavSection[] = [
       { path: "/reports/scorecard", label: "Operations Scorecard", icon: BarChart3 },
       { path: "/checklists/portal", label: "Hinnawi Portal", icon: Users },
       { path: "/checklists/operations", label: "Store Weekly Checklist", icon: ClipboardCheck },
-      { path: "/checklists/weekly-audit", label: "Store Manager Weekly Audit", icon: ClipboardCheck },
+      { path: "/checklists/weekly-audit", label: "Store Weekly Audit", icon: ClipboardCheck },
       { path: "/checklists/weekly-scorecard", label: "Weekly Scorecard", icon: BarChart3 },
       { path: "/checklists/performance", label: "Performance Evaluation", icon: Star },
       { path: "/checklists/waste", label: "Leftovers & Waste", icon: Trash2 },

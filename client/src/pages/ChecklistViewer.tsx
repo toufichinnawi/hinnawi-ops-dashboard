@@ -85,13 +85,13 @@ const OPS_TASKS = [
   { en: "Entrance steps", fr: "Marches d'entrée" },
 ];
 
-const AUDIT_SECTIONS = [
-  { title: "Exterior", items: ["Signage clean and visible", "Entrance clean and inviting", "Windows clean", "Outdoor seating area clean (if applicable)", "Garbage area clean"] },
-  { title: "Display & Merchandising", items: ["Pastry display full and attractive", "Coffee bags display organized", "Drink fridge stocked and clean", "Menu boards clean and updated", "Prices displayed for all items"] },
-  { title: "Bathroom", items: ["Clean and sanitized", "Soap and paper towels stocked", "Mirror clean", "Floor clean", "No odor"] },
-  { title: "Equipment", items: ["Espresso machine clean and functioning", "Grinder clean", "Filter coffee machine clean", "Grill clean and at temp", "Fridge temps in range", "Dishwasher clean and functioning"] },
-  { title: "Product Quality", items: ["Bagels fresh and properly stored", "Vegetables fresh and crisp", "Cream cheese and spreads fresh", "Coffee taste test passed", "Pastries fresh and displayed well"] },
-  { title: "Service & Staff", items: ["Staff in proper uniform (Hinnawi shirt, hair net)", "Greeting customers promptly", "Line moving efficiently", "Cash area clean and organized", "Team energy and attitude positive"] },
+const AUDIT_SECTIONS_SIMPLE = [
+  "Exterior",
+  "Display",
+  "Bathroom",
+  "Equipment",
+  "Product Quality",
+  "Service Quality",
 ];
 
 const ASST_MGR_SECTIONS = [
@@ -341,16 +341,11 @@ function DashboardChecklistForm({
       );
     case "ops-manager-checklist":
       return (
-        <SectionChecklistForm
-          title="Store Manager Weekly Audit"
-          sections={AUDIT_SECTIONS}
-          reportType="Store Manager Weekly Audit"
+        <SimpleAuditForm
           storeCode={storeCode}
           storeName={storeName}
           positionLabel={positionLabel}
           onBack={onBack}
-          useRating
-          isWeekly
         />
       );
     case "assistant-manager-checklist":
@@ -820,7 +815,7 @@ function SectionChecklistForm({
                 const photos = itemPhotos[photoKey] || [];
                 const photoCount = photos.filter(p => p.status === "success").length;
                 const isExpanded = expandedPhotoItem === photoKey;
-                const isAuditForm = reportType === "Store Manager Weekly Audit" || reportType === "Operations Manager Checklist (Weekly Audit)";
+                const isAuditForm = reportType === "Store Weekly Audit" || reportType === "Operations Manager Checklist (Weekly Audit)";
                 return (
                   <div key={key} className="border-b border-border/20 last:border-0">
                     <div className="flex items-center justify-between gap-3 py-1.5">
@@ -895,6 +890,139 @@ function SectionChecklistForm({
           className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white"
         >
           {submitting ? "Submitting..." : "Submit Checklist"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Simple Audit Form (6 sections: rating + comment + photo) ───
+
+function SimpleAuditForm({ storeCode: initialStoreCode, storeName: _sn, positionLabel, onBack }: FormProps) {
+  const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
+  const [submitterName, setSubmitterName] = useState("");
+  const [dateOfSubmission, setDateOfSubmission] = useState(() => new Date().toISOString().split("T")[0]);
+  const defaultWeek = useMemo(() => getDefaultWeekRange(), []);
+  const [weekStart, setWeekStart] = useState(defaultWeek.start);
+  const [weekEnd, setWeekEnd] = useState(defaultWeek.end);
+  const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [sectionComments, setSectionComments] = useState<Record<string, string>>({});
+  const [notes, setNotes] = useState("");
+  const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const currentStoreName = stores.find(s => s.shortName === selectedStore)?.name || selectedStore;
+
+  const allRatings = Object.values(ratings).filter(v => v > 0);
+  const avg = allRatings.length > 0 ? (allRatings.reduce((a, b) => a + b, 0) / allRatings.length).toFixed(2) : "0.00";
+
+  const handleSubmit = async () => {
+    if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
+    if (!selectedStore) { toast.error("Please select a store"); return; }
+    setSubmitting(true);
+    try {
+      const photoUrls: Record<string, string[]> = {};
+      for (const [section, photos] of Object.entries(sectionPhotos)) {
+        const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
+        if (urls.length > 0) photoUrls[section] = urls;
+      }
+      await submitReport({
+        submitterName,
+        reportType: "Store Weekly Audit",
+        location: selectedStore,
+        reportDate: weekStart,
+        data: {
+          dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd,
+          sections: AUDIT_SECTIONS_SIMPLE.map(s => ({ title: s, rating: ratings[s] || 0, comment: sectionComments[s] || "", photos: photoUrls[s] || [] })),
+          notes,
+          averageScore: avg,
+        },
+        totalScore: avg,
+      });
+      setSubmitted(true);
+    } catch { toast.error("Failed to submit"); } finally { setSubmitting(false); }
+  };
+
+  if (submitted) {
+    return (
+      <SuccessCard
+        message={`Store Weekly Audit submitted for ${currentStoreName} with score ${avg}/5`}
+        onNew={() => { setRatings({}); setSectionComments({}); setNotes(""); setSectionPhotos({}); setSubmitted(false); }}
+        onBack={onBack}
+      />
+    );
+  }
+
+  return (
+    <div>
+      <FormHeader title="Store Weekly Audit" subtitle={positionLabel} onBack={onBack} />
+      <div className="space-y-4">
+        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
+        <div className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
+          <div><Label className="text-sm font-medium">Your Name</Label>
+          <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" /></div>
+          <div><Label className="text-sm font-medium">Date of Submission</Label>
+          <Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} className="mt-1.5" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label className="text-sm font-medium">Start Date *</Label>
+            <Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} className="mt-1.5" /></div>
+            <div><Label className="text-sm font-medium">End Date *</Label>
+            <Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} className="mt-1.5" /></div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>Sections: {AUDIT_SECTIONS_SIMPLE.length}</span>
+          <Badge variant="outline" className="border-[#D4A853]/30 text-[#D4A853]">Avg: {avg}/5</Badge>
+        </div>
+
+        {AUDIT_SECTIONS_SIMPLE.map((section) => {
+          const photos = sectionPhotos[section] || [];
+          const photoCount = photos.filter(p => p.status === "success").length;
+          return (
+            <div key={section} className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">{section}</h3>
+                <StarRating value={ratings[section] || 0} onChange={(v) => setRatings(prev => ({ ...prev, [section]: v }))} />
+              </div>
+              <Textarea
+                value={sectionComments[section] || ""}
+                onChange={(e) => setSectionComments(prev => ({ ...prev, [section]: e.target.value }))}
+                placeholder={`Comments about ${section.toLowerCase()}...`}
+                rows={2}
+              />
+              <div>
+                <button
+                  type="button"
+                  onClick={() => { if (!sectionPhotos[section]) setSectionPhotos(prev => ({ ...prev, [section]: [] })); }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors mb-2",
+                    photoCount > 0 ? "bg-[#D4A853]/15 text-[#D4A853] hover:bg-[#D4A853]/25" : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  {photoCount > 0 ? `${photoCount} photo${photoCount > 1 ? "s" : ""}` : "Attach Photo"}
+                </button>
+                {sectionPhotos[section] !== undefined && (
+                  <PhotoUpload
+                    photos={photos}
+                    onChange={(newPhotos) => setSectionPhotos(prev => ({ ...prev, [section]: newPhotos }))}
+                    maxPhotos={5}
+                    label={`${section} Photos`}
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="bg-card rounded-xl border border-border/60 p-5">
+          <Label className="text-sm font-medium">Additional Notes (optional)</Label>
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="General notes..." className="mt-1.5" rows={3} />
+        </div>
+
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white">
+          {submitting ? "Submitting..." : "Submit Audit"}
         </Button>
       </div>
     </div>
