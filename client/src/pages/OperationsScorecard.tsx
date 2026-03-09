@@ -30,6 +30,8 @@ interface FilterValue {
 // ─── Normalize report types from old human-readable to slug format ──
 const REPORT_TYPE_NORMALIZE: Record<string, string> = {
   "Manager Checklist": "manager-checklist",
+  "Store Weekly Checklist": "manager-checklist",
+  "Store Mgr Daily Checklist": "manager-checklist",
   "Operations Manager Checklist (Weekly Audit)": "ops-manager-checklist",
   "Ops. Mgr Weekly Audit": "ops-manager-checklist",
   "Store Manager Weekly Audit": "ops-manager-checklist",

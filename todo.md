@@ -892,3 +892,5 @@
 - [x] Upload photos to S3 storage and store URLs in the submission data
 - [x] Display attached photos in the report detail renderer
 - [x] Apply to all form locations (DirectChecklist, ChecklistViewer, PositionChecklists)
+
+- [x] Rename "Store Mgr Daily Checklist" to "Store Weekly Checklist" across dashboard and portal
