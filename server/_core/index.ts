@@ -196,12 +196,18 @@ async function startServer() {
       };
       const normalizedLocation = LOCATION_MAP[location] || location;
 
-      const { createReportSubmission, checkExistingReport, deleteReportSubmission } = await import("../db");
+      const { createReportSubmission, checkExistingReport, deleteReportSubmission, getDraft } = await import("../db");
       const { sendTeamsNotification } = await import(
         "../teamsNotify"
       );
 
-      // Check for existing report and handle overwrite
+      // Delete any existing draft for this location/type/date before submitting
+      const existingDraft = await getDraft(normalizedLocation, normalizedReportType, reportDate);
+      if (existingDraft) {
+        await deleteReportSubmission(existingDraft.id);
+      }
+
+      // Check for existing submitted report and handle overwrite
       const existing = await checkExistingReport(normalizedLocation, normalizedReportType, reportDate);
       if (existing && !overwrite) {
         return res.status(409).json({
@@ -320,6 +326,100 @@ async function startServer() {
     } catch (err) {
       console.error("[Photo Upload] Error:", err);
       res.status(500).json({ error: "Failed to upload photo" });
+    }
+  });
+
+  // ─── Draft Save/Load API (server-side drafts for weekly checklists) ───
+
+  app.post("/api/public/save-draft", async (req, res) => {
+    try {
+      const { submitterName, reportType, location, reportDate, data, totalScore } = req.body;
+      if (!reportType || !location || !reportDate) {
+        return res.status(400).json({ error: "Missing required fields: reportType, location, reportDate" });
+      }
+
+      // Normalize reportType and location (same maps as submit-report)
+      const REPORT_TYPE_MAP: Record<string, string> = {
+        "Manager Checklist": "manager-checklist",
+        "Operations Manager Checklist (Weekly Audit)": "ops-manager-checklist",
+        "Ops. Mgr Weekly Audit": "ops-manager-checklist",
+        "Store Manager Weekly Audit": "ops-manager-checklist",
+        "Store Weekly Audit": "ops-manager-checklist",
+        "Weekly Store Audit": "ops-manager-checklist",
+        "Assistant Manager Checklist": "assistant-manager-checklist",
+        "Leftovers & Waste Report": "waste-report",
+        "Leftovers & Waste": "waste-report",
+        "Equipment & Maintenance": "equipment-maintenance",
+        "Equipment Maintenance": "equipment-maintenance",
+        "Weekly Scorecard": "weekly-scorecard",
+        "Training Evaluation": "training-evaluation",
+        "Bagel Orders": "bagel-orders",
+        "Performance Evaluation": "performance-evaluation",
+      };
+      const normalizedReportType = REPORT_TYPE_MAP[reportType] || reportType;
+
+      const LOCATION_MAP: Record<string, string> = {
+        "President Kennedy": "PK", "president kennedy": "PK", "pk": "PK", "PK": "PK",
+        "Mackay": "MK", "mackay": "MK", "mk": "MK", "MK": "MK",
+        "Ontario": "ON", "ontario": "ON", "on": "ON", "ON": "ON",
+        "Tunnel": "TN", "tunnel": "TN", "tn": "TN", "TN": "TN",
+      };
+      const normalizedLocation = LOCATION_MAP[location] || location;
+
+      const enrichedData = typeof data === "object" && data !== null
+        ? { ...data, submitterName: submitterName || data.submitterName }
+        : { raw: data, submitterName };
+
+      const { saveDraft } = await import("../db");
+      const result = await saveDraft({
+        location: normalizedLocation,
+        reportType: normalizedReportType,
+        reportDate,
+        data: enrichedData,
+        totalScore: totalScore || null,
+        submitterName,
+      });
+      res.json({ success: true, ...result });
+    } catch (err) {
+      console.error("[Public API] Save draft error:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/public/draft", async (req, res) => {
+    try {
+      const { location, reportType, reportDate } = req.query as Record<string, string>;
+      if (!location || !reportType || !reportDate) {
+        return res.status(400).json({ error: "Missing required query params: location, reportType, reportDate" });
+      }
+
+      const REPORT_TYPE_MAP: Record<string, string> = {
+        "Manager Checklist": "manager-checklist",
+        "Store Weekly Checklist": "manager-checklist",
+        "Store Weekly Audit": "ops-manager-checklist",
+        "ops-manager-checklist": "ops-manager-checklist",
+        "manager-checklist": "manager-checklist",
+      };
+      const normalizedReportType = REPORT_TYPE_MAP[reportType] || reportType;
+
+      const LOCATION_MAP: Record<string, string> = {
+        "President Kennedy": "PK", "president kennedy": "PK", "pk": "PK", "PK": "PK",
+        "Mackay": "MK", "mackay": "MK", "mk": "MK", "MK": "MK",
+        "Ontario": "ON", "ontario": "ON", "on": "ON", "ON": "ON",
+        "Tunnel": "TN", "tunnel": "TN", "tn": "TN", "TN": "TN",
+      };
+      const normalizedLocation = LOCATION_MAP[location] || location;
+
+      const { getDraft } = await import("../db");
+      const draft = await getDraft(normalizedLocation, normalizedReportType, reportDate);
+      if (draft) {
+        res.json({ success: true, draft });
+      } else {
+        res.json({ success: true, draft: null });
+      }
+    } catch (err) {
+      console.error("[Public API] Get draft error:", err);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 

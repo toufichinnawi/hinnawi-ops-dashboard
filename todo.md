@@ -903,3 +903,31 @@
 - [x] Updated ReportDetailRenderer to display new simple section format (backward compat for old sub-item format)
 - [x] Ensure per-item photo/image attachment feature works on updated audit
 - [x] All 132 tests passing
+
+# Save Draft Feature for Weekly Checklists
+- [x] Add draft status to report submissions (status: 'draft' | 'submitted') — already in schema
+- [x] Backend: Add getDraft/saveDraft helpers to server/db.ts
+- [x] Backend: Add POST /api/public/save-draft endpoint
+- [x] Backend: Add GET /api/public/draft endpoint
+- [x] Backend: Auto-delete draft when final submission happens
+- [x] Backend: Exclude drafts from duplicate detection in checkExistingReport
+- [x] Store Weekly Checklist: Server-side draft save/load via useDraft hook
+- [x] Store Weekly Audit: Server-side draft save/load via useDraft hook
+- [x] Auto-load existing server draft when opening a weekly checklist (with localStorage fallback)
+- [ ] Draft data counts toward store score/status before final submission
+- [ ] Visual indicator showing draft vs submitted status in reports list
+- [ ] Apply draft feature to DirectChecklist admin forms
+
+# Equipment & Maintenance Excluded from Scoring
+- [x] Added equipment-maintenance to NON_DAILY_CHECKLISTS in OperationsScorecard
+- [x] Equipment & Maintenance no longer shows as "missing" or affects score
+
+# Leftovers & Waste Daily List
+- [x] Already exists in PositionChecklists with 3 sections (Bagels, Pastry, CK Items)
+- [x] Already exists in DirectChecklist admin form
+- [x] Already exists in ReportDetailRenderer for viewing
+- [x] Daily frequency (not weekly) — confirmed working
+
+# Role Assignment Updates
+- [x] Store Weekly Audit: Confirmed assigned to Operations Manager portal only
+- [x] Leftovers & Waste: Added to Store Manager portal (already in Staff portal)

@@ -17,18 +17,27 @@ import { useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PhotoUpload, type UploadedPhoto } from "@/components/PhotoUpload";
 
-// ─── Save Draft Hook ───
+// ─── Save Draft Hook (server-side + localStorage fallback) ───
 
-function useDraft<T>(key: string, initialValue: T): {
+interface DraftServerConfig {
+  reportType: string;
+  location: string;
+  reportDate: string;
+}
+
+function useDraft<T>(key: string, initialValue: T, serverConfig?: DraftServerConfig): {
   value: T;
   setValue: React.Dispatch<React.SetStateAction<T>>;
   saveDraft: () => void;
   clearDraft: () => void;
   hasDraft: boolean;
   draftButton: React.ReactNode;
+  savingDraft: boolean;
 } {
   const storageKey = `hinnawi-draft-${key}`;
   const [hasDraft, setHasDraft] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [serverDraftLoaded, setServerDraftLoaded] = useState(false);
   const [value, setValue] = useState<T>(() => {
     try {
       const saved = localStorage.getItem(storageKey);
@@ -40,7 +49,28 @@ function useDraft<T>(key: string, initialValue: T): {
     return initialValue;
   });
 
-  // Show toast if draft was loaded
+  // Load server-side draft on mount (if serverConfig is provided)
+  useEffect(() => {
+    if (!serverConfig || serverDraftLoaded) return;
+    setServerDraftLoaded(true);
+    const { reportType, location, reportDate } = serverConfig;
+    fetch(`/api/public/draft?location=${encodeURIComponent(location)}&reportType=${encodeURIComponent(reportType)}&reportDate=${encodeURIComponent(reportDate)}`)
+      .then((res) => res.json())
+      .then((body) => {
+        if (body.success && body.draft && body.draft.data) {
+          // Only restore server draft if no local draft exists
+          const localDraft = localStorage.getItem(storageKey);
+          if (!localDraft) {
+            setValue(body.draft.data as T);
+            setHasDraft(true);
+            toast.info("Server draft restored. Continue where you left off.", { duration: 4000 });
+          }
+        }
+      })
+      .catch(() => { /* ignore fetch errors */ });
+  }, [serverConfig?.reportType, serverConfig?.location, serverConfig?.reportDate]);
+
+  // Show toast if local draft was loaded
   const notifiedRef = useRef(false);
   useEffect(() => {
     if (hasDraft && !notifiedRef.current) {
@@ -50,12 +80,40 @@ function useDraft<T>(key: string, initialValue: T): {
   }, [hasDraft]);
 
   function saveDraft() {
+    // Save to localStorage
     try {
       localStorage.setItem(storageKey, JSON.stringify(value));
       setHasDraft(true);
+    } catch { /* ignore */ }
+
+    // Save to server if config is provided
+    if (serverConfig) {
+      setSavingDraft(true);
+      fetch("/api/public/save-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportType: serverConfig.reportType,
+          location: serverConfig.location,
+          reportDate: serverConfig.reportDate,
+          data: value,
+          submitterName: (value as any)?.name || (value as any)?.submitterName || "",
+        }),
+      })
+        .then((res) => res.json())
+        .then((body) => {
+          if (body.success) {
+            toast.success("Draft saved to server! You can come back from any device.", { duration: 3000 });
+          } else {
+            toast.success("Draft saved locally.", { duration: 3000 });
+          }
+        })
+        .catch(() => {
+          toast.success("Draft saved locally.", { duration: 3000 });
+        })
+        .finally(() => setSavingDraft(false));
+    } else {
       toast.success("Draft saved! You can come back and finish later.", { duration: 3000 });
-    } catch {
-      toast.error("Could not save draft");
     }
   }
 
@@ -69,14 +127,15 @@ function useDraft<T>(key: string, initialValue: T): {
       type="button"
       variant="outline"
       onClick={saveDraft}
+      disabled={savingDraft}
       className="w-full h-12 text-lg border-[#D4A853] text-[#D4A853] hover:bg-[#D4A853]/10"
     >
       <Save className="w-5 h-5 mr-2" />
-      Save Draft
+      {savingDraft ? "Saving..." : "Save Draft"}
     </Button>
   );
 
-  return { value, setValue, saveDraft, clearDraft, hasDraft, draftButton };
+  return { value, setValue, saveDraft, clearDraft, hasDraft, draftButton, savingDraft };
 }
 
 // ─── Checklist Data Definitions ───
@@ -509,9 +568,15 @@ function useDuplicateCheck() {
 
 function ManagerChecklistForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
   const defaultWeekMgr = useMemo(() => getDefaultWeekRange(), []);
+  const draftServerConfig = useMemo(() => ({
+    reportType: "manager-checklist",
+    location: storeCode,
+    reportDate: defaultWeekMgr.start,
+  }), [storeCode, defaultWeekMgr.start]);
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
     `manager-checklist-${storeCode}`,
-    { name: "", dateOfSubmission: new Date().toISOString().split("T")[0], weekStart: defaultWeekMgr.start, weekEnd: defaultWeekMgr.end, tasks: OPS_TASKS.map(() => ({ rating: 0, isNA: false, comment: "" })), comments: "" }
+    { name: "", dateOfSubmission: new Date().toISOString().split("T")[0], weekStart: defaultWeekMgr.start, weekEnd: defaultWeekMgr.end, tasks: OPS_TASKS.map(() => ({ rating: 0, isNA: false, comment: "" })), comments: "" },
+    draftServerConfig
   );
   const { name, dateOfSubmission, weekStart, weekEnd, tasks, comments } = draft;
   const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
@@ -598,9 +663,15 @@ function SimpleAuditFormPublic({ storeCode, storeName, positionLabel, onBack }: 
   storeCode: string; storeName: string; positionLabel: string; onBack: () => void;
 }) {
   const defaultWeek = useMemo(() => getDefaultWeekRange(), []);
+  const auditServerConfig = useMemo(() => ({
+    reportType: "ops-manager-checklist",
+    location: storeCode,
+    reportDate: defaultWeek.start,
+  }), [storeCode, defaultWeek.start]);
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
     `store-weekly-audit-${storeCode}`,
-    { name: "", dateOfSubmission: new Date().toISOString().split("T")[0], weekStart: defaultWeek.start, weekEnd: defaultWeek.end, ratings: {} as Record<string, number>, sectionComments: {} as Record<string, string>, notes: "" }
+    { name: "", dateOfSubmission: new Date().toISOString().split("T")[0], weekStart: defaultWeek.start, weekEnd: defaultWeek.end, ratings: {} as Record<string, number>, sectionComments: {} as Record<string, string>, notes: "" },
+    auditServerConfig
   );
   const { name, dateOfSubmission, weekStart, weekEnd, ratings, sectionComments, notes } = draft;
   const setName = (v: string) => setDraft(d => ({ ...d, name: v }));

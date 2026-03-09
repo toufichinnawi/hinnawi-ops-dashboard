@@ -517,14 +517,69 @@ export async function createExcelSyncMeta(data: InsertExcelSyncMeta): Promise<vo
 
 // ─── Report Submissions ───────────────────────────────────────────
 
-export async function checkExistingReport(location: string, reportType: string, reportDate: string) {
+/**
+ * Get an existing draft for a given location, reportType, and week range.
+ * Drafts are identified by status='draft'.
+ */
+export async function getDraft(location: string, reportType: string, reportDate: string) {
   const db = await getDb();
   if (!db) return null;
   const rows = await db.select().from(reportSubmissions).where(
     and(
       eq(reportSubmissions.location, location),
       eq(reportSubmissions.reportType, reportType),
-      eq(reportSubmissions.reportDate, reportDate)
+      eq(reportSubmissions.reportDate, reportDate),
+      eq(reportSubmissions.status, "draft")
+    )
+  ).limit(1);
+  return rows[0] || null;
+}
+
+/**
+ * Save or update a draft report. If a draft already exists for the same
+ * location/reportType/reportDate, update it. Otherwise create a new one.
+ */
+export async function saveDraft(data: {
+  location: string;
+  reportType: string;
+  reportDate: string;
+  data: any;
+  totalScore?: string | null;
+  submitterName?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await getDraft(data.location, data.reportType, data.reportDate);
+  if (existing) {
+    await db.update(reportSubmissions).set({
+      data: data.data,
+      totalScore: data.totalScore || null,
+    }).where(eq(reportSubmissions.id, existing.id));
+    return { id: existing.id, updated: true };
+  } else {
+    const result = await db.insert(reportSubmissions).values({
+      userId: null as any,
+      reportType: data.reportType,
+      location: data.location,
+      reportDate: data.reportDate,
+      data: data.data,
+      totalScore: data.totalScore || null,
+      status: "draft",
+    });
+    return { id: result[0].insertId, updated: false };
+  }
+}
+
+export async function checkExistingReport(location: string, reportType: string, reportDate: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Only check for submitted/reviewed reports, not drafts
+  const rows = await db.select().from(reportSubmissions).where(
+    and(
+      eq(reportSubmissions.location, location),
+      eq(reportSubmissions.reportType, reportType),
+      eq(reportSubmissions.reportDate, reportDate),
+      sql`${reportSubmissions.status} != 'draft'`
     )
   ).limit(1);
   return rows[0] || null;

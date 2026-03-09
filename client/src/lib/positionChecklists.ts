@@ -96,7 +96,7 @@ export interface PositionConfig {
  * Position → Checklist assignments (updated per user request)
  *
  * Operations Manager: Store Weekly Audit
- * Store Manager: Store Weekly Checklist, Weekly Scorecard, Performance Evaluation, Bagel Orders
+ * Store Manager: Store Weekly Checklist, Leftovers & Waste, Weekly Scorecard, Performance Evaluation, Bagel Orders
  * Assistant Manager: Equipment & Maintenance, Training Evaluation
  * Staff: Leftovers & Waste
  */
@@ -116,6 +116,7 @@ export const POSITION_CHECKLISTS: Record<
     label: "Store Manager",
     checklists: [
       "manager-checklist",
+      "waste-report",
       "weekly-scorecard",
       "performance-evaluation",
       "bagel-orders",

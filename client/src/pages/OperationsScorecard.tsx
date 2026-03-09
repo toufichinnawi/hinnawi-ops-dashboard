@@ -88,10 +88,12 @@ const OPS_MANAGER_CHECKLISTS: ChecklistType[] = [
 ];
 
 // Checklists that are NOT required daily (should not appear in uncompleted list or affect score)
+// Equipment & Maintenance is excluded from scoring per owner request (may be added later)
 const NON_DAILY_CHECKLISTS: ChecklistType[] = [
   "performance-evaluation",
   "training-evaluation",
   "bagel-orders",
+  "equipment-maintenance",
 ];
 
 // Daily expected checklists for a store (excludes non-daily ones)
