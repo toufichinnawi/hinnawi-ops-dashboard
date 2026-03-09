@@ -879,3 +879,16 @@
 - [x] Add Bagel Production tab to Store Manager portal (filtered by their store)
 
 - [x] Rename "Ops. Mgr Weekly Audit" to "Store Manager Weekly Audit" across entire app
+
+# Priority Matrix Integration
+- [ ] Store PM credentials (client_id, client_secret, username, password) as env secrets
+- [ ] Build backend PM API connector with OAuth token management
+- [ ] Add tRPC procedures for fetching PM projects, items, and team output
+- [ ] Build Team Output frontend page with daily task view per team member
+- [ ] Add Team Output to sidebar navigation
+
+# Store Manager Weekly Audit - Per-Item Photo Attachment
+- [x] Add per-item photo/image attachment button to each audit item in the form
+- [x] Upload photos to S3 storage and store URLs in the submission data
+- [x] Display attached photos in the report detail renderer
+- [x] Apply to all form locations (DirectChecklist, ChecklistViewer, PositionChecklists)

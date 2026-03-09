@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/StarRating";
-import { CheckCircle2, ClipboardCheck, ArrowLeft, ChevronRight, Save } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, ArrowLeft, ChevronRight, Save, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -613,6 +613,9 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
+  // Per-item photos: key is "sectionTitle::itemIndex"
+  const [itemPhotos, setItemPhotos] = useState<Record<string, UploadedPhoto[]>>({});
+  const [expandedPhotoItem, setExpandedPhotoItem] = useState<string | null>(null);
   const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
   const totalScore = useRating
@@ -641,7 +644,14 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
             if (urls.length > 0) photoUrls[section] = urls;
           }
           const photosData = Object.keys(photoUrls).length > 0 ? { photos: photoUrls } : {};
-          return { ...(isWeekly ? { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd } : {}), sections: sections.map((s, si) => ({ title: s.title, items: s.items.map((item, ii) => ({ item, ...data[si][ii] })) })), comments, submittedVia: `Public - ${positionLabel}`, ...photosData };
+          // Collect per-item photo URLs
+          const itemPhotoUrls: Record<string, string[]> = {};
+          for (const [key, photos] of Object.entries(itemPhotos)) {
+            const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
+            if (urls.length > 0) itemPhotoUrls[key] = urls;
+          }
+          const itemPhotosData = Object.keys(itemPhotoUrls).length > 0 ? { itemPhotos: itemPhotoUrls } : {};
+          return { ...(isWeekly ? { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd } : {}), sections: sections.map((s, si) => ({ title: s.title, items: s.items.map((item, ii) => ({ item, ...data[si][ii] })) })), comments, submittedVia: `Public - ${positionLabel}`, ...photosData, ...itemPhotosData };
         })(),
         totalScore,
       },
@@ -672,33 +682,71 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
         <Card key={si}>
           <CardHeader><CardTitle className="text-base">{section.title}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {section.items.map((item, ii) => (
-              <div key={ii} className="space-y-2">
-                {useRating ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <p className="text-sm flex-1">{item}</p>
-                    <StarRating value={(data[si][ii] as any).rating} onChange={(v) => setData((p) => p.map((s, sj) => sj === si ? s.map((d, dj) => dj === ii ? { ...d, rating: v } : d) : s))} size="sm" />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <Checkbox checked={(data[si][ii] as any).checked} onCheckedChange={(c) => setData((p) => p.map((s, sj) => sj === si ? s.map((d, dj) => dj === ii ? { ...d, checked: !!c } : d) : s))} />
-                    <span className="text-sm">{item}</span>
-                  </div>
-                )}
-              </div>
-            ))}
+            {section.items.map((item, ii) => {
+              const photoKey = `${section.title}::${ii}`;
+              const photos = itemPhotos[photoKey] || [];
+              const photoCount = photos.filter(p => p.status === "success").length;
+              const isExpanded = expandedPhotoItem === photoKey;
+              const isAuditForm = reportType === "Store Manager Weekly Audit" || reportType === "Operations Manager Checklist (Weekly Audit)";
+              return (
+                <div key={ii} className="space-y-2">
+                  {useRating ? (
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <p className="text-sm flex-1">{item}</p>
+                      <div className="flex items-center gap-2">
+                        {isAuditForm && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedPhotoItem(isExpanded ? null : photoKey)}
+                            className={cn(
+                              "flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors",
+                              photoCount > 0
+                                ? "bg-[#faa600]/15 text-[#faa600] hover:bg-[#faa600]/25"
+                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                          >
+                            <Camera className="w-3.5 h-3.5" />
+                            {photoCount > 0 && <span>{photoCount}</span>}
+                          </button>
+                        )}
+                        <StarRating value={(data[si][ii] as any).rating} onChange={(v) => setData((p) => p.map((s, sj) => sj === si ? s.map((d, dj) => dj === ii ? { ...d, rating: v } : d) : s))} size="sm" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Checkbox checked={(data[si][ii] as any).checked} onCheckedChange={(c) => setData((p) => p.map((s, sj) => sj === si ? s.map((d, dj) => dj === ii ? { ...d, checked: !!c } : d) : s))} />
+                      <span className="text-sm flex-1">{item}</span>
+                      {isAuditForm && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedPhotoItem(isExpanded ? null : photoKey)}
+                          className={cn(
+                            "flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors",
+                            photoCount > 0
+                              ? "bg-[#faa600]/15 text-[#faa600] hover:bg-[#faa600]/25"
+                              : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          )}
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          {photoCount > 0 && <span>{photoCount}</span>}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {isExpanded && (
+                    <div className="pb-2 pl-2">
+                      <PhotoUpload
+                        photos={photos}
+                        onChange={(newPhotos) => setItemPhotos(prev => ({ ...prev, [photoKey]: newPhotos }))}
+                        maxPhotos={3}
+                        label="Item Photos"
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </CardContent>
-          {(reportType === "Store Manager Weekly Audit" || reportType === "Operations Manager Checklist (Weekly Audit)") && (
-            <div className="px-6 pb-6">
-              <PhotoUpload
-                photos={sectionPhotos[section.title] || []}
-                onChange={(photos) => setSectionPhotos(prev => ({ ...prev, [section.title]: photos }))}
-                maxPhotos={5}
-                label="Attach Photos"
-                sectionLabel={section.title}
-              />
-            </div>
-          )}
         </Card>
       ))}
       <Card><CardContent className="pt-6"><Label>Comments</Label><Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Additional comments..." /></CardContent></Card>

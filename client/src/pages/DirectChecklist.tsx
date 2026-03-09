@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/StarRating";
-import { CheckCircle2, Send, DollarSign, Users2, MessageSquare, Utensils, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Send, DollarSign, Users2, MessageSquare, Utensils, AlertTriangle, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { PhotoUpload, type UploadedPhoto } from "@/components/PhotoUpload";
@@ -283,6 +283,9 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
   const [ratings, setRatings] = useState<Record<string, Record<number, number>>>({});
   const [notes, setNotes] = useState("");
   const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
+  // Per-item photos: key is "sectionTitle::itemIndex"
+  const [itemPhotos, setItemPhotos] = useState<Record<string, UploadedPhoto[]>>({});
+  const [expandedPhotoItem, setExpandedPhotoItem] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = () => {
@@ -290,13 +293,19 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
     // Compute average score across all sections
     const allRatings = Object.values(ratings).flatMap(section => Object.values(section));
     const avg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 0;
-    // Collect photo URLs per section
+    // Collect photo URLs per section (legacy)
     const photoUrls: Record<string, string[]> = {};
     for (const [section, photos] of Object.entries(sectionPhotos)) {
       const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
       if (urls.length > 0) photoUrls[section] = urls;
     }
-    const payload = { reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate: weekStart, data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, ratings, notes, photos: photoUrls }, totalScore: avg.toFixed(2) };
+    // Collect per-item photo URLs
+    const itemPhotoUrls: Record<string, string[]> = {};
+    for (const [key, photos] of Object.entries(itemPhotos)) {
+      const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
+      if (urls.length > 0) itemPhotoUrls[key] = urls;
+    }
+    const payload = { reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate: weekStart, data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, ratings, notes, photos: photoUrls, itemPhotos: itemPhotoUrls }, totalScore: avg.toFixed(2) };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
     toast.success("Audit submitted!");
@@ -325,23 +334,46 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
       {AUDIT_SECTIONS.map((section) => (
         <Card key={section.title}><CardContent className="pt-6 space-y-4">
           <h3 className="font-serif text-lg">{section.title}</h3>
-          {section.items.map((item, i) => (
-            <div key={i} className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
-              <p className="text-sm">{item}</p>
-              <StarRating value={ratings[section.title]?.[i] || 0} onChange={(v) => setRatings((prev) => ({ ...prev, [section.title]: { ...prev[section.title], [i]: v } }))} />
-            </div>
-          ))}
-        </CardContent>
-          <div className="px-6 pb-6">
-            <PhotoUpload
-              photos={sectionPhotos[section.title] || []}
-              onChange={(photos) => setSectionPhotos(prev => ({ ...prev, [section.title]: photos }))}
-              maxPhotos={5}
-              label="Attach Photos"
-              sectionLabel={section.title}
-            />
-          </div>
-        </Card>
+          {section.items.map((item, i) => {
+            const photoKey = `${section.title}::${i}`;
+            const photos = itemPhotos[photoKey] || [];
+            const photoCount = photos.filter(p => p.status === "success").length;
+            const isExpanded = expandedPhotoItem === photoKey;
+            return (
+              <div key={i} className="border-b border-border/40 last:border-0">
+                <div className="flex items-center justify-between py-2">
+                  <p className="text-sm flex-1">{item}</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedPhotoItem(isExpanded ? null : photoKey)}
+                      className={cn(
+                        "flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors",
+                        photoCount > 0
+                          ? "bg-[#D4A853]/15 text-[#D4A853] hover:bg-[#D4A853]/25"
+                          : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      {photoCount > 0 && <span>{photoCount}</span>}
+                    </button>
+                    <StarRating value={ratings[section.title]?.[i] || 0} onChange={(v) => setRatings((prev) => ({ ...prev, [section.title]: { ...prev[section.title], [i]: v } }))} />
+                  </div>
+                </div>
+                {isExpanded && (
+                  <div className="pb-3 pl-2">
+                    <PhotoUpload
+                      photos={photos}
+                      onChange={(newPhotos) => setItemPhotos(prev => ({ ...prev, [photoKey]: newPhotos }))}
+                      maxPhotos={3}
+                      label="Item Photos"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </CardContent></Card>
       ))}
       <Card><CardContent className="pt-6 space-y-3"><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} /></CardContent></Card>
       <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Audit</Button></div>

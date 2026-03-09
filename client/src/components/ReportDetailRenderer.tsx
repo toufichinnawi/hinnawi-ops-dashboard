@@ -141,21 +141,32 @@ function SectionChecklistDetail({ data }: { data: any }) {
           <div key={si}>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{section.title}</p>
             <div className="space-y-1.5">
-              {(section.items || []).map((item: any, ii: number) => (
-                <div key={ii} className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
-                  <p className="text-sm">{item.item || item.label || `Item ${ii + 1}`}</p>
-                  <div className="flex items-center gap-2">
-                    {item.rating !== undefined ? (
-                      <Stars rating={item.rating} />
-                    ) : item.checked !== undefined ? (
-                      <CheckIcon checked={item.checked} />
-                    ) : null}
-                    {item.comment && (
-                      <span className="text-xs text-muted-foreground italic max-w-[200px] truncate">"{item.comment}"</span>
+              {(section.items || []).map((item: any, ii: number) => {
+                const itemPhotoKey = `${section.title}::${ii}`;
+                const itemPhotosArr = data.itemPhotos?.[itemPhotoKey];
+                return (
+                  <div key={ii}>
+                    <div className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
+                      <p className="text-sm">{item.item || item.label || `Item ${ii + 1}`}</p>
+                      <div className="flex items-center gap-2">
+                        {item.rating !== undefined ? (
+                          <Stars rating={item.rating} />
+                        ) : item.checked !== undefined ? (
+                          <CheckIcon checked={item.checked} />
+                        ) : null}
+                        {item.comment && (
+                          <span className="text-xs text-muted-foreground italic max-w-[200px] truncate">"{item.comment}"</span>
+                        )}
+                      </div>
+                    </div>
+                    {itemPhotosArr && itemPhotosArr.length > 0 && (
+                      <div className="mt-1 ml-2">
+                        <PhotoGallery photos={itemPhotosArr} />
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             {data.photos && data.photos[section.title] && (
               <div className="mt-2">
@@ -179,12 +190,23 @@ function SectionChecklistDetail({ data }: { data: any }) {
               {sectionKey.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}
             </p>
             <div className="space-y-1.5">
-              {Object.entries(sectionRatings).map(([itemKey, rating]: [string, any]) => (
-                <div key={itemKey} className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
-                  <p className="text-sm">{itemKey}</p>
-                  <Stars rating={typeof rating === "number" ? rating : 0} />
-                </div>
-              ))}
+              {Object.entries(sectionRatings).map(([itemKey, rating]: [string, any], itemIdx: number) => {
+                const itemPhotoKey = `${sectionKey}::${itemIdx}`;
+                const itemPhotosArr = data.itemPhotos?.[itemPhotoKey];
+                return (
+                  <div key={itemKey}>
+                    <div className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
+                      <p className="text-sm">{itemKey}</p>
+                      <Stars rating={typeof rating === "number" ? rating : 0} />
+                    </div>
+                    {itemPhotosArr && itemPhotosArr.length > 0 && (
+                      <div className="mt-1 ml-2">
+                        <PhotoGallery photos={itemPhotosArr} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             {data.photos && data.photos[sectionKey] && (
               <div className="mt-2">

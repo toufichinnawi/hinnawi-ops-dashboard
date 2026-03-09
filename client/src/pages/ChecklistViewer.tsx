@@ -34,7 +34,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/StarRating";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PhotoUpload, type UploadedPhoto } from "@/components/PhotoUpload";
@@ -680,6 +680,9 @@ function SectionChecklistForm({
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
+  // Per-item photos: key is "sectionTitle::item::itemIndex"
+  const [itemPhotos, setItemPhotos] = useState<Record<string, UploadedPhoto[]>>({});
+  const [expandedPhotoItem, setExpandedPhotoItem] = useState<string | null>(null);
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
 
   const allItems = sections.flatMap((s) => s.items);
@@ -719,11 +722,18 @@ function SectionChecklistForm({
             const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
             if (urls.length > 0) photoUrls[section] = urls;
           }
+          // Collect per-item photo URLs
+          const itemPhotoUrls: Record<string, string[]> = {};
+          for (const [key, photos] of Object.entries(itemPhotos)) {
+            const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
+            if (urls.length > 0) itemPhotoUrls[key] = urls;
+          }
           const base = isWeekly ? { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd } : {};
           const photosData = Object.keys(photoUrls).length > 0 ? { photos: photoUrls } : {};
+          const itemPhotosData = Object.keys(itemPhotoUrls).length > 0 ? { itemPhotos: itemPhotoUrls } : {};
           return useRating
-            ? { ...base, ratings, notes, sections, ...photosData }
-            : { ...base, checked, notes, sections, ...photosData };
+            ? { ...base, ratings, notes, sections, ...photosData, ...itemPhotosData }
+            : { ...base, checked, notes, sections, ...photosData, ...itemPhotosData };
         })(),
         totalScore: avgScore,
       });
@@ -804,47 +814,67 @@ function SectionChecklistForm({
           >
             <h3 className="font-semibold mb-3">{section.title}</h3>
             <div className="space-y-2">
-              {section.items.map((item) => {
+              {section.items.map((item, itemIdx) => {
                 const key = `${section.title}::${item}`;
+                const photoKey = `${section.title}::${itemIdx}`;
+                const photos = itemPhotos[photoKey] || [];
+                const photoCount = photos.filter(p => p.status === "success").length;
+                const isExpanded = expandedPhotoItem === photoKey;
+                const isAuditForm = reportType === "Store Manager Weekly Audit" || reportType === "Operations Manager Checklist (Weekly Audit)";
                 return (
-                  <div
-                    key={key}
-                    className="flex items-center justify-between gap-3 py-1.5 border-b border-border/20 last:border-0"
-                  >
-                    <span className="text-sm flex-1">{item}</span>
-                    {useRating ? (
-                      <StarRating
-                        value={ratings[key] || 0}
-                        onChange={(v) =>
-                          setRatings((prev) => ({ ...prev, [key]: v }))
-                        }
-                      />
-                    ) : (
-                      <Checkbox
-                        checked={!!checked[key]}
-                        onCheckedChange={(v) =>
-                          setChecked((prev) => ({
-                            ...prev,
-                            [key]: !!v,
-                          }))
-                        }
-                      />
+                  <div key={key} className="border-b border-border/20 last:border-0">
+                    <div className="flex items-center justify-between gap-3 py-1.5">
+                      <span className="text-sm flex-1">{item}</span>
+                      <div className="flex items-center gap-2">
+                        {isAuditForm && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedPhotoItem(isExpanded ? null : photoKey)}
+                            className={cn(
+                              "flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors",
+                              photoCount > 0
+                                ? "bg-[#D4A853]/15 text-[#D4A853] hover:bg-[#D4A853]/25"
+                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                          >
+                            <Camera className="w-3.5 h-3.5" />
+                            {photoCount > 0 && <span>{photoCount}</span>}
+                          </button>
+                        )}
+                        {useRating ? (
+                          <StarRating
+                            value={ratings[key] || 0}
+                            onChange={(v) =>
+                              setRatings((prev) => ({ ...prev, [key]: v }))
+                            }
+                          />
+                        ) : (
+                          <Checkbox
+                            checked={!!checked[key]}
+                            onCheckedChange={(v) =>
+                              setChecked((prev) => ({
+                                ...prev,
+                                [key]: !!v,
+                              }))
+                            }
+                          />
+                        )}
+                      </div>
+                    </div>
+                    {isExpanded && (
+                      <div className="pb-3 pl-2">
+                        <PhotoUpload
+                          photos={photos}
+                          onChange={(newPhotos) => setItemPhotos(prev => ({ ...prev, [photoKey]: newPhotos }))}
+                          maxPhotos={3}
+                          label="Item Photos"
+                        />
+                      </div>
                     )}
                   </div>
                 );
               })}
             </div>
-            {(reportType === "Store Manager Weekly Audit" || reportType === "Operations Manager Checklist (Weekly Audit)") && (
-              <div className="mt-4 pt-3 border-t border-border/30">
-                <PhotoUpload
-                  photos={sectionPhotos[section.title] || []}
-                  onChange={(photos) => setSectionPhotos(prev => ({ ...prev, [section.title]: photos }))}
-                  maxPhotos={5}
-                  label="Attach Photos"
-                  sectionLabel={section.title}
-                />
-              </div>
-            )}
           </div>
         ))}
 
