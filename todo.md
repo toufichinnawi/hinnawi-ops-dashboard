@@ -931,3 +931,9 @@
 # Role Assignment Updates
 - [x] Store Weekly Audit: Confirmed assigned to Operations Manager portal only
 - [x] Leftovers & Waste: Added to Store Manager portal (already in Staff portal)
+
+# Bug Fix: Ontario Labour % Showing 0.3% Instead of ~29.4%
+- [x] Root cause: 7shifts API returns labor_percent as decimal (0.29 = 29%), stored without conversion
+- [x] Fixed all 4 DB insertion points in routers.ts (3) and _core/index.ts (1): multiply by 100
+- [x] Fixed existing DB data: UPDATE seven_shifts_daily_sales SET labourPercent = labourPercent * 100
+- [x] Verified: Mar 9 now shows 29.98% ($181.47 / $605.26) — correct

@@ -1,0 +1,70 @@
+{
+  "query": "SELECT date, totalSales, labourCost, labourPercent FROM seven_shifts_daily_sales ORDER BY date DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT date, totalSales, labourCost, labourPercent FROM seven_shifts_daily_sales ORDER BY date DESC LIMIT 10;",
+  "rows": [
+    {
+      "date": "2026-03-09",
+      "totalSales": "605.26",
+      "labourCost": "181.47",
+      "labourPercent": "0.29982156"
+    },
+    {
+      "date": "2026-03-08",
+      "totalSales": "527.74",
+      "labourCost": "187.2",
+      "labourPercent": "0.35472012"
+    },
+    {
+      "date": "2026-03-07",
+      "totalSales": "619.35",
+      "labourCost": "191.45",
+      "labourPercent": "0.3091144"
+    },
+    {
+      "date": "2026-03-06",
+      "totalSales": "479.04",
+      "labourCost": "99.89",
+      "labourPercent": "0.2085212"
+    },
+    {
+      "date": "2026-03-05",
+      "totalSales": "259.26",
+      "labourCost": "171.61",
+      "labourPercent": "0.6619224"
+    },
+    {
+      "date": "2026-03-04",
+      "totalSales": "238.18",
+      "labourCost": "217.92",
+      "labourPercent": "0.9149383"
+    },
+    {
+      "date": "2026-03-03",
+      "totalSales": "486.33",
+      "labourCost": "227.85",
+      "labourPercent": "0.46850905"
+    },
+    {
+      "date": "2026-03-02",
+      "totalSales": "530.81",
+      "labourCost": "230.31",
+      "labourPercent": "0.43388405"
+    },
+    {
+      "date": "2026-03-01",
+      "totalSales": "607.36",
+      "labourCost": "200.66",
+      "labourPercent": "0.33038068"
+    },
+    {
+      "date": "2026-02-28",
+      "totalSales": "553.33",
+      "labourCost": "178.34",
+      "labourPercent": "0.32230315"
+    }
+  ],
+  "messages": [],
+  "stdout": "date\ttotalSales\tlabourCost\tlabourPercent\n2026-03-09\t605.26\t181.47\t0.29982156\n2026-03-08\t527.74\t187.2\t0.35472012\n2026-03-07\t619.35\t191.45\t0.3091144\n2026-03-06\t479.04\t99.89\t0.2085212\n2026-03-05\t259.26\t171.61\t0.6619224\n2026-03-04\t238.18\t217.92\t0.9149383\n2026-03-03\t486.33\t227.85\t0.46850905\n2026-03-02\t530.81\t230.31\t0.43388405\n2026-03-01\t607.36\t200.66\t0.33038068\n2026-02-28\t553.33\t178.34\t0.32230315\n",
+  "stderr": "",
+  "execution_time_ms": 117
+}

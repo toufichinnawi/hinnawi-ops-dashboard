@@ -539,7 +539,7 @@ async function startServer() {
               projectedLabourCost: day.projected_labor_cost / 100,
               labourMinutes: day.actual_labor_minutes,
               overtimeMinutes: day.actual_ot_minutes,
-              labourPercent: day.labor_percent,
+              labourPercent: day.labor_percent * 100,
               salesPerLabourHour: day.sales_per_labor_hour / 100,
               orderCount: day.actual_items,
             });
