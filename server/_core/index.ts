@@ -605,6 +605,174 @@ async function startServer() {
     }
   });
 
+  // ─── Active Alerts (Real-time) ─────────────────────────────────
+  app.get("/api/public/active-alerts", async (_req, res) => {
+    try {
+      const { getReportsByDateRange, getKoomiSalesByDateRange, getSevenShiftsSalesByDateRange, getExcelLabourByDateRange } = await import("../db");
+
+      // Compute current week range (Monday 00:00 to Friday 23:59 in ET)
+      const now = new Date();
+      const etDate = new Date(now.toLocaleString("en-US", { timeZone: "America/Toronto" }));
+      const dayOfWeek = etDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+
+      // Find this week's Monday
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(etDate);
+      monday.setDate(etDate.getDate() + mondayOffset);
+      monday.setHours(0, 0, 0, 0);
+
+      const friday = new Date(monday);
+      friday.setDate(monday.getDate() + 4);
+
+      const today = etDate.toISOString().slice(0, 10);
+      const mondayStr = monday.toISOString().slice(0, 10);
+      const fridayStr = friday.toISOString().slice(0, 10);
+
+      // Store config
+      const STORES = [
+        { id: "pk", code: "PK", name: "President Kennedy", shortName: "PK", labourTarget: 18, koomiId: "1037" },
+        { id: "mk", code: "MK", name: "Mackay", shortName: "MK", labourTarget: 23, koomiId: "2207" },
+        { id: "ontario", code: "ON", name: "Ontario", shortName: "ON", labourTarget: 28 },
+        { id: "tunnel", code: "TN", name: "Cathcart (Tunnel)", shortName: "TN", labourTarget: 24, koomiId: "1036", closedWeekends: true },
+      ];
+
+      const alerts: Array<{ id: string; type: "critical" | "warning" | "info" | "success"; message: string; store: string; category: string; timestamp: string }> = [];
+
+      // 1. Fetch all reports for this week
+      const weekReports = await getReportsByDateRange(mondayStr, fridayStr);
+
+      // 2. Check: Ops Manager weekly audit (ops-manager-checklist) for each store this week
+      for (const store of STORES) {
+        const hasAudit = weekReports.some(
+          r => r.location === store.code && r.reportType === "ops-manager-checklist"
+        );
+        if (!hasAudit) {
+          alerts.push({
+            id: `audit-${store.id}`,
+            type: "warning",
+            message: `Ops Manager has not completed the weekly audit for ${store.name}`,
+            store: store.id,
+            category: "missing-audit",
+            timestamp: now.toISOString(),
+          });
+        }
+      }
+
+      // 3. Check: Store daily checklist (manager-checklist) for today
+      const todayReports = weekReports.filter(r => r.reportDate === today);
+      for (const store of STORES) {
+        // Skip weekend-closed stores on weekends
+        if (store.closedWeekends && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
+        const hasDailyChecklist = todayReports.some(
+          r => r.location === store.code && r.reportType === "manager-checklist"
+        );
+        if (!hasDailyChecklist) {
+          alerts.push({
+            id: `daily-${store.id}`,
+            type: "critical",
+            message: `${store.name} has not submitted today's daily checklist`,
+            store: store.id,
+            category: "missing-daily",
+            timestamp: now.toISOString(),
+          });
+        }
+      }
+
+      // 4. Check: Store weekly checklist (assistant-manager-checklist) this week
+      for (const store of STORES) {
+        const hasWeeklyChecklist = weekReports.some(
+          r => r.location === store.code && r.reportType === "assistant-manager-checklist"
+        );
+        if (!hasWeeklyChecklist) {
+          alerts.push({
+            id: `weekly-${store.id}`,
+            type: "info",
+            message: `${store.name} has not submitted the weekly checklist this week`,
+            store: store.id,
+            category: "missing-weekly",
+            timestamp: now.toISOString(),
+          });
+        }
+      }
+
+      // 5. Check: High labour % (real-time from today's data)
+      const koomiData = await getKoomiSalesByDateRange(today, today);
+      const sevenData = await getSevenShiftsSalesByDateRange(today, today);
+      const excelData = await getExcelLabourByDateRange(today, today);
+
+      for (const store of STORES) {
+        let labourPercent = 0;
+        let netSales = 0;
+        let hasData = false;
+
+        // Koomi data
+        if (store.koomiId) {
+          const koomiRow = koomiData.find((k: any) => k.koomiLocationId === store.koomiId);
+          if (koomiRow) {
+            netSales = Number(koomiRow.netSales) || 0;
+            labourPercent = Number(koomiRow.labourPercent) || 0;
+            hasData = true;
+          }
+        }
+
+        // 7shifts data (Ontario)
+        if (store.id === "ontario") {
+          const sevenRow = sevenData.find((s: any) => s.date === today);
+          if (sevenRow) {
+            netSales = Number(sevenRow.totalSales) || 0;
+            labourPercent = Number(sevenRow.labourPercent) || 0;
+            hasData = true;
+          }
+        }
+
+        // Excel override
+        const excelRow = excelData.find((e: any) => e.storeId === store.id);
+        if (excelRow) {
+          if (Number(excelRow.netSales) > 0) netSales = Number(excelRow.netSales);
+          if (Number(excelRow.labourPercent) > 0) labourPercent = Number(excelRow.labourPercent);
+          hasData = true;
+        }
+
+        if (hasData && labourPercent > store.labourTarget) {
+          const overBy = (labourPercent - store.labourTarget).toFixed(1);
+          const severity = labourPercent > store.labourTarget + 10 ? "critical" : "warning";
+          alerts.push({
+            id: `labour-${store.id}`,
+            type: severity,
+            message: `${store.name} labour at ${labourPercent.toFixed(1)}% — ${overBy}% over target (${store.labourTarget}%)`,
+            store: store.id,
+            category: "high-labour",
+            timestamp: now.toISOString(),
+          });
+        } else if (hasData && labourPercent > 0 && labourPercent <= store.labourTarget) {
+          alerts.push({
+            id: `labour-ok-${store.id}`,
+            type: "success",
+            message: `${store.name} labour at ${labourPercent.toFixed(1)}% — below target (${store.labourTarget}%)`,
+            store: store.id,
+            category: "labour-ok",
+            timestamp: now.toISOString(),
+          });
+        }
+      }
+
+      // Sort: critical first, then warning, info, success
+      const priority = { critical: 0, warning: 1, info: 2, success: 3 };
+      alerts.sort((a, b) => priority[a.type] - priority[b.type]);
+
+      res.json({
+        success: true,
+        alerts,
+        weekRange: { from: mondayStr, to: fridayStr },
+        today,
+        generatedAt: now.toISOString(),
+      });
+    } catch (err) {
+      console.error("[ActiveAlerts] Error:", err);
+      res.status(500).json({ error: "Failed to compute alerts" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

@@ -1004,3 +1004,19 @@
 - [x] Flag changes in detail dialog instantly update the table row
 - [x] Write 18 vitest tests for notes/flags endpoints (all passing)
 - [x] All 147 tests passing across 16 test files
+
+# Active Alerts Revamp (Overview Page)
+- [x] Alert: Ops Manager hasn't done weekly audit (ops-manager-checklist) for a store this week → warning
+- [x] Alert: Store hasn't submitted daily checklist (manager-checklist) today → critical
+- [x] Alert: Store hasn't submitted weekly checklist (assistant-manager-checklist) this week → info
+- [x] Alert: Store has high labour % (real-time from Koomi + 7shifts + Excel data) → warning/critical
+- [x] Alert: Store labour below target → success (positive confirmation)
+- [x] Week range: Monday to Friday, auto-computed from current date, resets every Monday
+- [x] Backend endpoint /api/public/active-alerts computes alerts from DB + labour sources
+- [x] Frontend fetches live alerts on mount + refreshes every 5 minutes
+- [x] UI shows week range, severity badges (critical/warning count), refresh button
+- [x] Category labels on each alert (Weekly Audit, Daily Checklist, Weekly Checklist, Labour Alert)
+- [x] Scrollable alert list with max-height for many alerts
+- [x] Empty state: "All clear — no active alerts this week"
+- [x] 6 vitest tests for alert endpoint (shape, sorting, uniqueness, week range)
+- [x] All 153 tests passing across 17 test files

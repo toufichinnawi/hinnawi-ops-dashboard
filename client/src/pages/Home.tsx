@@ -1,6 +1,6 @@
 // Design: "Golden Hour Operations" — Refined Editorial
 // Overview page: Hero banner, Date filter, KPI cards, weekly sales chart, alerts, report status
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -63,7 +63,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Home() {
-  const { reportSubmissions, alerts, hasLiveData, hasCloverData, hasKoomiData } = useData();
+  const { reportSubmissions, hasLiveData, hasCloverData, hasKoomiData } = useData();
   const [dateFilter, setDateFilter] = useState<DateFilterValue>(getDefaultDateFilter);
   const utils = trpc.useUtils();
 
@@ -97,6 +97,49 @@ export default function Home() {
   const kpis = hasLiveSource ? (filteredKpis ?? contextKpis) : contextKpis;
   const weeklySales = hasLiveSource ? (noDataForPeriod ? [] : (filteredSales ?? contextSales)) : contextSales;
   const weeklyTraffic = hasLiveSource ? (noDataForPeriod ? [] : (filteredTraffic ?? contextTraffic)) : contextTraffic;
+
+  // ─── Live Alerts ───────────────────────────────────────────
+  interface LiveAlert {
+    id: string;
+    type: "critical" | "warning" | "info" | "success";
+    message: string;
+    store: string;
+    category: string;
+    timestamp: string;
+  }
+  const [liveAlerts, setLiveAlerts] = useState<LiveAlert[]>([]);
+  const [alertsWeekRange, setAlertsWeekRange] = useState<{ from: string; to: string } | null>(null);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/public/active-alerts");
+      if (res.ok) {
+        const data = await res.json();
+        setLiveAlerts(data.alerts || []);
+        setAlertsWeekRange(data.weekRange || null);
+      }
+    } catch (err) {
+      console.error("[Alerts] Failed to fetch:", err);
+    } finally {
+      setAlertsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAlerts();
+    // Refresh alerts every 5 minutes
+    const interval = setInterval(fetchAlerts, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchAlerts]);
+
+  // Count alerts by severity for the summary
+  const alertCounts = {
+    critical: liveAlerts.filter(a => a.type === "critical").length,
+    warning: liveAlerts.filter(a => a.type === "warning").length,
+    info: liveAlerts.filter(a => a.type === "info").length,
+    success: liveAlerts.filter(a => a.type === "success").length,
+  };
 
   const todayReports = reportSubmissions.filter((r) => r.type === "Daily Report");
   const status = {
@@ -327,33 +370,82 @@ export default function Home() {
               </div>
             </motion.div>
 
-            {/* Alerts */}
+            {/* Active Alerts (Real-time) */}
             <motion.div
               variants={fadeUp}
               initial="hidden"
               animate="show"
               className="bg-card rounded-xl border border-border/60 p-5"
             >
-              <h3 className="font-serif text-base text-foreground mb-3">Active Alerts</h3>
-              <div className="space-y-2">
-                {alerts.slice(0, 4).map((alert) => (
-                  <div
-                    key={alert.id}
-                    className={cn(
-                      "flex items-start gap-2.5 p-2.5 rounded-lg border text-xs",
-                      alertBg[alert.type]
-                    )}
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="font-serif text-base text-foreground">Active Alerts</h3>
+                  {alertsWeekRange && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Week of {new Date(alertsWeekRange.from + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} – {new Date(alertsWeekRange.to + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {alertCounts.critical > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-medium">
+                      {alertCounts.critical} critical
+                    </span>
+                  )}
+                  {alertCounts.warning > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-medium">
+                      {alertCounts.warning} warning
+                    </span>
+                  )}
+                  <button
+                    onClick={() => { setAlertsLoading(true); fetchAlerts(); }}
+                    className="p-1 rounded-md hover:bg-muted transition-colors"
+                    title="Refresh alerts"
                   >
-                    <div className="mt-0.5 shrink-0">{alertIcons[alert.type]}</div>
-                    <div>
-                      <p className="text-foreground leading-relaxed">{alert.message}</p>
-                      <p className="text-muted-foreground mt-1 text-[10px]">
-                        {getStoreName(alert.store)} — {new Date(alert.timestamp).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                    <RefreshCw className={cn("w-3.5 h-3.5 text-muted-foreground", alertsLoading && "animate-spin")} />
+                  </button>
+                </div>
               </div>
+
+              {alertsLoading && liveAlerts.length === 0 ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                </div>
+              ) : liveAlerts.length === 0 ? (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <p className="text-emerald-700">All clear — no active alerts this week</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
+                  {liveAlerts.map((alert: LiveAlert) => (
+                    <div
+                      key={alert.id}
+                      className={cn(
+                        "flex items-start gap-2.5 p-2.5 rounded-lg border text-xs",
+                        alertBg[alert.type]
+                      )}
+                    >
+                      <div className="mt-0.5 shrink-0">{alertIcons[alert.type]}</div>
+                      <div className="flex-1">
+                        <p className="text-foreground leading-relaxed">{alert.message}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-muted-foreground">
+                            {getStoreName(alert.store)}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/5 text-muted-foreground">
+                            {alert.category === "missing-audit" ? "Weekly Audit" :
+                             alert.category === "missing-daily" ? "Daily Checklist" :
+                             alert.category === "missing-weekly" ? "Weekly Checklist" :
+                             alert.category === "high-labour" ? "Labour Alert" :
+                             alert.category === "labour-ok" ? "Labour OK" : alert.category}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </div>
         </div>
