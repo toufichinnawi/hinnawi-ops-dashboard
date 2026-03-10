@@ -937,3 +937,23 @@
 - [x] Fixed all 4 DB insertion points in routers.ts (3) and _core/index.ts (1): multiply by 100
 - [x] Fixed existing DB data: UPDATE seven_shifts_daily_sales SET labourPercent = labourPercent * 100
 - [x] Verified: Mar 9 now shows 29.98% ($181.47 / $605.26) — correct
+
+# Bug Fix: "Back to Menu" Not Working After Checklist Submission
+- [x] Investigated: Works correctly on preview — issue was on older published version
+- [x] User needs to re-publish latest checkpoint to fix on production
+
+# Invoice Capture Feature (OCR Auto-Fill)
+- [x] Database: invoices table with all fields (vendor, lineItems, total, photoUrl, verifiedBy, etc.)
+- [x] Database: CRUD helpers (createInvoice, getAllInvoices, getInvoiceById, updateInvoice, deleteInvoice)
+- [x] Backend: POST /api/public/invoices/upload — photo upload to S3 + OCR extraction via Gemini vision
+- [x] Backend: POST /api/public/invoices — create verified invoice record
+- [x] Backend: GET /api/public/invoices — list invoices with store/vendor/date filters
+- [x] Backend: GET /api/public/invoices/:id — get single invoice detail
+- [x] OCR Service: extractInvoiceData using Forge API (Gemini 2.5 Flash) for vision-based extraction
+- [x] Portal: InvoiceCapturePortal component — photo capture, OCR auto-fill, vendor dropdown, verification checkbox
+- [x] Portal: Added to Store Manager, Assistant Manager, and Staff sidebar items
+- [x] Portal: Vendor dropdown with 5 known vendors (Gordon/GFS, Dube Loiselle, Costco, Fernando, JG Rive Sud) + Other
+- [x] Admin: InvoiceManagement page with filters, vendor breakdown, photo viewer, detail dialogs
+- [x] Admin: Added to DashboardLayout sidebar under Reports & Checklists
+- [x] Admin: Route /invoices registered in App.tsx
+- [x] Tests: 17 invoice tests passing (schema, DB helpers, API endpoints, portal integration, admin integration)
