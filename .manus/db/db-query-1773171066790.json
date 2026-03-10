@@ -1,0 +1,70 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'invoices' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'invoices' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "storeCode"
+    },
+    {
+      "COLUMN_NAME": "vendorName"
+    },
+    {
+      "COLUMN_NAME": "invoiceNumber"
+    },
+    {
+      "COLUMN_NAME": "invoiceDate"
+    },
+    {
+      "COLUMN_NAME": "lineItems"
+    },
+    {
+      "COLUMN_NAME": "subtotal"
+    },
+    {
+      "COLUMN_NAME": "tax"
+    },
+    {
+      "COLUMN_NAME": "total"
+    },
+    {
+      "COLUMN_NAME": "photoUrl"
+    },
+    {
+      "COLUMN_NAME": "photoUrls"
+    },
+    {
+      "COLUMN_NAME": "photoKey"
+    },
+    {
+      "COLUMN_NAME": "ocrRawData"
+    },
+    {
+      "COLUMN_NAME": "category"
+    },
+    {
+      "COLUMN_NAME": "verifiedBy"
+    },
+    {
+      "COLUMN_NAME": "verifiedAt"
+    },
+    {
+      "COLUMN_NAME": "status"
+    },
+    {
+      "COLUMN_NAME": "notes"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nstoreCode\nvendorName\ninvoiceNumber\ninvoiceDate\nlineItems\nsubtotal\ntax\ntotal\nphotoUrl\nphotoUrls\nphotoKey\nocrRawData\ncategory\nverifiedBy\nverifiedAt\nstatus\nnotes\ncreatedAt\nupdatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

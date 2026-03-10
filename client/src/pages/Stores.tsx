@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ReferenceLine,
 } from "recharts";
 import { MapPin, CheckCircle2, Database, Loader2, CalendarX } from "lucide-react";
 import { Link } from "wouter";
@@ -340,6 +340,230 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
             </motion.div>
           </div>
         )}
+
+        {/* ─── COGS Section ─── */}
+        {!(hasCloverData && noDataForPeriod) && (() => {
+          const storeList = storeFilter ? stores.filter(s => s.id === storeFilter) : stores;
+          const hasAnyCogs = storeList.some(s => (cogsData[s.id]?.total ?? 0) > 0);
+          const totalCogs = storeList.reduce((sum, s) => sum + (cogsData[s.id]?.total ?? 0), 0);
+          const totalRevenue = storeList.reduce((sum, s) => sum + (getLabour(s.id).revenue ?? 0), 0);
+          const overallCogsRate = totalRevenue > 0 ? (totalCogs / totalRevenue) * 100 : 0;
+          const totalInvoices = storeList.reduce((sum, s) => sum + (cogsData[s.id]?.count ?? 0), 0);
+
+          // Bar chart data: COGS by store
+          const cogsBarData = storeList.map(s => {
+            const cogs = cogsData[s.id]?.total ?? 0;
+            const rev = getLabour(s.id).revenue ?? 0;
+            const rate = rev > 0 ? (cogs / rev) * 100 : 0;
+            return {
+              store: s.shortName,
+              storeId: s.id,
+              cogs,
+              revenue: rev,
+              rate,
+              color: s.color,
+              invoiceCount: cogsData[s.id]?.count ?? 0,
+            };
+          });
+
+          // COGS Rate comparison data
+          const cogsRateData = storeList.map(s => {
+            const cogs = cogsData[s.id]?.total ?? 0;
+            const rev = getLabour(s.id).revenue ?? 0;
+            const rate = rev > 0 ? (cogs / rev) * 100 : 0;
+            return {
+              store: s.shortName,
+              rate: parseFloat(rate.toFixed(1)),
+              target: 30, // default COGS target
+              color: s.color,
+            };
+          });
+
+          // Vendor breakdown across all stores
+          const vendorMap: Record<string, { vendor: string; total: number; count: number }> = {};
+          storeList.forEach(s => {
+            const storeInvoices = cogsData[s.id]?.invoices ?? [];
+            storeInvoices.forEach((inv: any) => {
+              const vendor = inv.vendorName || "Unknown";
+              if (!vendorMap[vendor]) vendorMap[vendor] = { vendor, total: 0, count: 0 };
+              vendorMap[vendor].total += inv.total ?? 0;
+              vendorMap[vendor].count += 1;
+            });
+          });
+          const vendorBreakdown = Object.values(vendorMap).sort((a, b) => b.total - a.total);
+
+          return (
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-6">
+              {/* COGS Section Header */}
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-xs text-blue-600 uppercase tracking-[0.2em] font-medium">Cost of Goods Sold</p>
+                  <h3 className="text-xl font-serif text-foreground mt-1">COGS Analysis</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {hasAnyCogs
+                      ? `${totalInvoices} invoice${totalInvoices !== 1 ? "s" : ""} — ${dateFilter.label}`
+                      : `No invoices recorded for ${dateFilter.label}`}
+                  </p>
+                </div>
+                {hasAnyCogs && (
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total COGS</p>
+                      <p className="text-xl font-mono font-semibold text-blue-600">${totalCogs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Overall Rate</p>
+                      <p className={cn("text-xl font-mono font-semibold", overallCogsRate > 40 ? "text-red-600" : overallCogsRate > 30 ? "text-amber-600" : "text-emerald-600")}>
+                        {overallCogsRate > 0 ? `${overallCogsRate.toFixed(1)}%` : "—"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* COGS Charts */}
+              {hasAnyCogs ? (
+                <div className={cn("grid gap-6", storeFilter ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}>
+                  {/* COGS by Store Bar Chart */}
+                  <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
+                    <h4 className="font-serif text-lg text-foreground mb-1">COGS by Store</h4>
+                    <p className="text-xs text-muted-foreground mb-4">Total cost of goods sold per location</p>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={cogsBarData} barSize={storeFilter ? 60 : 36}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
+                        <XAxis dataKey="store" tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} />
+                        <YAxis tickFormatter={(v) => `$${v.toLocaleString()}`} tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} width={70} />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0].payload;
+                            return (
+                              <div className="bg-white border border-border rounded-lg px-3 py-2 shadow-lg">
+                                <p className="text-xs font-medium text-foreground mb-1">{d.store}</p>
+                                <div className="space-y-0.5 text-xs">
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">COGS:</span><span className="font-mono font-medium">${d.cogs.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Revenue:</span><span className="font-mono font-medium">${d.revenue.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">COGS Rate:</span><span className={cn("font-mono font-medium", d.rate > 40 ? "text-red-600" : d.rate > 30 ? "text-amber-600" : "text-emerald-600")}>{d.rate.toFixed(1)}%</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Invoices:</span><span className="font-mono font-medium">{d.invoiceCount}</span></div>
+                                </div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="cogs" radius={[6, 6, 0, 0]}>
+                          {cogsBarData.map((entry, idx) => (
+                            <Cell key={idx} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <div className="flex items-center justify-center gap-4 mt-2">
+                      {storeList.map((s) => (
+                        <div key={s.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ background: s.color }} />
+                          {s.shortName}
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+
+                  {/* COGS Rate Comparison */}
+                  <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
+                    <h4 className="font-serif text-lg text-foreground mb-1">COGS Rate by Store</h4>
+                    <p className="text-xs text-muted-foreground mb-4">COGS as percentage of revenue — target: 30%</p>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={cogsRateData} barSize={storeFilter ? 60 : 36}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
+                        <XAxis dataKey="store" tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} />
+                        <YAxis domain={[0, 'auto']} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} width={50} />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0].payload;
+                            return (
+                              <div className="bg-white border border-border rounded-lg px-3 py-2 shadow-lg">
+                                <p className="text-xs font-medium text-foreground mb-1">{d.store}</p>
+                                <div className="space-y-0.5 text-xs">
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">COGS Rate:</span><span className={cn("font-mono font-medium", d.rate > 40 ? "text-red-600" : d.rate > 30 ? "text-amber-600" : "text-emerald-600")}>{d.rate}%</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Target:</span><span className="font-mono font-medium text-blue-600">{d.target}%</span></div>
+                                </div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <ReferenceLine y={30} stroke="#3B82F6" strokeDasharray="6 4" strokeWidth={2} label={{ value: "Target 30%", position: "right", fill: "#3B82F6", fontSize: 10 }} />
+                        <Bar dataKey="rate" radius={[6, 6, 0, 0]}>
+                          {cogsRateData.map((entry, idx) => (
+                            <Cell key={idx} fill={entry.rate > 40 ? "#DC2626" : entry.rate > 30 ? "#D97706" : "#059669"} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                    {/* Target line legend */}
+                    <div className="flex items-center justify-center gap-6 mt-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm bg-emerald-600" /> &lt;30% Good</div>
+                      <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm bg-amber-600" /> 30-40% Watch</div>
+                      <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm bg-red-600" /> &gt;40% High</div>
+                    </div>
+                  </motion.div>
+                </div>
+              ) : (
+                /* Empty state when no COGS data */
+                <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-8 text-center">
+                  <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" /></svg>
+                  </div>
+                  <h4 className="font-serif text-lg text-foreground mb-1">No COGS Data Yet</h4>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    Start capturing invoices through the portal to see COGS analysis here. Each invoice is recorded as Cost of Goods Sold.
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Vendor Breakdown Table */}
+              {vendorBreakdown.length > 0 && (
+                <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
+                  <h4 className="font-serif text-lg text-foreground mb-1">COGS by Vendor</h4>
+                  <p className="text-xs text-muted-foreground mb-4">Spending breakdown by supplier — {dateFilter.label}</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border/60">
+                          <th className="text-left py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Vendor</th>
+                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Invoices</th>
+                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Total</th>
+                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">% of COGS</th>
+                          <th className="text-left py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium w-40">Share</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {vendorBreakdown.slice(0, 10).map((v, idx) => {
+                          const pct = totalCogs > 0 ? (v.total / totalCogs) * 100 : 0;
+                          return (
+                            <tr key={v.vendor} className={cn("border-b border-border/30", idx % 2 === 0 ? "bg-muted/20" : "")}>
+                              <td className="py-2.5 px-3 font-medium text-foreground">{v.vendor}</td>
+                              <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{v.count}</td>
+                              <td className="py-2.5 px-3 text-right font-mono font-medium">${v.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{pct.toFixed(1)}%</td>
+                              <td className="py-2.5 px-3">
+                                <div className="w-full bg-muted/40 rounded-full h-2">
+                                  <div className="h-2 rounded-full bg-blue-500 transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    {vendorBreakdown.length > 10 && (
+                      <p className="text-xs text-muted-foreground text-center mt-3">Showing top 10 of {vendorBreakdown.length} vendors</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          );
+        })()}
       </div>
   );
 }

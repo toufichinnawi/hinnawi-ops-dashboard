@@ -1052,3 +1052,13 @@
 - [x] Admin InvoiceManagement: detail dialog shows multiple photos in grid + COGS badge
 - [x] 6 new COGS tests (summary shape, date filtering, multi-photo, invoice creation)
 - [x] All 159 tests passing across 18 test files
+
+# COGS Charts on Store Performance Page
+- [x] COGS Analysis section with header showing Total COGS and Overall Rate
+- [x] COGS by Store bar chart — color-coded bars per store (PK gold, MK blue, ON green, TN amber)
+- [x] COGS Rate by Store bar chart — green/amber/red based on 30% target reference line
+- [x] COGS by Vendor breakdown table — vendor name, invoice count, total, % of COGS, visual share bar
+- [x] Charts use the same date filter as the rest of the page
+- [x] Empty state when no invoices for the selected period
+- [x] Cleaned up 8 test invoices from database
+- [x] All 171 tests passing across 19 test files
