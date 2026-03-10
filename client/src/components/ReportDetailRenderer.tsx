@@ -80,9 +80,30 @@ function CheckIcon({ checked }: { checked: boolean }) {
 
 // ─── Manager Checklist ───────────────────────────────────────────
 function ManagerChecklistDetail({ data }: { data: any }) {
-  const tasks = data.tasks || [];
-  const comments = data.comments || data.finalComments || "";
+  const comments = data.comments || data.finalComments || data.notes || "";
   const avgScore = data.averageScore || "";
+
+  // Handle 3 possible data formats:
+  // 1. New format: { tasks: [{ task: "...", taskFr: "...", rating, comment, isNA }] }
+  // 2. Items format: { items: [{ label: "...", rating }] }
+  // 3. Old format: { ratings: { sectionKey: { itemKey: rating } }, notes: "..." }
+  const tasks = data.tasks || [];
+  const items = data.items || [];
+  const ratings = data.ratings;
+
+  // If old ratings format, delegate to SectionChecklistDetail
+  if ((!tasks.length && !items.length) && ratings && typeof ratings === "object") {
+    return <SectionChecklistDetail data={data} />;
+  }
+
+  // Merge tasks and items into a unified list
+  const allTasks = tasks.length > 0 ? tasks : items.map((item: any) => ({
+    task: item.item || item.label || item.en || "",
+    taskFr: item.taskFr || item.fr || "",
+    rating: item.rating ?? 0,
+    comment: item.comment || "",
+    isNA: item.isNA || false,
+  }));
 
   return (
     <div className="space-y-3">
@@ -96,12 +117,12 @@ function ManagerChecklistDetail({ data }: { data: any }) {
         </div>
       )}
       <div className="space-y-2">
-        {tasks.map((task: any, i: number) => (
+        {allTasks.map((task: any, i: number) => (
           <div key={i} className={`p-3 rounded-lg border ${task.isNA ? "bg-muted/30 opacity-60" : "bg-card"}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-medium ${task.isNA ? "line-through text-muted-foreground" : ""}`}>
-                  {task.task || task.en || task.label || `Task ${i + 1}`}
+                  {task.task || task.en || task.label || task.item || `Task ${i + 1}`}
                 </p>
                 {task.taskFr && (
                   <p className="text-xs text-muted-foreground">{task.taskFr}</p>

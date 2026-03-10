@@ -1493,10 +1493,28 @@ function PortalCompletedChecklists({
   loading: boolean;
   store: StoreInfo | null;
 }) {
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+
   const sorted = useMemo(() =>
     [...reports].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [reports]
   );
+
+  function parsePayload(data: any): Record<string, any> | null {
+    if (!data) return null;
+    if (typeof data === "string") {
+      try { return JSON.parse(data); } catch { return null; }
+    }
+    return data;
+  }
+
+  function getSubmitter(report: any): string {
+    const payload = parsePayload(report.data);
+    if (payload?.submitterName) return payload.submitterName;
+    if (payload?.name) return payload.name;
+    if (report.userName) return report.userName;
+    return "\u2014";
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1200px] space-y-6">
@@ -1522,7 +1540,11 @@ function PortalCompletedChecklists({
           {sorted.map((r) => {
             const info = ALL_CHECKLISTS[r.reportType as ChecklistType];
             return (
-              <Card key={r.id} className="hover:shadow-sm transition-shadow">
+              <Card
+                key={r.id}
+                className="hover:shadow-sm transition-shadow cursor-pointer"
+                onClick={() => setSelectedReport(r)}
+              >
                 <CardContent className="py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
@@ -1532,7 +1554,7 @@ function PortalCompletedChecklists({
                       <div>
                         <p className="font-medium text-sm">{info?.label || r.reportType}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {r.submitterName || "Unknown"} · {r.normalizedLocation || r.location}
+                          {getSubmitter(r)} \u00b7 {r.normalizedLocation || r.location}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(r.createdAt).toLocaleDateString()} at {new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -1549,6 +1571,54 @@ function PortalCompletedChecklists({
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Report Detail Dialog */}
+      {selectedReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedReport(null)}>
+          <div className="bg-card rounded-xl p-6 max-w-lg mx-4 shadow-xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-lg">{ALL_CHECKLISTS[selectedReport.reportType as ChecklistType]?.icon || "\ud83d\udccb"}</span>
+              <h3 className="text-lg font-serif">{ALL_CHECKLISTS[selectedReport.reportType as ChecklistType]?.label || selectedReport.reportType}</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-muted-foreground text-xs">Store</p>
+                <p className="font-medium mt-0.5">{selectedReport.normalizedLocation || selectedReport.location}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Report Date</p>
+                <p className="font-medium mt-0.5">{selectedReport.reportDate || "\u2014"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Submitted By</p>
+                <p className="font-medium mt-0.5">{getSubmitter(selectedReport)}</p>
+              </div>
+              {selectedReport.totalScore && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Score</p>
+                  <p className="font-bold text-lg mt-0.5">{selectedReport.totalScore}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-muted-foreground text-xs">Submitted At</p>
+                <p className="font-medium mt-0.5">
+                  {selectedReport.createdAt ? new Date(selectedReport.createdAt).toLocaleString("en-CA") : "\u2014"}
+                </p>
+              </div>
+            </div>
+
+            {/* Detailed Data — proper template rendering */}
+            <div className="mt-4">
+              <ReportDetailRenderer reportType={selectedReport.reportType} data={selectedReport.data} />
+            </div>
+
+            {/* Close button */}
+            <div className="flex justify-end mt-3">
+              <Button variant="outline" size="sm" onClick={() => setSelectedReport(null)}>Close</Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1615,6 +1685,14 @@ function PortalReportsPage({
       try { return JSON.parse(data); } catch { return null; }
     }
     return data;
+  }
+
+  function getSubmitter(report: any): string {
+    const payload = parsePayload(report.data);
+    if (payload?.submitterName) return payload.submitterName;
+    if (payload?.name) return payload.name;
+    if (report.userName) return report.userName;
+    return "—";
   }
 
   function getPositionLabel(reportType: string): string {
@@ -1715,7 +1793,7 @@ function PortalReportsPage({
                           <span className="text-xs font-medium">{info?.label || r.reportType}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground">{r.submitterName || "—"}</td>
+                      <td className="px-4 py-3.5 text-xs text-muted-foreground">{getSubmitter(r)}</td>
                       <td className="px-4 py-3.5 text-center">
                         {r.totalScore ? (
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
@@ -1786,7 +1864,7 @@ function PortalReportsPage({
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Submitted By</p>
-                <p className="font-medium mt-0.5">{selectedReport.submitterName || "—"}</p>
+                <p className="font-medium mt-0.5">{getSubmitter(selectedReport)}</p>
               </div>
               {selectedReport.totalScore && (
                 <div>

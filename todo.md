@@ -957,3 +957,12 @@
 - [x] Admin: Added to DashboardLayout sidebar under Reports & Checklists
 - [x] Admin: Route /invoices registered in App.tsx
 - [x] Tests: 17 invoice tests passing (schema, DB helpers, API endpoints, portal integration, admin integration)
+
+# Bug Fix: Portal Reports Template Mismatch & Report Detail View
+- [x] Portal Reports: Fixed getSubmitter() to extract name from data JSON (matching admin pattern)
+- [x] Portal Completed Checklists: Made cards clickable with full detail dialog + ReportDetailRenderer
+- [x] ReportDetailRenderer: Now handles 3 data formats (old ratings object, new tasks array, items array)
+- [x] Old format (ratings) delegates to SectionChecklistDetail for proper section-based rendering
+- [x] Items format maps to unified task structure with proper field names (item/label/en)
+- [x] Task names now display correctly: "Outside and entrance" instead of "Task 1"
+- [x] All 140 tests passing
