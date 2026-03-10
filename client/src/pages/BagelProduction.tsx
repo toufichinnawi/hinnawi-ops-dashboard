@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { stores } from "@/lib/data";
-import { CircleDot, Filter, Package } from "lucide-react";
+import { CircleDot, Package, Users2, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DateFilter, getDefaultDateFilter, type DateFilterValue } from "@/components/DateFilter";
 import { format } from "date-fns";
@@ -89,6 +89,7 @@ interface BagelOrderRow {
   storeName: string;
   orderDate: string;
   submittedBy: string;
+  clientName?: string;
   orders: { type: string; quantity: string; unit?: string }[];
   globalUnit: string; // legacy fallback
 }
@@ -130,6 +131,7 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
         storeName: getStoreName(storeId),
         orderDate: data?.orderForDate || r.reportDate,
         submittedBy: data?.submittedVia || "Dashboard",
+        clientName: data?.clientName || undefined,
         orders: (data?.orders || []).map((o: any) => ({
           type: o.type,
           quantity: o.quantity,
@@ -140,18 +142,63 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
     });
   }, [rawOrders]);
 
-  // Filter by store
-  const filteredOrders = useMemo(() => {
-    if (selectedStore === "all") return orders;
-    return orders.filter(o => o.storeId === selectedStore);
-  }, [orders, selectedStore]);
+  // Separate Sales orders from Store orders
+  const salesOrders = useMemo(() => orders.filter(o => o.storeId === "sales"), [orders]);
+  const storeOrders = useMemo(() => orders.filter(o => o.storeId !== "sales"), [orders]);
 
-  // Aggregate: total dozens per bagel type across all filtered orders
-  // Convert units to dozens for aggregation: 1 unit = 1/12 dozen
+  // Filter store orders by selected store
+  const filteredStoreOrders = useMemo(() => {
+    if (selectedStore === "all") return storeOrders;
+    if (selectedStore === "sales") return []; // Sales is shown separately
+    return storeOrders.filter(o => o.storeId === selectedStore);
+  }, [storeOrders, selectedStore]);
+
+  // For "all" view, show all orders (sales + stores); for specific store, show only that
+  const allFilteredOrders = useMemo(() => {
+    if (selectedStore === "all") return orders;
+    if (selectedStore === "sales") return salesOrders;
+    return storeOrders.filter(o => o.storeId === selectedStore);
+  }, [orders, salesOrders, storeOrders, selectedStore]);
+
+  // ─── Sales: Group by Client Name ───
+  const salesByClient = useMemo(() => {
+    const clientMap: Record<string, Record<string, number>> = {};
+    salesOrders.forEach(order => {
+      const client = order.clientName || "Unknown Client";
+      if (!clientMap[client]) {
+        clientMap[client] = {};
+        BAGEL_TYPES.forEach(t => { clientMap[client][t] = 0; });
+      }
+      order.orders.forEach((item: any) => {
+        const qty = parseFloat(item.quantity) || 0;
+        const itemUnit = item.unit || order.globalUnit || "dozen";
+        const dozenQty = itemUnit === "unit" ? qty / 12 : qty;
+        if (clientMap[client][item.type] !== undefined) {
+          clientMap[client][item.type] += dozenQty;
+        }
+      });
+    });
+    return clientMap;
+  }, [salesOrders]);
+
+  const clientNames = Object.keys(salesByClient).sort();
+
+  // Clients White Dough: total white dough Kg per client
+  const clientsWhiteDough = useMemo(() => {
+    const result: Record<string, number> = {};
+    clientNames.forEach(client => {
+      result[client] = WHITE_DOUGH_TYPES.reduce((sum, t) => sum + (salesByClient[client]?.[t] || 0), 0);
+    });
+    return result;
+  }, [salesByClient, clientNames]);
+
+  const totalClientsWhiteDoughKg = Object.values(clientsWhiteDough).reduce((a, b) => a + b, 0);
+
+  // ─── Store Orders: Aggregate by store ───
   const aggregatedByType = useMemo(() => {
     const totals: Record<string, number> = {};
     BAGEL_TYPES.forEach(t => { totals[t] = 0; });
-    filteredOrders.forEach(order => {
+    allFilteredOrders.forEach(order => {
       order.orders.forEach((item: any) => {
         const qty = parseFloat(item.quantity) || 0;
         const itemUnit = item.unit || order.globalUnit || "dozen";
@@ -162,17 +209,17 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
       });
     });
     return totals;
-  }, [filteredOrders]);
+  }, [allFilteredOrders]);
 
   const totalDozens = Object.values(aggregatedByType).reduce((a, b) => a + b, 0);
 
-  // White Dough total in Kg (1 DZ = 1 Kg)
+  // White Dough total in Kg (1 DZ = 1 Kg) — all orders combined
   const whiteDoughKg = WHITE_DOUGH_TYPES.reduce((sum, t) => sum + (aggregatedByType[t] || 0), 0);
 
-  // Aggregate by store: for each store, total dozens per type
+  // Aggregate store orders by store (excluding sales)
   const byStore = useMemo(() => {
     const storeMap: Record<string, Record<string, number>> = {};
-    filteredOrders.forEach(order => {
+    filteredStoreOrders.forEach(order => {
       if (!storeMap[order.storeId]) {
         storeMap[order.storeId] = {};
         BAGEL_TYPES.forEach(t => { storeMap[order.storeId][t] = 0; });
@@ -187,14 +234,20 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
       });
     });
     return storeMap;
-  }, [filteredOrders]);
+  }, [filteredStoreOrders]);
 
   const storeIds = Object.keys(byStore);
 
-  // All store options including "Sales"
+  // Store white dough totals
+  const storeWhiteDoughKg = useMemo(() => {
+    return storeIds.reduce((sum, id) => {
+      return sum + WHITE_DOUGH_TYPES.reduce((s, t) => s + (byStore[id]?.[t] || 0), 0);
+    }, 0);
+  }, [byStore, storeIds]);
+
+  // All store options (excluding "Sales" from the dropdown since it's shown separately)
   const allStoreOptions = [
     ...stores.map(s => ({ id: s.id, name: s.name })),
-    { id: "sales", name: "Sales" },
   ];
 
   return (
@@ -217,7 +270,7 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
               onChange={e => setSelectedStore(e.target.value)}
               className="h-9 rounded-md border border-border bg-background px-3 text-sm"
             >
-              <option value="all">All Stores</option>
+              <option value="all">All Locations</option>
               {allStoreOptions.map(s => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -232,7 +285,7 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
         <Card>
           <CardContent className="pt-4 pb-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Orders</p>
-            <p className="text-2xl font-mono font-bold mt-1">{filteredOrders.length}</p>
+            <p className="text-2xl font-mono font-bold mt-1">{allFilteredOrders.length}</p>
           </CardContent>
         </Card>
         <Card>
@@ -256,8 +309,8 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
         </Card>
         <Card>
           <CardContent className="pt-4 pb-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Stores</p>
-            <p className="text-2xl font-mono font-bold mt-1">{storeIds.length}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Locations</p>
+            <p className="text-2xl font-mono font-bold mt-1">{storeIds.length + (salesOrders.length > 0 ? 1 : 0)}</p>
           </CardContent>
         </Card>
       </div>
@@ -268,7 +321,7 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
             Loading bagel orders...
           </CardContent>
         </Card>
-      ) : filteredOrders.length === 0 ? (
+      ) : allFilteredOrders.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
@@ -278,89 +331,280 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
         </Card>
       ) : (
         <>
-          {/* Aggregated Totals Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Total Orders by Bagel Type</CardTitle>
-              <p className="text-xs text-muted-foreground">
-                {dateFilter.label} — Quantities shown as DZ (dozens) or Units
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="border rounded-lg overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3 font-medium text-xs">Bagel Type</th>
-                      {storeIds.map(id => (
-                        <th key={id} className="text-center p-3 font-medium text-xs">
-                          <span className="inline-flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full" style={{ background: getStoreColor(id) }} />
-                            {getStoreShortName(id)}
-                          </span>
-                        </th>
-                      ))}
-                      <th className="text-center p-3 font-semibold text-xs bg-muted/80">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {BAGEL_TYPES.map(type => {
-                      const rowTotal = storeIds.reduce((sum, id) => sum + (byStore[id]?.[type] || 0), 0);
-                      return (
-                        <tr key={type} className="border-t hover:bg-muted/30 transition-colors">
-                          <td className="p-3 text-sm font-medium">{type}</td>
-                          {storeIds.map(id => {
-                            const val = byStore[id]?.[type] || 0;
-                            const formatted = formatDozenValue(val);
+          {/* ═══════════════════════════════════════════════════════════════
+              SALES SECTION — Orders by Client
+              ═══════════════════════════════════════════════════════════════ */}
+          {salesOrders.length > 0 && (selectedStore === "all" || selectedStore === "sales") && (
+            <>
+              {/* Section Header */}
+              <div className="flex items-center gap-2 pt-2">
+                <Users2 className="w-5 h-5 text-purple-500" />
+                <h2 className="text-lg font-serif text-foreground">Sales Orders by Client</h2>
+                <span className="text-xs text-muted-foreground ml-1">({salesOrders.length} order{salesOrders.length !== 1 ? "s" : ""})</span>
+              </div>
+
+              {/* Clients White Dough Box */}
+              <Card className="border-purple-200 bg-purple-50/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-purple-500" />
+                    Clients White Dough
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    White dough requirement per client (1 DZ = 1 Kg) — Sesame, Everything, Plain, Poppy
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {clientNames.length > 0 ? (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-purple-100/60">
+                          <tr>
+                            <th className="text-left p-3 font-medium text-xs">Client</th>
+                            {WHITE_DOUGH_TYPES.map(t => (
+                              <th key={t} className="text-center p-3 font-medium text-xs">{t.replace(" Bagel", "")}</th>
+                            ))}
+                            <th className="text-center p-3 font-semibold text-xs bg-purple-100/80">Total (Kg)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {clientNames.map(client => {
+                            const clientTotal = clientsWhiteDough[client] || 0;
                             return (
-                              <td key={id} className="p-3 text-center font-mono text-sm">
-                                {val > 0 ? (
-                                  <span className="font-semibold text-foreground">
-                                    {formatted.display}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground/40">—</span>
-                                )}
+                              <tr key={client} className="border-t hover:bg-purple-50/50 transition-colors">
+                                <td className="p-3 text-sm font-medium">{client}</td>
+                                {WHITE_DOUGH_TYPES.map(t => {
+                                  const val = salesByClient[client]?.[t] || 0;
+                                  return (
+                                    <td key={t} className="p-3 text-center font-mono text-sm">
+                                      {val > 0 ? (
+                                        <span className="font-semibold">{formatDozenValue(val).display}</span>
+                                      ) : (
+                                        <span className="text-muted-foreground/40">—</span>
+                                      )}
+                                    </td>
+                                  );
+                                })}
+                                <td className="p-3 text-center font-mono text-sm font-bold bg-purple-50/80">
+                                  {clientTotal > 0 ? `${clientTotal % 1 === 0 ? clientTotal : clientTotal.toFixed(1)} Kg` : "—"}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {/* Total row */}
+                          <tr className="border-t-2 border-purple-200 bg-purple-100/40 font-bold">
+                            <td className="p-3 text-sm">TOTAL</td>
+                            {WHITE_DOUGH_TYPES.map(t => {
+                              const colTotal = clientNames.reduce((sum, c) => sum + (salesByClient[c]?.[t] || 0), 0);
+                              return (
+                                <td key={t} className="p-3 text-center font-mono text-sm">
+                                  {colTotal > 0 ? formatDozenValue(colTotal).display : "—"}
+                                </td>
+                              );
+                            })}
+                            <td className="p-3 text-center font-mono text-sm text-purple-700">
+                              {totalClientsWhiteDoughKg > 0 ? `${totalClientsWhiteDoughKg % 1 === 0 ? totalClientsWhiteDoughKg : totalClientsWhiteDoughKg.toFixed(1)} Kg` : "—"}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No client orders found.</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Sales Orders by Client — Full breakdown */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Sales — All Bagel Types by Client</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {dateFilter.label} — Quantities shown as DZ (dozens) or Units
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-purple-50/80">
+                        <tr>
+                          <th className="text-left p-3 font-medium text-xs">Bagel Type</th>
+                          {clientNames.map(client => (
+                            <th key={client} className="text-center p-3 font-medium text-xs">
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-purple-500" />
+                                {client}
+                              </span>
+                            </th>
+                          ))}
+                          <th className="text-center p-3 font-semibold text-xs bg-muted/80">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {BAGEL_TYPES.map(type => {
+                          const rowTotal = clientNames.reduce((sum, c) => sum + (salesByClient[c]?.[type] || 0), 0);
+                          if (rowTotal === 0) return null; // Skip empty rows
+                          return (
+                            <tr key={type} className="border-t hover:bg-muted/30 transition-colors">
+                              <td className="p-3 text-sm font-medium">{type}</td>
+                              {clientNames.map(client => {
+                                const val = salesByClient[client]?.[type] || 0;
+                                const formatted = formatDozenValue(val);
+                                return (
+                                  <td key={client} className="p-3 text-center font-mono text-sm">
+                                    {val > 0 ? (
+                                      <span className="font-semibold text-foreground">{formatted.display}</span>
+                                    ) : (
+                                      <span className="text-muted-foreground/40">—</span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                              <td className="p-3 text-center font-mono text-sm font-semibold bg-muted/30">
+                                {formatAlwaysDZ(rowTotal)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {/* Show all rows including zero if nothing was filtered */}
+                        {BAGEL_TYPES.every(type => clientNames.reduce((sum, c) => sum + (salesByClient[c]?.[type] || 0), 0) === 0) && (
+                          <tr className="border-t"><td colSpan={clientNames.length + 2} className="p-4 text-center text-muted-foreground text-sm">No items ordered</td></tr>
+                        )}
+                        {/* Totals row */}
+                        <tr className="border-t-2 border-border bg-muted/50 font-bold">
+                          <td className="p-3 text-sm">TOTAL</td>
+                          {clientNames.map(client => {
+                            const clientTotal = BAGEL_TYPES.reduce((sum, t) => sum + (salesByClient[client]?.[t] || 0), 0);
+                            const formatted = formatDozenValue(clientTotal);
+                            return (
+                              <td key={client} className="p-3 text-center font-mono text-sm">
+                                {clientTotal > 0 ? formatted.display : "—"}
                               </td>
                             );
                           })}
-                          <td className="p-3 text-center font-mono text-sm font-semibold bg-muted/30">
-                            {formatAlwaysDZ(rowTotal)}
+                          <td className="p-3 text-center font-mono text-sm bg-purple-100/50 text-purple-700">
+                            {formatAlwaysDZ(clientNames.reduce((sum, c) => sum + BAGEL_TYPES.reduce((s, t) => s + (salesByClient[c]?.[t] || 0), 0), 0))}
                           </td>
                         </tr>
-                      );
-                    })}
-                    {/* Totals row */}
-                    <tr className="border-t-2 border-border bg-muted/50 font-bold">
-                      <td className="p-3 text-sm">TOTAL</td>
-                      {storeIds.map(id => {
-                        const storeTotal = BAGEL_TYPES.reduce((sum, t) => sum + (byStore[id]?.[t] || 0), 0);
-                        const formatted = formatDozenValue(storeTotal);
-                        return (
-                          <td key={id} className="p-3 text-center font-mono text-sm">
-                            {storeTotal > 0 ? formatted.display : "—"}
-                          </td>
-                        );
-                      })}
-                      <td className="p-3 text-center font-mono text-sm bg-[#D4A853]/10 text-[#D4A853]">
-                        {formatAlwaysDZ(totalDozens)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
 
-          {/* Individual Orders List */}
+          {/* ═══════════════════════════════════════════════════════════════
+              STORE ORDERS SECTION
+              ═══════════════════════════════════════════════════════════════ */}
+          {filteredStoreOrders.length > 0 && selectedStore !== "sales" && (
+            <>
+              {/* Section Header */}
+              <div className="flex items-center gap-2 pt-2">
+                <Store className="w-5 h-5 text-[#D4A853]" />
+                <h2 className="text-lg font-serif text-foreground">Store Orders</h2>
+                <span className="text-xs text-muted-foreground ml-1">({filteredStoreOrders.length} order{filteredStoreOrders.length !== 1 ? "s" : ""})</span>
+              </div>
+
+              {/* Store White Dough Box */}
+              <Card className="border-[#D4A853]/30 bg-[#D4A853]/5">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-3 h-3 rounded-full bg-[#D4A853]" />
+                    <p className="text-xs text-[#D4A853] uppercase tracking-wide font-medium">Store White Dough</p>
+                  </div>
+                  <p className="text-2xl font-mono font-bold">{storeWhiteDoughKg % 1 === 0 ? storeWhiteDoughKg : storeWhiteDoughKg.toFixed(1)} <span className="text-sm font-semibold">Kg</span></p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Sesame, Everything, Plain, Poppy — Store orders only</p>
+                </CardContent>
+              </Card>
+
+              {/* Store Orders Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Store Orders by Bagel Type</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {dateFilter.label} — Quantities shown as DZ (dozens) or Units
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left p-3 font-medium text-xs">Bagel Type</th>
+                          {storeIds.map(id => (
+                            <th key={id} className="text-center p-3 font-medium text-xs">
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full" style={{ background: getStoreColor(id) }} />
+                                {getStoreShortName(id)}
+                              </span>
+                            </th>
+                          ))}
+                          <th className="text-center p-3 font-semibold text-xs bg-muted/80">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {BAGEL_TYPES.map(type => {
+                          const rowTotal = storeIds.reduce((sum, id) => sum + (byStore[id]?.[type] || 0), 0);
+                          return (
+                            <tr key={type} className="border-t hover:bg-muted/30 transition-colors">
+                              <td className="p-3 text-sm font-medium">{type}</td>
+                              {storeIds.map(id => {
+                                const val = byStore[id]?.[type] || 0;
+                                const formatted = formatDozenValue(val);
+                                return (
+                                  <td key={id} className="p-3 text-center font-mono text-sm">
+                                    {val > 0 ? (
+                                      <span className="font-semibold text-foreground">
+                                        {formatted.display}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground/40">—</span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                              <td className="p-3 text-center font-mono text-sm font-semibold bg-muted/30">
+                                {formatAlwaysDZ(rowTotal)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {/* Totals row */}
+                        <tr className="border-t-2 border-border bg-muted/50 font-bold">
+                          <td className="p-3 text-sm">TOTAL</td>
+                          {storeIds.map(id => {
+                            const storeTotal = BAGEL_TYPES.reduce((sum, t) => sum + (byStore[id]?.[t] || 0), 0);
+                            const formatted = formatDozenValue(storeTotal);
+                            return (
+                              <td key={id} className="p-3 text-center font-mono text-sm">
+                                {storeTotal > 0 ? formatted.display : "—"}
+                              </td>
+                            );
+                          })}
+                          <td className="p-3 text-center font-mono text-sm bg-[#D4A853]/10 text-[#D4A853]">
+                            {formatAlwaysDZ(storeIds.reduce((sum, id) => sum + BAGEL_TYPES.reduce((s, t) => s + (byStore[id]?.[t] || 0), 0), 0))}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════
+              INDIVIDUAL ORDERS LIST
+              ═══════════════════════════════════════════════════════════════ */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Individual Orders</CardTitle>
-              <p className="text-xs text-muted-foreground">{filteredOrders.length} order(s) found</p>
+              <p className="text-xs text-muted-foreground">{allFilteredOrders.length} order(s) found</p>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {filteredOrders
+                {allFilteredOrders
                   .sort((a, b) => b.orderDate.localeCompare(a.orderDate))
                   .map((order, idx) => {
                     const nonZeroItems = order.orders.filter((o: any) => parseFloat(o.quantity) > 0);
@@ -370,6 +614,12 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
                           <div className="flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full" style={{ background: getStoreColor(order.storeId) }} />
                             <span className="font-medium text-sm">{order.storeName}</span>
+                            {order.clientName && (
+                              <>
+                                <span className="text-xs text-muted-foreground">•</span>
+                                <span className="text-xs font-medium text-purple-600">{order.clientName}</span>
+                              </>
+                            )}
                             <span className="text-xs text-muted-foreground">•</span>
                             <span className="text-xs text-muted-foreground">
                               {new Date(order.orderDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}

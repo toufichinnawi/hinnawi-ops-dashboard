@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, reportType, location, reportDate, JSON_EXTRACT(data, '$.clientName') as clientName FROM report_submissions WHERE location = 'sales' AND (reportType = 'bagel-orders' OR reportType = 'Bagel Orders') ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, reportType, location, reportDate, JSON_EXTRACT(data, '$.clientName') as clientName FROM report_submissions WHERE location = 'sales' AND (reportType = 'bagel-orders' OR reportType = 'Bagel Orders') ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "270165",
+      "reportType": "bagel-orders",
+      "location": "sales",
+      "reportDate": "2026-03-10",
+      "clientName": "\"Downtown Deli\""
+    }
+  ],
+  "messages": [],
+  "stdout": "id\treportType\tlocation\treportDate\tclientName\n270165\tbagel-orders\tsales\t2026-03-10\t\"Downtown Deli\"\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

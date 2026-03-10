@@ -587,6 +587,25 @@ export async function checkExistingReport(location: string, reportType: string, 
   return rows[0] || null;
 }
 
+/**
+ * Check for existing Sales bagel order for the same client + date.
+ * Sales orders are unique by location + reportType + reportDate + clientName.
+ */
+export async function checkExistingSalesOrder(location: string, reportType: string, reportDate: string, clientName: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(reportSubmissions).where(
+    and(
+      eq(reportSubmissions.location, location),
+      eq(reportSubmissions.reportType, reportType),
+      eq(reportSubmissions.reportDate, reportDate),
+      sql`${reportSubmissions.status} != 'draft'`,
+      sql`JSON_EXTRACT(${reportSubmissions.data}, '$.clientName') = ${clientName}`
+    )
+  ).limit(1);
+  return rows[0] || null;
+}
+
 export async function createReportSubmission(data: InsertReportSubmission) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

@@ -207,10 +207,23 @@ async function startServer() {
         await deleteReportSubmission(existingDraft.id);
       }
 
-      // Auto-overwrite: delete any existing submitted report for the same store/type/date
-      const existing = await checkExistingReport(normalizedLocation, normalizedReportType, reportDate);
-      if (existing) {
-        await deleteReportSubmission(existing.id);
+      // For Sales bagel orders, uniqueness is per client name (multiple clients per date)
+      const isSalesBagelOrder = normalizedReportType === "bagel-orders" && normalizedLocation.toLowerCase() === "sales";
+      const clientName = typeof data === "object" && data !== null ? data.clientName : undefined;
+
+      if (isSalesBagelOrder && clientName) {
+        // Check for existing Sales bagel order for the same client + date
+        const { checkExistingSalesOrder } = await import("../db");
+        const existingSalesOrder = await checkExistingSalesOrder(normalizedLocation, normalizedReportType, reportDate, clientName);
+        if (existingSalesOrder) {
+          await deleteReportSubmission(existingSalesOrder.id);
+        }
+      } else {
+        // Auto-overwrite: delete any existing submitted report for the same store/type/date
+        const existing = await checkExistingReport(normalizedLocation, normalizedReportType, reportDate);
+        if (existing) {
+          await deleteReportSubmission(existing.id);
+        }
       }
       // Embed submitterName into data JSON so it's available for drill-down views
       const enrichedData = typeof data === "object" && data !== null

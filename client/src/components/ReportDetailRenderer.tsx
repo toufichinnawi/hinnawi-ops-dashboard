@@ -493,6 +493,12 @@ function BagelOrdersDetail({ data }: { data: any }) {
     // New per-date format with dozen quantities
     return (
       <div className="space-y-3">
+        {data.clientName && (
+          <div className="text-sm">
+            <span className="text-muted-foreground">Client: </span>
+            <span className="font-medium">{data.clientName}</span>
+          </div>
+        )}
         {orderForDate && (
           <div className="text-sm">
             <span className="text-muted-foreground">Order for: </span>

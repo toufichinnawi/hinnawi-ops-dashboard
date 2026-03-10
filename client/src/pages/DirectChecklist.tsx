@@ -1068,26 +1068,25 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
 }
 
 function BagelOrdersForm({ onBack }: { onBack: () => void }) {
-  const [selectedStore, setSelectedStore] = useState("");
-  const currentStoreName = selectedStore === "sales" ? "Sales" : stores.find(s => s.id === selectedStore)?.shortName || "";
+  // Bagel Orders is exclusively for the "Sales" location
   const [ordererName, setOrdererName] = useState("");
+  const [clientName, setClientName] = useState("");
   const [orderForDate, setOrderForDate] = useState("");
   const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])));
   const [itemUnits, setItemUnits] = useState<Record<string, "dozen" | "unit">>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [dupOpen, setDupOpen] = useState(false);
-  const [dupExisting, setDupExisting] = useState<any>(null);
-  const [dupOverwriting, setDupOverwriting] = useState(false);
 
   const buildPayload = () => ({
-    reportType: "bagel-orders", location: selectedStore, submitterName: ordererName, reportDate: orderForDate,
-    data: { orderForDate, orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })) },
-    overwrite: true,
+    reportType: "bagel-orders", location: "sales", submitterName: ordererName, reportDate: orderForDate,
+    data: { orderForDate, clientName: clientName.trim(), orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })) },
+    overwrite: false,
   });
 
   const handleSubmit = async () => {
-    if (!ordererName.trim() || !selectedStore || !orderForDate) { toast.error("Please fill required fields"); return; }
+    if (!ordererName.trim()) { toast.error("Please enter your name"); return; }
+    if (!clientName.trim()) { toast.error("Please enter the client name"); return; }
+    if (!orderForDate) { toast.error("Please select the order date"); return; }
     setSubmitting(true);
     try {
       const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload()) });
@@ -1101,7 +1100,7 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
   if (submitted) return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
       <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" /><h3 className="text-xl font-serif">Order Submitted</h3>
-      <p className="text-muted-foreground">Bagel Order for {currentStoreName}</p>
+      <p className="text-muted-foreground">Bagel Order for Sales — {clientName}</p>
       <Button onClick={onBack} variant="outline">Back</Button>
     </motion.div>
   );
@@ -1109,15 +1108,13 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-6">
       <Card><CardContent className="pt-6 space-y-4">
-        <div className="space-y-1.5"><Label>Store / Location</Label>
-          <select value={selectedStore} onChange={(e) => setSelectedStore(e.target.value)} className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm">
-            <option value="">Select location...</option>
-            {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            <option value="sales">Sales</option>
-          </select>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-50 border border-purple-200">
+          <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+          <span className="text-sm font-medium text-purple-700">Location: Sales</span>
         </div>
-        <div className="space-y-1.5"><Label>Your Name</Label><Input value={ordererName} onChange={(e) => setOrdererName(e.target.value)} placeholder="Enter your name" /></div>
-        <div className="space-y-1.5"><Label>Order for Date</Label><Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} /></div>
+        <div className="space-y-1.5"><Label>Client Name <span className="text-red-500">*</span></Label><Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Enter client name" /></div>
+        <div className="space-y-1.5"><Label>Your Name <span className="text-red-500">*</span></Label><Input value={ordererName} onChange={(e) => setOrdererName(e.target.value)} placeholder="Enter your name" /></div>
+        <div className="space-y-1.5"><Label>Order for Date <span className="text-red-500">*</span></Label><Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} /></div>
 
       </CardContent></Card>
       <Card><CardContent className="pt-6 space-y-4">

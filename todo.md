@@ -1069,3 +1069,21 @@
 - [x] Waste page loads without errors, "Send by Email" button works end-to-end
 - [x] 4 new vitest tests for waste email endpoint (valid send, missing subject, missing body, empty input)
 - [x] All 175 tests passing across 20 test files
+
+# Bagel Orders — Sales Location Only + Client Name
+- [x] Make Bagel Orders tab exclusively for the "Sales" location (no store selector, hardcoded to Sales)
+- [x] Add mandatory "Client Name" field to Bagel Orders form (both DirectChecklist and ChecklistViewer)
+- [x] Store client name in bagel order submissions
+- [x] Validate client name is non-empty before submission
+- [x] Display client name in ReportDetailRenderer for bagel order reports
+- [x] Sales orders unique by clientName+date (multiple clients per day supported)
+- [x] Added checkExistingSalesOrder() to db.ts for client-aware dedup
+
+# Bagel Production — Sales Section + Clients White Dough
+- [x] Add "Sales Orders by Client" section above Store Orders on Bagel Production page
+- [x] Sales section divided by client name (group orders by client)
+- [x] Add separate "Clients White Dough" table showing per-client white dough Kg
+- [x] "Sales — All Bagel Types by Client" table with client columns
+- [x] Store White Dough box remains for store orders only
+- [x] 5 new vitest tests for Sales bagel order uniqueness and production aggregation
+- [x] All 180 tests passing across 21 test files

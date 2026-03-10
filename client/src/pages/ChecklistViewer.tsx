@@ -1724,31 +1724,28 @@ function TrainingEvaluationForm({ storeCode: initialStoreCode, storeName: _sn6, 
 
 // ─── Bagel Orders ───
 
-function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positionLabel, onBack }: FormProps) {
-  const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
-  const currentStoreName = selectedStore === "sales" ? "Sales" : stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
+function BagelOrdersForm({ storeCode: _initialStoreCode, storeName: _sn7, positionLabel, onBack }: FormProps) {
+  // Bagel Orders is exclusively for the "Sales" location
   const [submitterName, setSubmitterName] = useState("");
+  const [clientName, setClientName] = useState("");
   const [orderForDate, setOrderForDate] = useState("");
   const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])));
   const [itemUnits, setItemUnits] = useState<Record<string, "dozen" | "unit">>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [dupOpen, setDupOpen] = useState(false);
-  const [dupExisting, setDupExisting] = useState<any>(null);
-  const [dupOverwriting, setDupOverwriting] = useState(false);
 
   const buildPayload = () => ({
     submitterName,
     reportType: "Bagel Orders",
-    location: selectedStore,
+    location: "sales",
     reportDate: orderForDate,
-    data: { orderForDate, orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })) },
-    overwrite: true,
+    data: { orderForDate, clientName: clientName.trim(), orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })) },
+    overwrite: false,
   });
 
   const handleSubmit = async () => {
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
-    if (!selectedStore) { toast.error("Please select a store"); return; }
+    if (!clientName.trim()) { toast.error("Please enter the client name"); return; }
     if (!orderForDate) { toast.error("Please select the order date"); return; }
     setSubmitting(true);
     try {
@@ -1760,27 +1757,27 @@ function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positio
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Bagel orders submitted for ${currentStoreName}`} onNew={() => { setQuantities(Object.fromEntries(BAGEL_TYPES.map(t => [t, ""]))); setItemUnits(Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"]))); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Bagel order submitted for Sales — ${clientName}`} onNew={() => { setQuantities(Object.fromEntries(BAGEL_TYPES.map(t => [t, ""]))); setItemUnits(Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"]))); setClientName(""); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
       <FormHeader title="Bagel Orders" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
         <div className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
-          <div>
-            <Label className="text-sm font-medium">Store / Location</Label>
-            <select value={selectedStore} onChange={(e) => setSelectedStore(e.target.value)} className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm mt-1.5">
-              <option value="">Select location...</option>
-              {stores.map(s => <option key={s.shortName} value={s.shortName}>{s.name}</option>)}
-              <option value="sales">Sales</option>
-            </select>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-50 border border-purple-200">
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+            <span className="text-sm font-medium text-purple-700">Location: Sales</span>
           </div>
           <div>
-            <Label className="text-sm font-medium">Your Name</Label>
+            <Label className="text-sm font-medium">Client Name <span className="text-red-500">*</span></Label>
+            <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Enter client name" className="mt-1.5" />
+          </div>
+          <div>
+            <Label className="text-sm font-medium">Your Name <span className="text-red-500">*</span></Label>
             <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
           </div>
           <div>
-            <Label className="text-sm font-medium">Order for Date</Label>
+            <Label className="text-sm font-medium">Order for Date <span className="text-red-500">*</span></Label>
             <Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} className="mt-1.5" />
           </div>
 
