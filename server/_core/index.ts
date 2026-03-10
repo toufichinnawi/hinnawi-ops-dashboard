@@ -658,19 +658,19 @@ async function startServer() {
         }
       }
 
-      // 3. Check: Store daily checklist (manager-checklist) for today
+      // 3. Check: Leftovers & Waste Report (waste-report) for today — this is the daily submission
       const todayReports = weekReports.filter(r => r.reportDate === today);
       for (const store of STORES) {
         // Skip weekend-closed stores on weekends
         if (store.closedWeekends && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
-        const hasDailyChecklist = todayReports.some(
-          r => r.location === store.code && r.reportType === "manager-checklist"
+        const hasWasteReport = todayReports.some(
+          r => r.location === store.code && r.reportType === "waste-report"
         );
-        if (!hasDailyChecklist) {
+        if (!hasWasteReport) {
           alerts.push({
             id: `daily-${store.id}`,
             type: "critical",
-            message: `${store.name} has not submitted today's daily checklist`,
+            message: `${store.name} has not submitted today's Leftovers & Waste Report`,
             store: store.id,
             category: "missing-daily",
             timestamp: now.toISOString(),
@@ -678,16 +678,16 @@ async function startServer() {
         }
       }
 
-      // 4. Check: Store weekly checklist (assistant-manager-checklist) this week
+      // 4. Check: Store Weekly Checklist (manager-checklist) this week
       for (const store of STORES) {
         const hasWeeklyChecklist = weekReports.some(
-          r => r.location === store.code && r.reportType === "assistant-manager-checklist"
+          r => r.location === store.code && r.reportType === "manager-checklist"
         );
         if (!hasWeeklyChecklist) {
           alerts.push({
             id: `weekly-${store.id}`,
             type: "info",
-            message: `${store.name} has not submitted the weekly checklist this week`,
+            message: `${store.name} has not submitted the Store Weekly Checklist this week`,
             store: store.id,
             category: "missing-weekly",
             timestamp: now.toISOString(),

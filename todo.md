@@ -1020,3 +1020,9 @@
 - [x] Empty state: "All clear — no active alerts this week"
 - [x] 6 vitest tests for alert endpoint (shape, sorting, uniqueness, week range)
 - [x] All 153 tests passing across 17 test files
+
+# Fix: Active Alerts - Correct Daily Checklist Type
+- [x] Backend: Changed daily alert from manager-checklist to waste-report (Leftovers & Waste Report)
+- [x] Backend: Changed weekly alert from assistant-manager-checklist to manager-checklist (Store Weekly Checklist)
+- [x] Frontend: Updated category label from "Daily Checklist" to "Waste Report"
+- [x] All 153 tests passing (no test changes needed — tests check shape/structure, not specific report types)

@@ -435,7 +435,7 @@ export default function Home() {
                           </span>
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/5 text-muted-foreground">
                             {alert.category === "missing-audit" ? "Weekly Audit" :
-                             alert.category === "missing-daily" ? "Daily Checklist" :
+                             alert.category === "missing-daily" ? "Waste Report" :
                              alert.category === "missing-weekly" ? "Weekly Checklist" :
                              alert.category === "high-labour" ? "Labour Alert" :
                              alert.category === "labour-ok" ? "Labour OK" : alert.category}
