@@ -25,6 +25,7 @@ import {
   koomiDailySales, InsertKoomiDailySales, KoomiDailySales,
   qboTokens, InsertQboToken, QboToken,
   qboCogs, InsertQboCogs, QboCogs,
+  invoices, InsertInvoice, Invoice,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1203,4 +1204,54 @@ export async function getAllQboCogs(limit = 50): Promise<QboCogs[]> {
   return db.select().from(qboCogs)
     .orderBy(desc(qboCogs.periodEnd))
     .limit(limit);
+}
+
+// ─── Invoices ───
+
+export async function createInvoice(data: InsertInvoice) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(invoices).values(data);
+  return result[0].insertId;
+}
+
+export async function getInvoiceById(id: number): Promise<Invoice | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function getAllInvoices(filters?: {
+  storeCode?: string;
+  vendorName?: string;
+  fromDate?: string;
+  toDate?: string;
+  status?: string;
+}): Promise<Invoice[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions: any[] = [];
+  if (filters?.storeCode) conditions.push(eq(invoices.storeCode, filters.storeCode));
+  if (filters?.vendorName) conditions.push(eq(invoices.vendorName, filters.vendorName));
+  if (filters?.status) conditions.push(eq(invoices.status, filters.status as any));
+  if (filters?.fromDate) conditions.push(gte(invoices.invoiceDate, filters.fromDate));
+  if (filters?.toDate) conditions.push(lte(invoices.invoiceDate, filters.toDate));
+
+  if (conditions.length > 0) {
+    return db.select().from(invoices).where(and(...conditions)).orderBy(desc(invoices.createdAt));
+  }
+  return db.select().from(invoices).orderBy(desc(invoices.createdAt));
+}
+
+export async function updateInvoice(id: number, data: Partial<InsertInvoice>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(invoices).set(data).where(eq(invoices.id, id));
+}
+
+export async function deleteInvoice(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(invoices).where(eq(invoices.id, id));
 }

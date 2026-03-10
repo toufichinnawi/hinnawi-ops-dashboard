@@ -1,0 +1,20 @@
+CREATE TABLE `invoices` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`storeCode` varchar(10) NOT NULL,
+	`vendorName` varchar(255) NOT NULL,
+	`invoiceNumber` varchar(100),
+	`invoiceDate` varchar(10),
+	`lineItems` json,
+	`subtotal` float,
+	`tax` float,
+	`total` float,
+	`photoUrl` text NOT NULL,
+	`photoKey` varchar(500),
+	`ocrRawData` json,
+	`verifiedBy` varchar(255) NOT NULL,
+	`notes` text,
+	`status` enum('pending','verified','disputed') NOT NULL DEFAULT 'verified',
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `invoices_id` PRIMARY KEY(`id`)
+);

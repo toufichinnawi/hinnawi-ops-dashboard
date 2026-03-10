@@ -36,6 +36,7 @@ import Portal from "@/pages/public/Portal";
 import BagelProduction from "@/pages/BagelProduction";
 import PastryProduction from "@/pages/PastryProduction";
 import CKPreps from "@/pages/CKPreps";
+import InvoiceManagement from "@/pages/InvoiceManagement";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -69,6 +70,7 @@ function Router() {
       <Route path="/checklists/:type" component={DirectChecklist} />
       <Route path="/reports/scorecard" component={OperationsScorecard} />
       <Route path="/reports/history" component={ReportHistory} />
+      <Route path="/invoices" component={InvoiceManagement} />
 
       {/* Integrations */}
       <Route path="/data" component={DataManagement} />

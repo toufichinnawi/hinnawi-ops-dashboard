@@ -102,6 +102,7 @@ const navSections: NavSection[] = [
       { path: "/checklists/training", label: "Training Evaluation", icon: GraduationCap },
       { path: "/checklists/bagel-orders", label: "Bagel Orders", icon: CircleDot },
       { path: "/reports/history", label: "Reports", icon: History },
+      { path: "/invoices", label: "Invoice Management", icon: Receipt },
     ],
   },
   {

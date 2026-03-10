@@ -15,7 +15,7 @@ import {
   ClipboardCheck, BarChart3, Star, Trash2, Wrench,
   GraduationCap, CircleDot, TrendingUp, Menu, X,
   FileText, DollarSign, Percent, Clock, CheckCircle2,
-  Pencil,
+  Pencil, Receipt,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import InvoiceCapturePortal from "./InvoiceCapture";
 import { type ChecklistType, ALL_CHECKLISTS, POSITION_CHECKLISTS } from "@/lib/positionChecklists";
 import { ChecklistForm } from "./PositionChecklists";
 import { ScorecardContent } from "@/pages/OperationsScorecard";
@@ -53,7 +54,7 @@ interface SidebarItem {
   label: string;
   icon: React.ReactNode;
   mobileIcon: React.ReactNode; // smaller icon for bottom nav
-  type: "checklist" | "info";
+  type: "checklist" | "info" | "invoice";
   checklistType?: ChecklistType;
   infoContent?: string;
 }
@@ -71,7 +72,7 @@ interface PositionDef {
   sidebarItems: SidebarItem[];
 }
 
-function si(id: string, label: string, Icon: any, type: "checklist" | "info", extra?: { checklistType?: ChecklistType; infoContent?: string }): SidebarItem {
+function si(id: string, label: string, Icon: any, type: "checklist" | "info" | "invoice", extra?: { checklistType?: ChecklistType; infoContent?: string }): SidebarItem {
   return {
     id, label,
     icon: <Icon className="w-[18px] h-[18px]" />,
@@ -99,6 +100,7 @@ const POSITIONS: PositionDef[] = [
       si("ops-audit", "Store Weekly Audit", ClipboardCheck, "checklist", { checklistType: "ops-manager-checklist" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
       si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
+      si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
     ],
   },
   {
@@ -123,6 +125,7 @@ const POSITIONS: PositionDef[] = [
       si("training", "Training Evaluation", GraduationCap, "checklist", { checklistType: "training-evaluation" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
       si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
+      si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
     ],
   },
   {
@@ -142,6 +145,7 @@ const POSITIONS: PositionDef[] = [
       si("equipment", "Equipment & Maintenance", Wrench, "checklist", { checklistType: "equipment-maintenance" }),
       si("training", "Training Evaluation", GraduationCap, "checklist", { checklistType: "training-evaluation" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
+      si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
     ],
   },
   {
@@ -156,6 +160,7 @@ const POSITIONS: PositionDef[] = [
     requiresStore: true,
     sidebarItems: [
       si("waste-report", "Leftovers & Waste", Trash2, "checklist", { checklistType: "waste-report" }),
+      si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
     ],
   },
   {
@@ -822,6 +827,25 @@ function PortalContent({
         checklistType={item.checklistType}
         store={store!}
         positionLabel={position.label}
+      />
+    );
+  }
+
+  if (item.type === "invoice") {
+    const effectiveStore = store || opsChecklistStore;
+    if (!effectiveStore && position.slug === "operations-manager") {
+      return (
+        <OpsStorePickerForChecklist
+          checklistLabel="Invoice Capture"
+          onSelect={onOpsChecklistStoreSelect}
+        />
+      );
+    }
+    return (
+      <InvoiceCapturePortal
+        storeCode={effectiveStore?.storeCode || ""}
+        storeName={effectiveStore?.storeName || ""}
+        onBack={() => {}}
       />
     );
   }

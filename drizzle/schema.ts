@@ -446,3 +446,28 @@ export const inventoryCounts = mysqlTable("inventory_counts", {
 
 export type InventoryCount = typeof inventoryCounts.$inferSelect;
 export type InsertInventoryCount = typeof inventoryCounts.$inferInsert;
+
+// ─── Invoices ───
+
+export const invoices = mysqlTable("invoices", {
+  id: int("id").autoincrement().primaryKey(),
+  storeCode: varchar("storeCode", { length: 10 }).notNull(),
+  vendorName: varchar("vendorName", { length: 255 }).notNull(),
+  invoiceNumber: varchar("invoiceNumber", { length: 100 }),
+  invoiceDate: varchar("invoiceDate", { length: 10 }), // YYYY-MM-DD
+  lineItems: json("lineItems"), // Array of { description, quantity, unitPrice, total }
+  subtotal: float("subtotal"),
+  tax: float("tax"),
+  total: float("total"),
+  photoUrl: text("photoUrl").notNull(),
+  photoKey: varchar("photoKey", { length: 500 }),
+  ocrRawData: json("ocrRawData"), // Raw OCR extraction for debugging
+  verifiedBy: varchar("verifiedBy", { length: 255 }).notNull(),
+  notes: text("notes"),
+  status: mysqlEnum("status", ["pending", "verified", "disputed"]).default("verified").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Invoice = typeof invoices.$inferSelect;
+export type InsertInvoice = typeof invoices.$inferInsert;

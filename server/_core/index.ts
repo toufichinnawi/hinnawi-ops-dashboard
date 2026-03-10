@@ -423,6 +423,104 @@ async function startServer() {
     }
   });
 
+  // ─── Invoice API ───
+
+  // Upload invoice photo + run OCR
+  app.post("/api/public/invoices/upload", async (req, res) => {
+    try {
+      const { base64, fileName, contentType } = req.body;
+      if (!base64 || !fileName || !contentType) {
+        return res.status(400).json({ error: "Missing required fields: base64, fileName, contentType" });
+      }
+      if (!contentType.startsWith("image/")) {
+        return res.status(400).json({ error: "Only image files are allowed" });
+      }
+      const buffer = Buffer.from(base64, "base64");
+      if (buffer.length > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "File too large (max 10MB)" });
+      }
+      // Upload to S3
+      const { storagePut } = await import("../storage");
+      const suffix = Math.random().toString(36).substring(2, 10);
+      const ext = fileName.split(".").pop() || "jpg";
+      const key = `invoices/${Date.now()}-${suffix}.${ext}`;
+      const { url } = await storagePut(key, buffer, contentType);
+      console.log(`[Invoice Upload] Uploaded ${key} (${(buffer.length / 1024).toFixed(1)}KB)`);
+
+      // Run OCR
+      let ocrData = null;
+      try {
+        const { extractInvoiceData } = await import("../invoiceOcr");
+        ocrData = await extractInvoiceData(url);
+        console.log(`[Invoice OCR] Extracted: vendor=${ocrData.vendorName}, total=${ocrData.total}`);
+      } catch (ocrErr) {
+        console.error("[Invoice OCR] Extraction failed:", ocrErr);
+      }
+
+      res.json({ success: true, photoUrl: url, photoKey: key, ocrData });
+    } catch (err) {
+      console.error("[Invoice Upload] Error:", err);
+      res.status(500).json({ error: "Failed to upload invoice photo" });
+    }
+  });
+
+  // Create invoice record
+  app.post("/api/public/invoices", async (req, res) => {
+    try {
+      const { storeCode, vendorName, invoiceNumber, invoiceDate, lineItems, subtotal, tax, total, photoUrl, photoKey, ocrRawData, verifiedBy, notes } = req.body;
+      if (!storeCode || !vendorName || !photoUrl || !verifiedBy) {
+        return res.status(400).json({ error: "Missing required fields: storeCode, vendorName, photoUrl, verifiedBy" });
+      }
+      const { createInvoice } = await import("../db");
+      const id = await createInvoice({
+        storeCode,
+        vendorName,
+        invoiceNumber: invoiceNumber || null,
+        invoiceDate: invoiceDate || null,
+        lineItems: lineItems || null,
+        subtotal: subtotal || null,
+        tax: tax || null,
+        total: total || null,
+        photoUrl,
+        photoKey: photoKey || null,
+        ocrRawData: ocrRawData || null,
+        verifiedBy,
+        notes: notes || null,
+      });
+      console.log(`[Invoice] Created #${id} for ${storeCode} from ${vendorName} by ${verifiedBy}`);
+      res.json({ success: true, id });
+    } catch (err) {
+      console.error("[Invoice] Create error:", err);
+      res.status(500).json({ error: "Failed to create invoice" });
+    }
+  });
+
+  // List invoices with optional filters
+  app.get("/api/public/invoices", async (req, res) => {
+    try {
+      const { storeCode, vendorName, fromDate, toDate, status } = req.query as Record<string, string>;
+      const { getAllInvoices } = await import("../db");
+      const invoices = await getAllInvoices({ storeCode, vendorName, fromDate, toDate, status });
+      res.json({ success: true, invoices });
+    } catch (err) {
+      console.error("[Invoice] List error:", err);
+      res.status(500).json({ error: "Failed to list invoices" });
+    }
+  });
+
+  // Get single invoice
+  app.get("/api/public/invoices/:id", async (req, res) => {
+    try {
+      const { getInvoiceById } = await import("../db");
+      const invoice = await getInvoiceById(parseInt(req.params.id));
+      if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+      res.json({ success: true, invoice });
+    } catch (err) {
+      console.error("[Invoice] Get error:", err);
+      res.status(500).json({ error: "Failed to get invoice" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",
