@@ -3,6 +3,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 describe("Report Notes & Flags API", () => {
   const BASE_URL = "http://localhost:3000";
   let testReportId: number;
+  // Use a unique date to avoid conflicts with other test files
+  const uniqueDate = `1990-${String(Math.floor(Math.random() * 12) + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, "0")}`;
 
   // Create a test report to attach notes/flags to
   beforeAll(async () => {
@@ -13,7 +15,7 @@ describe("Report Notes & Flags API", () => {
         submitterName: "Notes Test User",
         reportType: "manager-checklist",
         location: "PK",
-        reportDate: "2018-06-15",
+        reportDate: uniqueDate,
         data: { items: [{ label: "Test", rating: 5 }] },
         totalScore: "5.00",
         overwrite: true,

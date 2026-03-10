@@ -342,11 +342,19 @@ function DrillDownDialog({ open, onClose, storeCode, storeName, storeColor, avgS
 
   function ReportRow({ report }: { report: typeof reports[number] }) {
     const score = parseScore(report.totalScore);
+    const isDraft = report.status === "draft";
     return (
-      <div className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors">
+      <div className={cn("flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors", isDraft && "border border-orange-200/60 bg-orange-50/30")}>
         <span className="text-lg shrink-0">{getChecklistIcon(report.reportType)}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{getChecklistLabel(report.reportType)}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium truncate">{getChecklistLabel(report.reportType)}</p>
+            {isDraft && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-100 text-orange-700 border border-orange-200 shrink-0">
+                NOT SUBMITTED
+              </span>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             {format(new Date(report.createdAt), "MMM d, h:mm a")} · {getSubmitter(report)}
           </p>
@@ -568,6 +576,7 @@ export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {})
       const managerChecklists = storeReports.filter((r) => r.reportType === "manager-checklist").length;
       const weeklyAudits = storeReports.filter((r) => r.reportType === WEEKLY_AUDIT_TYPE).length;
       const totalSubmissions = storeReports.length;
+      const draftCount = storeReports.filter((r) => r.status === "draft").length;
 
       // Check if weekly audit was done this period
       const hasWeeklyAudit = weeklyAudits > 0;
@@ -588,6 +597,7 @@ export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {})
         managerChecklists,
         weeklyAudits,
         totalSubmissions,
+        draftCount,
         hasWeeklyAudit,
         hasCurrentWeekAudit,
         storeReports,
@@ -845,6 +855,15 @@ export function ScorecardContent({ storeFilter }: { storeFilter?: string } = {})
                           Click to view details
                         </p>
                       </div>
+
+                      {s.draftCount > 0 && (
+                        <div className="mt-3 flex items-center justify-center gap-1.5 px-2 py-1 rounded-full bg-orange-50 border border-orange-200/60">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-100 text-orange-700 border border-orange-200">
+                            {s.draftCount} DRAFT{s.draftCount > 1 ? "S" : ""}
+                          </span>
+                          <span className="text-[10px] text-orange-600">not yet submitted</span>
+                        </div>
+                      )}
 
                       <div className="mt-4 pt-3 border-t border-border/40 grid grid-cols-3 gap-2 text-center">
                         <div>

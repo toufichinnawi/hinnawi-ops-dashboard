@@ -1026,3 +1026,16 @@
 - [x] Backend: Changed weekly alert from assistant-manager-checklist to manager-checklist (Store Weekly Checklist)
 - [x] Frontend: Updated category label from "Daily Checklist" to "Waste Report"
 - [x] All 153 tests passing (no test changes needed — tests check shape/structure, not specific report types)
+
+# Drafts in Reports & Operations Scorecard
+- [x] Show draft/saved checklists in Reports tab with "NOT SUBMITTED" badge (orange) vs "SUBMITTED" (green)
+- [x] Drafts visually distinct: orange badge, orange-tinted row in scorecard drill-down
+- [x] Draft data affects Operations Scorecard — backend already includes all reports regardless of status
+- [x] Both Store Weekly Checklist and Store Weekly Audit drafts included (no status filter in queries)
+- [x] Admin Reports page: Status column with NOT SUBMITTED / SUBMITTED badges
+- [x] Portal Reports page: Status column with badges + detail dialog status field
+- [x] CSV export includes Status column
+- [x] PDF export includes Status column with colored labels
+- [x] Operations Scorecard: store cards show "X DRAFTS not yet submitted" indicator
+- [x] Operations Scorecard: drill-down ReportRow shows NOT SUBMITTED badge with orange highlight
+- [x] All 164 tests passing across 17 test files (excluding Koomi network timeout)

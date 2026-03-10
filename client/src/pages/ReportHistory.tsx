@@ -575,6 +575,9 @@ export default function ReportHistory() {
                       Submitted By
                     </th>
                     <th className="text-center px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                      Status
+                    </th>
+                    <th className="text-center px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                       Score
                     </th>
                     <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
@@ -656,6 +659,19 @@ export default function ReportHistory() {
                         {/* Submitted By */}
                         <td className="px-4 py-3.5 text-xs text-muted-foreground">
                           {submitter}
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-4 py-3.5 text-center">
+                          {report.status === "draft" ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200">
+                              NOT SUBMITTED
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                              SUBMITTED
+                            </span>
+                          )}
                         </td>
 
                         {/* Score */}

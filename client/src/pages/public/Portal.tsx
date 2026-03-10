@@ -1597,6 +1597,16 @@ function PortalCompletedChecklists({
                 <p className="text-muted-foreground text-xs">Submitted By</p>
                 <p className="font-medium mt-0.5">{getSubmitter(selectedReport)}</p>
               </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Status</p>
+                <p className="mt-0.5">
+                  {selectedReport.status === "draft" ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200">NOT SUBMITTED</span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">SUBMITTED</span>
+                  )}
+                </p>
+              </div>
               {selectedReport.totalScore && (
                 <div>
                   <p className="text-muted-foreground text-xs">Score</p>
@@ -1955,7 +1965,7 @@ function PortalReportsPage({
 
   // ─── CSV Export ───
   function exportCSV() {
-    const headers = ["Store", "Date", "Position", "Checklist", "Submitted By", "Score", "Submitted At", "Flag"];
+    const headers = ["Store", "Date", "Position", "Checklist", "Submitted By", "Status", "Score", "Submitted At", "Flag"];
     const rows = filtered.map(r => {
       const info = ALL_CHECKLISTS[r.reportType as ChecklistType];
       const flag = reportFlags[r.id] || "none";
@@ -1965,6 +1975,7 @@ function PortalReportsPage({
         getPositionLabel(r.reportType),
         info?.label || r.reportType,
         getSubmitter(r),
+        r.status === "draft" ? "NOT SUBMITTED" : "SUBMITTED",
         r.totalScore || "",
         r.createdAt ? new Date(r.createdAt).toLocaleString("en-CA") : "",
         flag === "none" ? "" : FLAG_OPTIONS.find(f => f.value === flag)?.label || flag,
@@ -2000,12 +2011,16 @@ function PortalReportsPage({
         const info = ALL_CHECKLISTS[r.reportType as ChecklistType];
         const flag = reportFlags[r.id] || "none";
         const flagLabel = flag === "none" ? "" : FLAG_OPTIONS.find(f => f.value === flag)?.label || flag;
+        const statusLabel = r.status === "draft"
+          ? '<span style="color:#c2410c;font-weight:bold">NOT SUBMITTED</span>'
+          : '<span style="color:#15803d;font-weight:bold">SUBMITTED</span>';
         return `<tr>
           <td>${r.normalizedLocation || r.location || ""}</td>
           <td>${r.reportDate || ""}</td>
           <td>${getPositionLabel(r.reportType)}</td>
           <td>${info?.label || r.reportType}</td>
           <td>${getSubmitter(r)}</td>
+          <td style="text-align:center">${statusLabel}</td>
           <td style="text-align:center">${r.totalScore || "\u2014"}</td>
           <td>${r.createdAt ? new Date(r.createdAt).toLocaleString("en-CA") : ""}</td>
           <td>${flagLabel}</td>
@@ -2026,7 +2041,7 @@ function PortalReportsPage({
         <h1>${title}</h1>
         <p class="meta">${filterDesc} &mdash; ${filtered.length} report${filtered.length !== 1 ? "s" : ""} &mdash; Generated ${new Date().toLocaleString("en-CA")}</p>
         <table>
-          <thead><tr><th>Store</th><th>Date</th><th>Position</th><th>Checklist</th><th>Submitted By</th><th>Score</th><th>Submitted</th><th>Flag</th></tr></thead>
+          <thead><tr><th>Store</th><th>Date</th><th>Position</th><th>Checklist</th><th>Submitted By</th><th>Status</th><th>Score</th><th>Submitted</th><th>Flag</th></tr></thead>
           <tbody>${tableRows}</tbody>
         </table>
         <p class="footer">Hinnawi Bros Operations Dashboard</p>
@@ -2178,6 +2193,7 @@ function PortalReportsPage({
                   <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Position</th>
                   <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Checklist</th>
                   <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Submitted By</th>
+                  <th className="text-center px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Status</th>
                   <th className="text-center px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Score</th>
                   <th className="text-center px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Flag</th>
                   <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Submitted</th>
@@ -2210,6 +2226,17 @@ function PortalReportsPage({
                         </div>
                       </td>
                       <td className="px-4 py-3.5 text-xs text-muted-foreground">{getSubmitter(r)}</td>
+                      <td className="px-4 py-3.5 text-center">
+                        {r.status === "draft" ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200">
+                            NOT SUBMITTED
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            SUBMITTED
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3.5 text-center">
                         {r.totalScore ? (
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
@@ -2475,6 +2502,16 @@ function ReportDetailDialog({
           <div>
             <p className="text-muted-foreground text-xs">Submitted By</p>
             <p className="font-medium mt-0.5">{getSubmitter(report)}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Status</p>
+            <p className="mt-0.5">
+              {report.status === "draft" ? (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200">NOT SUBMITTED</span>
+              ) : (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">SUBMITTED</span>
+              )}
+            </p>
           </div>
           {report.totalScore && (
             <div>
