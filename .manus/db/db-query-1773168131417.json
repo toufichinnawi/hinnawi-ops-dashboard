@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE invoices ADD COLUMN photoUrls JSON DEFAULT NULL AFTER photoUrl; ALTER TABLE invoices ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT 'cogs' AFTER ocrRawData;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute ALTER TABLE invoices ADD COLUMN photoUrls JSON DEFAULT NULL AFTER photoUrl; ALTER TABLE invoices ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT 'cogs' AFTER ocrRawData;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 622
+}

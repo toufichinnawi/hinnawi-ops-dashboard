@@ -460,7 +460,7 @@ async function startServer() {
   // Create invoice record
   app.post("/api/public/invoices", async (req, res) => {
     try {
-      const { storeCode, vendorName, invoiceNumber, invoiceDate, lineItems, subtotal, tax, total, photoUrl, photoKey, ocrRawData, verifiedBy, notes } = req.body;
+      const { storeCode, vendorName, invoiceNumber, invoiceDate, lineItems, subtotal, tax, total, photoUrl, photoUrls, photoKey, ocrRawData, verifiedBy, notes, category } = req.body;
       if (!storeCode || !vendorName || !photoUrl || !verifiedBy) {
         return res.status(400).json({ error: "Missing required fields: storeCode, vendorName, photoUrl, verifiedBy" });
       }
@@ -475,12 +475,14 @@ async function startServer() {
         tax: tax || null,
         total: total || null,
         photoUrl,
+        photoUrls: photoUrls || null,
         photoKey: photoKey || null,
         ocrRawData: ocrRawData || null,
+        category: category || "cogs",
         verifiedBy,
         notes: notes || null,
       });
-      console.log(`[Invoice] Created #${id} for ${storeCode} from ${vendorName} by ${verifiedBy}`);
+      console.log(`[Invoice] Created #${id} for ${storeCode} from ${vendorName} by ${verifiedBy} (category: ${category || 'cogs'})`);
       res.json({ success: true, id });
     } catch (err) {
       console.error("[Invoice] Create error:", err);
@@ -602,6 +604,50 @@ async function startServer() {
     } catch (err) {
       console.error("[ReportNotes] Flags error:", err);
       res.status(500).json({ error: "Failed to get flags" });
+    }
+  });
+
+  // ─── COGS Summary (Invoice totals by store for date range) ─────
+  app.get("/api/public/cogs-summary", async (req, res) => {
+    try {
+      const { fromDate, toDate } = req.query as Record<string, string>;
+      const { getAllInvoices } = await import("../db");
+      const invoices = await getAllInvoices({
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+        status: "verified",
+      });
+
+      // Only include COGS-category invoices
+      const cogsInvoices = invoices.filter((inv: any) => !inv.category || inv.category === "cogs");
+
+      // Group by store
+      const byStore: Record<string, { total: number; count: number; invoices: any[] }> = {};
+      for (const inv of cogsInvoices) {
+        const code = inv.storeCode;
+        if (!byStore[code]) byStore[code] = { total: 0, count: 0, invoices: [] };
+        byStore[code].total += inv.total || 0;
+        byStore[code].count++;
+        byStore[code].invoices.push({
+          id: inv.id,
+          vendorName: inv.vendorName,
+          invoiceNumber: inv.invoiceNumber,
+          invoiceDate: inv.invoiceDate,
+          total: inv.total,
+        });
+      }
+
+      const totalCogs = cogsInvoices.reduce((sum: number, inv: any) => sum + (inv.total || 0), 0);
+
+      res.json({
+        success: true,
+        totalCogs,
+        totalInvoices: cogsInvoices.length,
+        byStore,
+      });
+    } catch (err) {
+      console.error("[COGS] Summary error:", err);
+      res.status(500).json({ error: "Failed to get COGS summary" });
     }
   });
 

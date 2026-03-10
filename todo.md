@@ -1039,3 +1039,16 @@
 - [x] Operations Scorecard: store cards show "X DRAFTS not yet submitted" indicator
 - [x] Operations Scorecard: drill-down ReportRow shows NOT SUBMITTED badge with orange highlight
 - [x] All 164 tests passing across 17 test files (excluding Koomi network timeout)
+
+# Invoice Capture Upgrade & COGS on Store Performance
+- [x] Invoice number field added to capture form (required, validated)
+- [x] Multi-photo capture: add/remove multiple photos per invoice with individual upload progress
+- [x] All invoices recorded as "Cost of Goods Sold" (COGS category)
+- [x] Schema updated: photoUrls JSON column for multiple photos, category field for COGS
+- [x] Backend: /api/public/cogs-summary endpoint aggregates invoice totals by store with date filtering
+- [x] Backend: Invoice create endpoint accepts photoUrls array and category field
+- [x] Store Performance dashboard: COGS row with total amount, invoice count, and COGS Rate (COGS/Revenue)
+- [x] COGS Rate color-coded: green (<30%), amber (30-40%), red (>40%)
+- [x] Admin InvoiceManagement: detail dialog shows multiple photos in grid + COGS badge
+- [x] 6 new COGS tests (summary shape, date filtering, multi-photo, invoice creation)
+- [x] All 159 tests passing across 18 test files

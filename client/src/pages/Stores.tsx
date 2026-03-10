@@ -1,6 +1,6 @@
 // Design: "Golden Hour Operations" — Refined Editorial
 // Store Performance: Per-store cards with images, metrics, and comparison
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
@@ -43,6 +43,31 @@ interface StorePerformanceContentProps {
 export function StorePerformanceContent({ storeFilter }: StorePerformanceContentProps = {}) {
   const { hasLiveData, hasCloverData, hourlySales } = useData();
   const [dateFilter, setDateFilter] = useState<DateFilterValue>(getDefaultDateFilter);
+
+  // COGS data from invoices
+  const [cogsData, setCogsData] = useState<Record<string, { total: number; count: number; invoices: any[] }>>({});
+  const [cogsLoading, setCogsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchCogs = async () => {
+      setCogsLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (dateFilter.from) params.set("fromDate", typeof dateFilter.from === 'string' ? dateFilter.from : new Date(dateFilter.from).toISOString().split('T')[0]);
+        if (dateFilter.to) params.set("toDate", typeof dateFilter.to === 'string' ? dateFilter.to : new Date(dateFilter.to).toISOString().split('T')[0]);
+        const res = await fetch(`/api/public/cogs-summary?${params}`);
+        const data = await res.json();
+        if (data.success) {
+          setCogsData(data.byStore || {});
+        }
+      } catch (err) {
+        console.error("Failed to fetch COGS data:", err);
+      } finally {
+        setCogsLoading(false);
+      }
+    };
+    fetchCogs();
+  }, [dateFilter]);
 
   // Fetch filtered Clover data
   const {
@@ -175,6 +200,9 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
               ? labour.revenue // Revenue is already computed from filtered data
               : 0;
 
+            const storeCogs = cogsData[store.id] || { total: 0, count: 0, invoices: [] };
+            const cogsRate = labour.revenue > 0 ? (storeCogs.total / labour.revenue) * 100 : 0;
+
             return (
               <motion.div
                 key={store.id}
@@ -212,7 +240,7 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
                 </div>
 
                 {/* Metrics */}
-                <div className="p-4 grid grid-cols-4 gap-3">
+                <div className="p-4 grid grid-cols-3 gap-3">
                   <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Revenue</p>
                     <p className="text-lg font-mono font-semibold mt-0.5">${labour.revenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -232,6 +260,28 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
                       {labour.labourPercent > 0 ? labour.labourPercent.toFixed(1) + "%" : "—"}
                     </p>
                     <p className="text-[9px] text-muted-foreground mt-0.5">Target: {target}%</p>
+                  </div>
+                </div>
+
+                {/* COGS & Sales Row */}
+                <div className="px-4 pb-4 grid grid-cols-3 gap-3">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">COGS</p>
+                    <p className="text-lg font-mono font-semibold mt-0.5 text-blue-600">
+                      {cogsLoading ? "..." : (storeCogs.total > 0 ? `$${storeCogs.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—")}
+                    </p>
+                    {storeCogs.count > 0 && (
+                      <p className="text-[9px] text-muted-foreground mt-0.5">{storeCogs.count} invoice{storeCogs.count !== 1 ? "s" : ""}</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">COGS Rate</p>
+                    <p className={cn("text-lg font-mono font-semibold mt-0.5", cogsRate > 40 ? "text-red-600" : cogsRate > 30 ? "text-amber-600" : "text-emerald-600")}>
+                      {cogsRate > 0 ? `${cogsRate.toFixed(1)}%` : "—"}
+                    </p>
+                    {cogsRate > 0 && (
+                      <p className="text-[9px] text-muted-foreground mt-0.5">COGS / Revenue</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Period Sales</p>

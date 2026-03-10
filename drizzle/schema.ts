@@ -460,8 +460,10 @@ export const invoices = mysqlTable("invoices", {
   tax: float("tax"),
   total: float("total"),
   photoUrl: text("photoUrl").notNull(),
+  photoUrls: json("photoUrls"), // Array of { url, key } for multiple photos
   photoKey: varchar("photoKey", { length: 500 }),
   ocrRawData: json("ocrRawData"), // Raw OCR extraction for debugging
+  category: varchar("category", { length: 50 }).default("cogs").notNull(), // cogs, expense, etc.
   verifiedBy: varchar("verifiedBy", { length: 255 }).notNull(),
   notes: text("notes"),
   status: mysqlEnum("status", ["pending", "verified", "disputed"]).default("verified").notNull(),

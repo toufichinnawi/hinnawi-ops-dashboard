@@ -1,9 +1,10 @@
 /**
  * Invoice Capture — Portal component for photographing and verifying delivery invoices
- * Flow: Take photo → OCR auto-fill → Review/edit → Verify → Submit
+ * Flow: Take photo(s) → OCR auto-fill from first photo → Review/edit → Verify → Submit
+ * Supports multiple photos per invoice (e.g. multi-page invoices)
  */
 import { useState, useRef } from "react";
-import { Camera, Upload, Loader2, CheckCircle2, ArrowLeft, X } from "lucide-react";
+import { Camera, Upload, Loader2, CheckCircle2, ArrowLeft, X, Plus, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +28,12 @@ interface LineItem {
   total: number | null;
 }
 
+interface PhotoEntry {
+  preview: string;
+  url: string;
+  key: string;
+}
+
 interface InvoiceCapturePortalProps {
   storeCode: string;
   storeName: string;
@@ -37,13 +44,14 @@ type Step = "capture" | "processing" | "review" | "success";
 
 export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: InvoiceCapturePortalProps) {
   const [step, setStep] = useState<Step>("capture");
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoUrl, setPhotoUrl] = useState("");
-  const [photoKey, setPhotoKey] = useState("");
+  const [photos, setPhotos] = useState<PhotoEntry[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const addPhotoFileRef = useRef<HTMLInputElement>(null);
+  const addPhotoCameraRef = useRef<HTMLInputElement>(null);
 
-  // Form fields (populated by OCR)
+  // Form fields (populated by OCR from first photo)
   const [vendorName, setVendorName] = useState("");
   const [customVendor, setCustomVendor] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -58,76 +66,112 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
   const [ocrRawData, setOcrRawData] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleFileSelect = async (file: File) => {
+  const uploadPhoto = async (file: File): Promise<{ preview: string; url: string; key: string; ocrData?: any } | null> => {
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
-      return;
+      return null;
     }
     if (file.size > 10 * 1024 * 1024) {
       toast.error("File too large (max 10MB)");
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64Full = e.target?.result as string;
+        try {
+          const base64Data = base64Full.split(",")[1];
+          const res = await fetch("/api/public/invoices/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              base64: base64Data,
+              fileName: file.name,
+              contentType: file.type,
+            }),
+          });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.error);
+          resolve({
+            preview: base64Full,
+            url: data.photoUrl,
+            key: data.photoKey,
+            ocrData: data.ocrData,
+          });
+        } catch (err) {
+          console.error("Upload error:", err);
+          toast.error("Failed to upload photo. Please try again.");
+          resolve(null);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFirstPhoto = async (file: File) => {
+    setStep("processing");
+    const result = await uploadPhoto(file);
+    if (!result) {
+      setStep("capture");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64Full = e.target?.result as string;
-      setPhotoPreview(base64Full);
-      setStep("processing");
+    setPhotos([{ preview: result.preview, url: result.url, key: result.key }]);
 
-      try {
-        const base64Data = base64Full.split(",")[1];
-        const res = await fetch("/api/public/invoices/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            base64: base64Data,
-            fileName: file.name,
-            contentType: file.type,
-          }),
-        });
-        const data = await res.json();
-        if (!data.success) throw new Error(data.error);
-
-        setPhotoUrl(data.photoUrl);
-        setPhotoKey(data.photoKey);
-
-        if (data.ocrData) {
-          setOcrRawData(data.ocrData);
-          if (data.ocrData.vendorName) {
-            const matched = KNOWN_VENDORS.find(
-              (v) => v.toLowerCase() === data.ocrData.vendorName.toLowerCase()
-            );
-            if (matched && matched !== "Other") {
-              setVendorName(matched);
-            } else {
-              setVendorName("Other");
-              setCustomVendor(data.ocrData.vendorName);
-            }
-          }
-          if (data.ocrData.invoiceNumber) setInvoiceNumber(data.ocrData.invoiceNumber);
-          if (data.ocrData.invoiceDate) setInvoiceDate(data.ocrData.invoiceDate);
-          if (data.ocrData.lineItems?.length) setLineItems(data.ocrData.lineItems);
-          if (data.ocrData.subtotal != null) setSubtotal(String(data.ocrData.subtotal));
-          if (data.ocrData.tax != null) setTax(String(data.ocrData.tax));
-          if (data.ocrData.total != null) setTotal(String(data.ocrData.total));
-          toast.success("Invoice data extracted successfully");
+    // Apply OCR data from first photo
+    if (result.ocrData) {
+      setOcrRawData(result.ocrData);
+      if (result.ocrData.vendorName) {
+        const matched = KNOWN_VENDORS.find(
+          (v) => v.toLowerCase() === result.ocrData.vendorName.toLowerCase()
+        );
+        if (matched && matched !== "Other") {
+          setVendorName(matched);
         } else {
-          toast.info("Photo uploaded — please fill in the details manually");
+          setVendorName("Other");
+          setCustomVendor(result.ocrData.vendorName);
         }
-        setStep("review");
-      } catch (err) {
-        console.error("Upload error:", err);
-        toast.error("Failed to upload photo. Please try again.");
-        setStep("capture");
       }
-    };
-    reader.readAsDataURL(file);
+      if (result.ocrData.invoiceNumber) setInvoiceNumber(result.ocrData.invoiceNumber);
+      if (result.ocrData.invoiceDate) setInvoiceDate(result.ocrData.invoiceDate);
+      if (result.ocrData.lineItems?.length) setLineItems(result.ocrData.lineItems);
+      if (result.ocrData.subtotal != null) setSubtotal(String(result.ocrData.subtotal));
+      if (result.ocrData.tax != null) setTax(String(result.ocrData.tax));
+      if (result.ocrData.total != null) setTotal(String(result.ocrData.total));
+      toast.success("Invoice data extracted successfully");
+    } else {
+      toast.info("Photo uploaded — please fill in the details manually");
+    }
+    setStep("review");
+  };
+
+  const handleAddPhoto = async (file: File) => {
+    setUploadingPhoto(true);
+    const result = await uploadPhoto(file);
+    if (result) {
+      setPhotos((prev) => [...prev, { preview: result.preview, url: result.url, key: result.key }]);
+      toast.success(`Photo ${photos.length + 1} added`);
+    }
+    setUploadingPhoto(false);
+  };
+
+  const removePhoto = (index: number) => {
+    if (photos.length <= 1) {
+      toast.error("At least one photo is required");
+      return;
+    }
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
     const finalVendor = vendorName === "Other" ? customVendor : vendorName;
     if (!finalVendor) {
       toast.error("Please select a vendor");
+      return;
+    }
+    if (!invoiceNumber.trim()) {
+      toast.error("Invoice number is required");
       return;
     }
     if (!verifiedBy.trim()) {
@@ -141,23 +185,26 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
 
     setSubmitting(true);
     try {
+      const photoUrls = photos.map((p) => ({ url: p.url, key: p.key }));
       const res = await fetch("/api/public/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           storeCode,
           vendorName: finalVendor,
-          invoiceNumber: invoiceNumber || null,
+          invoiceNumber: invoiceNumber.trim(),
           invoiceDate: invoiceDate || null,
           lineItems: lineItems.length > 0 ? lineItems : null,
           subtotal: subtotal ? parseFloat(subtotal) : null,
           tax: tax ? parseFloat(tax) : null,
           total: total ? parseFloat(total) : null,
-          photoUrl,
-          photoKey,
+          photoUrl: photos[0].url, // Primary photo (backward compat)
+          photoUrls, // All photos
+          photoKey: photos[0].key,
           ocrRawData,
           verifiedBy: verifiedBy.trim(),
           notes: notes || null,
+          category: "cogs", // Recorded as Cost of Goods Sold
         }),
       });
       const data = await res.json();
@@ -174,9 +221,8 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
 
   const resetForm = () => {
     setStep("capture");
-    setPhotoPreview(null);
-    setPhotoUrl("");
-    setPhotoKey("");
+    setPhotos([]);
+    setUploadingPhoto(false);
     setVendorName("");
     setCustomVendor("");
     setInvoiceNumber("");
@@ -201,12 +247,12 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
           </button>
           <div>
             <h2 className="text-xl font-semibold">Invoice Capture</h2>
-            <p className="text-sm text-muted-foreground">{storeName}</p>
+            <p className="text-sm text-muted-foreground">{storeName} — Cost of Goods Sold</p>
           </div>
         </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-          Take a clear photo of the delivery invoice. The system will automatically extract the vendor, items, and totals.
+          Take a clear photo of the delivery invoice. You can add multiple photos for multi-page invoices. The system will automatically extract vendor, items, and totals from the first photo.
         </div>
 
         <div className="space-y-3">
@@ -216,7 +262,7 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
             accept="image/*"
             capture="environment"
             className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+            onChange={(e) => e.target.files?.[0] && handleFirstPhoto(e.target.files[0])}
           />
           <Button
             onClick={() => cameraInputRef.current?.click()}
@@ -232,7 +278,7 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+            onChange={(e) => e.target.files?.[0] && handleFirstPhoto(e.target.files[0])}
           />
           <Button
             onClick={() => fileInputRef.current?.click()}
@@ -252,9 +298,6 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
   if (step === "processing") {
     return (
       <div className="max-w-lg mx-auto p-4 flex flex-col items-center justify-center min-h-[400px] gap-4">
-        {photoPreview && (
-          <img src={photoPreview} alt="Invoice" className="w-48 h-48 object-cover rounded-xl opacity-50" />
-        )}
         <Loader2 className="w-8 h-8 animate-spin text-[#D4A853]" />
         <div className="text-center">
           <p className="font-medium">Processing Invoice...</p>
@@ -273,7 +316,7 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
         </div>
         <h3 className="text-xl font-semibold">Invoice Submitted!</h3>
         <p className="text-muted-foreground text-center">
-          The invoice has been verified and saved. Accounting will be able to review it.
+          The invoice has been recorded as <strong>Cost of Goods Sold</strong> and saved. It will appear on the Store Performance dashboard.
         </p>
         <div className="flex gap-3 mt-4">
           <Button onClick={resetForm} className="bg-[#1C1210] hover:bg-[#2a1e1a] text-white">
@@ -291,7 +334,7 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
   return (
     <div className="max-w-lg mx-auto p-4 space-y-5 pb-24">
       <div className="flex items-center gap-3">
-        <button onClick={() => setStep("capture")} className="p-2 rounded-lg hover:bg-gray-100">
+        <button onClick={() => { setStep("capture"); setPhotos([]); }} className="p-2 rounded-lg hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
@@ -300,17 +343,73 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
         </div>
       </div>
 
-      {photoPreview && (
-        <div className="relative">
-          <img src={photoPreview} alt="Invoice" className="w-full max-h-48 object-contain rounded-xl border" />
-          <button
-            onClick={() => { setStep("capture"); setPhotoPreview(null); }}
-            className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow hover:bg-white"
-          >
-            <X className="w-4 h-4" />
-          </button>
+      {/* Photo Gallery */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Photos ({photos.length})</Label>
+          <div className="flex gap-1">
+            <input
+              ref={addPhotoCameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => { if (e.target.files?.[0]) handleAddPhoto(e.target.files[0]); e.target.value = ""; }}
+            />
+            <input
+              ref={addPhotoFileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { if (e.target.files?.[0]) handleAddPhoto(e.target.files[0]); e.target.value = ""; }}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => addPhotoCameraRef.current?.click()}
+              disabled={uploadingPhoto}
+              className="text-xs"
+            >
+              <Camera className="w-3 h-3 mr-1" />
+              Camera
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => addPhotoFileRef.current?.click()}
+              disabled={uploadingPhoto}
+              className="text-xs"
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add Photo
+            </Button>
+          </div>
         </div>
-      )}
+
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {photos.map((photo, i) => (
+            <div key={i} className="relative flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border">
+              <img src={photo.preview} alt={`Invoice page ${i + 1}`} className="w-full h-full object-cover" />
+              <div className="absolute top-0 left-0 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-br">
+                {i + 1}
+              </div>
+              {photos.length > 1 && (
+                <button
+                  onClick={() => removePhoto(i)}
+                  className="absolute top-0 right-0 p-1 bg-red-500/80 text-white rounded-bl hover:bg-red-600"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          ))}
+          {uploadingPhoto && (
+            <div className="flex-shrink-0 w-24 h-24 rounded-lg border border-dashed flex items-center justify-center">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="space-y-1.5">
         <Label>Vendor *</Label>
@@ -336,8 +435,13 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label>Invoice #</Label>
-          <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="Optional" />
+          <Label>Invoice # *</Label>
+          <Input
+            value={invoiceNumber}
+            onChange={(e) => setInvoiceNumber(e.target.value)}
+            placeholder="Required"
+            className={!invoiceNumber.trim() ? "border-red-300" : ""}
+          />
         </div>
         <div className="space-y-1.5">
           <Label>Date</Label>
@@ -377,6 +481,14 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
         </div>
       </div>
 
+      {/* COGS Category Label */}
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200">
+        <Image className="w-4 h-4 text-blue-600" />
+        <span className="text-sm text-blue-800">
+          This invoice will be recorded as <strong>Cost of Goods Sold (COGS)</strong>
+        </span>
+      </div>
+
       <div className="space-y-1.5">
         <Label>Your Name *</Label>
         <Input
@@ -410,7 +522,7 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
 
       <Button
         onClick={handleSubmit}
-        disabled={submitting || !verified || !verifiedBy.trim() || !(vendorName === "Other" ? customVendor : vendorName)}
+        disabled={submitting || !verified || !verifiedBy.trim() || !invoiceNumber.trim() || !(vendorName === "Other" ? customVendor : vendorName)}
         className="w-full h-12 bg-[#1C1210] hover:bg-[#2a1e1a] text-white"
         size="lg"
       >

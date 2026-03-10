@@ -22,9 +22,11 @@ interface Invoice {
   tax: number | null;
   total: number | null;
   photoUrl: string;
+  photoUrls: { url: string; key: string }[] | null;
   verifiedBy: string;
   notes: string | null;
   status: string;
+  category: string | null;
   createdAt: string;
 }
 
@@ -267,10 +269,24 @@ export default function InvoiceManagement() {
                 </DialogHeader>
 
                 <div className="space-y-4">
-                  {/* Photo */}
-                  <div className="rounded-lg overflow-hidden border">
-                    <img src={selectedInvoice.photoUrl} alt="Invoice" className="w-full" />
-                  </div>
+                  {/* Photos */}
+                  {selectedInvoice.photoUrls && Array.isArray(selectedInvoice.photoUrls) && selectedInvoice.photoUrls.length > 1 ? (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">Photos ({selectedInvoice.photoUrls.length})</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {selectedInvoice.photoUrls.map((p: any, i: number) => (
+                          <div key={i} className="relative rounded-lg overflow-hidden border cursor-pointer hover:ring-2 ring-[#D4A853]" onClick={() => window.open(p.url, "_blank")}>
+                            <img src={p.url} alt={`Invoice page ${i + 1}`} className="w-full h-40 object-cover" />
+                            <div className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">Page {i + 1}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg overflow-hidden border">
+                      <img src={selectedInvoice.photoUrl} alt="Invoice" className="w-full" />
+                    </div>
+                  )}
 
                   {/* Details grid */}
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -292,6 +308,18 @@ export default function InvoiceManagement() {
                         {selectedInvoice.status}
                       </Badge>
                     </div>
+                    <div>
+                      <div className="text-muted-foreground">Category</div>
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        {selectedInvoice.category === "cogs" || !selectedInvoice.category ? "Cost of Goods Sold" : selectedInvoice.category}
+                      </Badge>
+                    </div>
+                    {selectedInvoice.invoiceNumber && (
+                      <div>
+                        <div className="text-muted-foreground">Invoice #</div>
+                        <div className="font-medium">{selectedInvoice.invoiceNumber}</div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Line Items */}
@@ -355,16 +383,33 @@ export default function InvoiceManagement() {
                     </div>
                   )}
 
-                  {/* View full photo */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(selectedInvoice.photoUrl, "_blank")}
-                    className="w-full"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    View Full Photo
-                  </Button>
+                  {/* View full photo(s) */}
+                  {selectedInvoice.photoUrls && Array.isArray(selectedInvoice.photoUrls) && selectedInvoice.photoUrls.length > 1 ? (
+                    <div className="flex gap-2">
+                      {selectedInvoice.photoUrls.map((p: any, i: number) => (
+                        <Button
+                          key={i}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(p.url, "_blank")}
+                          className="flex-1"
+                        >
+                          <ExternalLink className="w-4 h-4 mr-1" />
+                          Photo {i + 1}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(selectedInvoice.photoUrl, "_blank")}
+                      className="w-full"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      View Full Photo
+                    </Button>
+                  )}
                 </div>
               </>
             )}
