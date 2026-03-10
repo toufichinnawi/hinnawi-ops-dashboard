@@ -99,29 +99,19 @@ describe("Improvement Batch — March 5, 2026", () => {
       createdId = json.id;
     });
 
-    it("should return 409 when duplicate exists", async () => {
+    it("should auto-overwrite when duplicate exists (no 409)", async () => {
       const res = await fetch(`${BASE_URL}/api/public/submit-report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(testReport),
       });
-      expect(res.status).toBe(409);
-      const json = await res.json();
-      expect(json.error).toBe("duplicate");
-      expect(json.existingReport).toBeDefined();
-    });
-
-    it("should overwrite when overwrite flag is set", async () => {
-      const res = await fetch(`${BASE_URL}/api/public/submit-report`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...testReport, overwrite: true }),
-      });
+      // Backend now auto-overwrites instead of returning 409
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.success).toBe(true);
-      // New ID should be different from original
       expect(json.id).toBeDefined();
+      // New ID should be different from original (old was deleted, new was created)
+      expect(json.id).not.toBe(createdId);
     });
 
     // Cleanup

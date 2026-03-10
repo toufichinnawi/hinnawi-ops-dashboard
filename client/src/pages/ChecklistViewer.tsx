@@ -489,7 +489,7 @@ async function submitReport(data: {
   const res = await fetch("/api/public/submit-report", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, overwrite: true }),
   });
   if (!res.ok) throw new Error("Submit failed");
   return res.json();
@@ -1737,13 +1737,13 @@ function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positio
   const [dupExisting, setDupExisting] = useState<any>(null);
   const [dupOverwriting, setDupOverwriting] = useState(false);
 
-  const buildPayload = (overwrite = false) => ({
+  const buildPayload = () => ({
     submitterName,
     reportType: "Bagel Orders",
     location: selectedStore,
     reportDate: orderForDate,
     data: { orderForDate, orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })) },
-    overwrite,
+    overwrite: true,
   });
 
   const handleSubmit = async () => {
@@ -1752,31 +1752,12 @@ function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positio
     if (!orderForDate) { toast.error("Please select the order date"); return; }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload(false)) });
-      if (res.status === 409) {
-        const body = await res.json();
-        setDupExisting(body.existingReport);
-        setDupOpen(true);
-        return;
-      }
+      const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload()) });
       if (!res.ok) throw new Error("Submit failed");
       setSubmitted(true);
       toast.success("Bagel order submitted!");
     } catch { toast.error("Failed to submit"); }
     finally { setSubmitting(false); }
-  };
-
-  const handleOverwrite = async () => {
-    setDupOverwriting(true);
-    try {
-      const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload(true)) });
-      if (!res.ok) throw new Error("Overwrite failed");
-      setDupOpen(false);
-      setDupExisting(null);
-      setSubmitted(true);
-      toast.success("Bagel order updated!");
-    } catch { toast.error("Failed to overwrite"); }
-    finally { setDupOverwriting(false); }
   };
 
   if (submitted) return <SuccessCard message={`Bagel orders submitted for ${currentStoreName}`} onNew={() => { setQuantities(Object.fromEntries(BAGEL_TYPES.map(t => [t, ""]))); setItemUnits(Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"]))); setSubmitted(false); }} onBack={onBack} />;
@@ -1826,28 +1807,7 @@ function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positio
           {submitting ? "Submitting..." : "Submit Order"}
         </Button>
       </div>
-      {dupOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mx-auto">
-              <ClipboardCheck className="h-6 w-6 text-amber-600" />
-            </div>
-            <h3 className="text-lg font-bold text-center">Order Already Exists</h3>
-            <p className="text-sm text-muted-foreground text-center">
-              A bagel order for <strong>{currentStoreName}</strong> on <strong>{orderForDate}</strong> was already submitted{dupExisting?.submitterName ? ` by ${dupExisting.submitterName}` : ""}{dupExisting?.createdAt ? ` (${new Date(dupExisting.createdAt).toLocaleString()})` : ""}.
-            </p>
-            <p className="text-sm text-center text-muted-foreground">
-              Would you like to <strong>overwrite</strong> the existing order with your new data?
-            </p>
-            <div className="flex gap-3 justify-center pt-2">
-              <Button variant="outline" onClick={() => { setDupOpen(false); setDupExisting(null); }} disabled={dupOverwriting}>Cancel</Button>
-              <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={handleOverwrite} disabled={dupOverwriting}>
-                {dupOverwriting ? "Overwriting..." : "Overwrite"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

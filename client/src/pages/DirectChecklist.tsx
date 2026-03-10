@@ -194,6 +194,7 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
       reportType: "manager-checklist", location: selectedStore, submitterName: managerName, reportDate: weekStart,
       data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, averageScore: avg },
       totalScore: avg,
+      overwrite: true,
     };
     fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSubmitted(true);
@@ -289,7 +290,7 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
       },
       totalScore: avg.toFixed(2),
     };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, overwrite: true }) });
     setSubmitted(true);
     toast.success("Audit submitted!");
   };
@@ -501,7 +502,7 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
       reportType: "weekly-scorecard", location: selectedStore, submitterName: managerName, reportDate: weekStart,
       data: { dateEntered, weekOf: weekOfLabel, weekOfStart: weekStart, weekOfEnd: weekEnd, sales, labour, digital, food },
     };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, overwrite: true }) });
     setSubmitted(true);
     toast.success("Scorecard submitted!");
   };
@@ -581,7 +582,7 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
       data: { employeeName, employeePosition, criteria: EVAL_CRITERIA.map((c, i) => ({ ...c, ...ratings[i] })), overallComments },
       totalScore: avg,
     };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, overwrite: true }) });
     setSubmitted(true);
     toast.success("Evaluation submitted!");
   };
@@ -782,6 +783,7 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [submitterName, setSubmitterName] = useState("");
   const [bagelRows, setBagelRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_BAGELS, "bag"));
   const [pastryRows, setPastryRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_PASTRIES, "unit"));
   const [ckRows, setCkRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_CK_ITEMS, "unit"));
@@ -806,16 +808,18 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
   };
 
   const handleSubmit = async () => {
+    if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
     if (!selectedStore) { toast.error("Please select a store"); return; }
     setSubmitting(true);
     try {
       const data = collectData();
       const payload = {
-        submitterName: "Store Staff",
+        submitterName: submitterName.trim(),
         reportType: "waste-report",
         location: selectedStore,
         reportDate,
         data,
+        overwrite: true,
       };
       const res = await fetch("/api/public/submit-report", {
         method: "POST",
@@ -887,7 +891,11 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
       {/* Header row: Date + Location */}
       <Card>
         <CardContent className="pt-5 pb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Your Name *</Label>
+              <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="h-9" />
+            </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Date</Label>
               <Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} className="h-9" />
@@ -948,7 +956,7 @@ function EquipmentMaintenanceForm({ onBack }: { onBack: () => void }) {
       data: { daily: EQUIP_DAILY.map((e, i) => ({ ...e, ...daily[i] })), weekly: EQUIP_WEEKLY.map((e, i) => ({ ...e, ...weekly[i] })), monthly: EQUIP_MONTHLY.map((e, i) => ({ ...e, ...monthly[i] })) },
       totalScore: `${checked}/${total}`,
     };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, overwrite: true }) });
     setSubmitted(true);
     toast.success("Maintenance checklist submitted!");
   };
@@ -1013,7 +1021,7 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
       data: { traineeName, areas: TRAINING_AREAS.map((a, ai) => ({ title: a.title, items: a.items.map((item, ii) => ({ item, ...ratings[ai][ii] })) })), overallComments },
       totalScore: avg,
     };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, overwrite: true }) });
     setSubmitted(true);
     toast.success("Training evaluation submitted!");
   };
@@ -1072,41 +1080,22 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
   const [dupExisting, setDupExisting] = useState<any>(null);
   const [dupOverwriting, setDupOverwriting] = useState(false);
 
-  const buildPayload = (overwrite = false) => ({
+  const buildPayload = () => ({
     reportType: "bagel-orders", location: selectedStore, submitterName: ordererName, reportDate: orderForDate,
     data: { orderForDate, orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })) },
-    overwrite,
+    overwrite: true,
   });
 
   const handleSubmit = async () => {
     if (!ordererName.trim() || !selectedStore || !orderForDate) { toast.error("Please fill required fields"); return; }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload(false)) });
-      if (res.status === 409) {
-        const body = await res.json();
-        setDupExisting(body.existingReport);
-        setDupOpen(true);
-        return;
-      }
+      const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload()) });
       if (!res.ok) throw new Error("Submit failed");
       setSubmitted(true);
       toast.success("Bagel order submitted!");
     } catch { toast.error("Failed to submit"); }
     finally { setSubmitting(false); }
-  };
-
-  const handleOverwrite = async () => {
-    setDupOverwriting(true);
-    try {
-      const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload(true)) });
-      if (!res.ok) throw new Error("Overwrite failed");
-      setDupOpen(false);
-      setDupExisting(null);
-      setSubmitted(true);
-      toast.success("Bagel order updated!");
-    } catch { toast.error("Failed to overwrite"); }
-    finally { setDupOverwriting(false); }
   };
 
   if (submitted) return (
@@ -1152,28 +1141,7 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
         </div>
       </CardContent></Card>
       <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Order"}</Button></div>
-      {dupOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mx-auto">
-              <AlertTriangle className="h-6 w-6 text-amber-600" />
-            </div>
-            <h3 className="text-lg font-bold text-center">Order Already Exists</h3>
-            <p className="text-sm text-muted-foreground text-center">
-              A bagel order for <strong>{currentStoreName}</strong> on <strong>{orderForDate}</strong> was already submitted{dupExisting?.submitterName ? ` by ${dupExisting.submitterName}` : ""}{dupExisting?.createdAt ? ` (${new Date(dupExisting.createdAt).toLocaleString()})` : ""}.
-            </p>
-            <p className="text-sm text-center text-muted-foreground">
-              Would you like to <strong>overwrite</strong> the existing order with your new data?
-            </p>
-            <div className="flex gap-3 justify-center pt-2">
-              <Button variant="outline" onClick={() => { setDupOpen(false); setDupExisting(null); }} disabled={dupOverwriting}>Cancel</Button>
-              <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={handleOverwrite} disabled={dupOverwriting}>
-                {dupOverwriting ? "Overwriting..." : "Overwrite"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

@@ -149,10 +149,10 @@ async function startServer() {
         totalScore,
         overwrite,
       } = req.body;
-      if (!submitterName || !reportType || !location || !reportDate) {
+      if (!submitterName || !String(submitterName).trim() || !reportType || !location || !reportDate) {
         return res
           .status(400)
-          .json({ error: "Missing required fields" });
+          .json({ error: "Missing required fields (submitter name is required)" });
       }
 
       // ─── Normalize reportType to slug format ─────────────────────
@@ -207,16 +207,9 @@ async function startServer() {
         await deleteReportSubmission(existingDraft.id);
       }
 
-      // Check for existing submitted report and handle overwrite
+      // Auto-overwrite: delete any existing submitted report for the same store/type/date
       const existing = await checkExistingReport(normalizedLocation, normalizedReportType, reportDate);
-      if (existing && !overwrite) {
-        return res.status(409).json({
-          error: "duplicate",
-          message: "A report already exists for this store, checklist type, and date.",
-          existingReport: existing,
-        });
-      }
-      if (existing && overwrite) {
+      if (existing) {
         await deleteReportSubmission(existing.id);
       }
       // Embed submitterName into data JSON so it's available for drill-down views

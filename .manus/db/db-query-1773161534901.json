@@ -1,0 +1,541 @@
+{
+  "query": "SELECT id, reportType, location, reportDate, status, createdAt, JSON_EXTRACT(data, '$.submitterName') as submitter_name FROM report_submissions WHERE location = 'MK' AND reportDate = '2026-03-03' AND reportType = 'manager-checklist' ORDER BY createdAt DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, reportType, location, reportDate, status, createdAt, JSON_EXTRACT(data, '$.submitterName') as submitter_name FROM report_submissions WHERE location = 'MK' AND reportDate = '2026-03-03' AND reportType = 'manager-checklist' ORDER BY createdAt DESC;",
+  "rows": [
+    {
+      "id": "180060",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-09 21:06:19",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "180052",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-09 21:06:04",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "180036",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-09 18:35:45",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "180028",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-09 17:16:26",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "180020",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-09 17:15:13",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "180015",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-09 16:08:07",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "180010",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-09 14:50:15",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "180003",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-09 14:00:04",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "150005",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-08 17:59:45",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "120058",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-07 01:33:54",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "120053",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-07 00:53:43",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "120048",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-07 00:33:07",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "120043",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-07 00:32:51",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "120038",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-07 00:32:35",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "120033",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-07 00:32:22",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "120028",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-07 00:32:09",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "120023",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-07 00:22:38",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "120017",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-07 00:06:48",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "120011",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 23:55:07",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "120005",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 23:27:28",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90085",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 21:24:44",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90079",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 21:14:05",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90074",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 21:09:00",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90067",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 20:45:41",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90064",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 19:42:53",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90059",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 19:41:36",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90054",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 19:14:02",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90048",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 18:05:58",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90043",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 18:05:36",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90038",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 17:10:13",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90033",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 16:54:33",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90028",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 16:30:11",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90023",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 16:13:48",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90018",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 15:58:47",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90013",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 15:35:46",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "90006",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-06 14:56:02",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60123",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 23:06:47",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60118",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 23:02:24",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60113",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 22:57:56",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60108",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 22:50:18",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60103",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 22:49:53",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60098",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 22:49:28",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60093",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 22:40:43",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60088",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 22:40:26",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60083",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 22:40:04",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60078",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 22:39:41",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60073",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 22:39:17",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60068",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 22:29:24",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60063",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 22:08:12",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60058",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 21:32:52",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60053",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 20:49:00",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60048",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 19:22:49",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60043",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 18:44:41",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60038",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 18:17:36",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60033",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 17:56:44",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60028",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 17:52:26",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60023",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 16:31:54",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "60018",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-05 16:15:00",
+      "submitter_name": "NULL"
+    },
+    {
+      "id": "30026",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "createdAt": "2026-03-04 21:38:22",
+      "submitter_name": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\treportType\tlocation\treportDate\tstatus\tcreatedAt\tsubmitter_name\n180060\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-09 21:06:19\tNULL\n180052\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-09 21:06:04\tNULL\n180036\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-09 18:35:45\tNULL\n180028\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-09 17:16:26\tNULL\n180020\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-09 17:15:13\tNULL\n180015\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-09 16:08:07\tNULL\n180010\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-09 14:50:15\tNULL\n180003\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-09 14:00:04\tNULL\n150005\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-08 17:59:45\tNULL\n120058\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-07 01:33:54\tNULL\n120053\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-07 00:53:43\tNULL\n120048\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-07 00:33:07\tNULL\n120043\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-07 00:32:51\tNULL\n120038\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-07 00:32:35\tNULL\n120033\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-07 00:32:22\tNULL\n120028\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-07 00:32:09\tNULL\n120023\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-07 00:22:38\tNULL\n120017\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-07 00:06:48\tNULL\n120011\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 23:55:07\tNULL\n120005\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 23:27:28\tNULL\n90085\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 21:24:44\tNULL\n90079\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 21:14:05\tNULL\n90074\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 21:09:00\tNULL\n90067\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 20:45:41\tNULL\n90064\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 19:42:53\tNULL\n90059\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 19:41:36\tNULL\n90054\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 19:14:02\tNULL\n90048\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 18:05:58\tNULL\n90043\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 18:05:36\tNULL\n90038\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 17:10:13\tNULL\n90033\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 16:54:33\tNULL\n90028\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 16:30:11\tNULL\n90023\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 16:13:48\tNULL\n90018\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 15:58:47\tNULL\n90013\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 15:35:46\tNULL\n90006\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-06 14:56:02\tNULL\n60123\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 23:06:47\tNULL\n60118\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 23:02:24\tNULL\n60113\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 22:57:56\tNULL\n60108\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 22:50:18\tNULL\n60103\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 22:49:53\tNULL\n60098\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 22:49:28\tNULL\n60093\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 22:40:43\tNULL\n60088\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 22:40:26\tNULL\n60083\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 22:40:04\tNULL\n60078\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 22:39:41\tNULL\n60073\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 22:39:17\tNULL\n60068\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 22:29:24\tNULL\n60063\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 22:08:12\tNULL\n60058\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 21:32:52\tNULL\n60053\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 20:49:00\tNULL\n60048\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 19:22:49\tNULL\n60043\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 18:44:41\tNULL\n60038\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 18:17:36\tNULL\n60033\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 17:56:44\tNULL\n60028\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 17:52:26\tNULL\n60023\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 16:31:54\tNULL\n60018\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-05 16:15:00\tNULL\n30026\tmanager-checklist\tMK\t2026-03-03\tsubmitted\t2026-03-04 21:38:22\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

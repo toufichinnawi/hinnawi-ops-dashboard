@@ -442,69 +442,18 @@ function SuccessScreen({ message, onNew, onBack }: { message: string; onNew: () 
   );
 }
 
-class DuplicateReportError extends Error {
-  existingReport: any;
-  constructor(message: string, existingReport: any) {
-    super(message);
-    this.name = "DuplicateReportError";
-    this.existingReport = existingReport;
-  }
-}
-
 async function submitPublicReport(data: { submitterName: string; reportType: string; location: string; reportDate: string; data: any; totalScore?: string | null; overwrite?: boolean }) {
   const res = await fetch("/api/public/submit-report", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, overwrite: true }),
   });
-  if (res.status === 409) {
-    const body = await res.json();
-    throw new DuplicateReportError(body.message, body.existingReport);
-  }
   if (!res.ok) throw new Error("Failed to submit");
   return res.json();
 }
 
-function DuplicateDialog({ open, existing, onOverwrite, onCancel, overwriting }: {
-  open: boolean;
-  existing: any;
-  onOverwrite: () => void;
-  onCancel: () => void;
-  overwriting: boolean;
-}) {
-  if (!open) return null;
-  const submittedBy = existing?.data?.submitterName || existing?.submitterName || "Someone";
-  const submittedAt = existing?.createdAt ? new Date(existing.createdAt).toLocaleString() : "earlier today";
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
-        <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mx-auto">
-          <ClipboardCheck className="h-6 w-6 text-amber-600" />
-        </div>
-        <h3 className="text-lg font-bold text-center">Checklist Already Submitted</h3>
-        <p className="text-sm text-muted-foreground text-center">
-          <strong>{submittedBy}</strong> already submitted this checklist for this store on this date ({submittedAt}).
-        </p>
-        <p className="text-sm text-center text-muted-foreground">
-          Would you like to <strong>overwrite</strong> the existing entry with your new data?
-        </p>
-        <div className="flex gap-3 justify-center pt-2">
-          <Button variant="outline" onClick={onCancel} disabled={overwriting}>Cancel</Button>
-          <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={onOverwrite} disabled={overwriting}>
-            {overwriting ? "Overwriting..." : "Overwrite"}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+// Simplified submit hook - always auto-overwrites (no duplicate dialog needed)
 function useDuplicateCheck() {
-  const [dupOpen, setDupOpen] = useState(false);
-  const [dupExisting, setDupExisting] = useState<any>(null);
-  const [dupOverwriting, setDupOverwriting] = useState(false);
-  const pendingSubmitRef = useRef<(() => Promise<void>) | null>(null);
-
   async function submitWithDuplicateCheck(
     reportData: { submitterName: string; reportType: string; location: string; reportDate: string; data: any; totalScore?: string | null },
     onSuccess: () => void,
@@ -515,53 +464,15 @@ function useDuplicateCheck() {
     try {
       await submitPublicReport(reportData);
       onSuccess();
-    } catch (err) {
-      if (err instanceof DuplicateReportError) {
-        setDupExisting(err.existingReport);
-        setDupOpen(true);
-        // Store the overwrite action for when user confirms
-        pendingSubmitRef.current = async () => {
-          setDupOverwriting(true);
-          try {
-            await submitPublicReport({ ...reportData, overwrite: true });
-            setDupOpen(false);
-            setDupExisting(null);
-            onSuccess();
-          } catch {
-            onError("Failed to overwrite");
-          } finally {
-            setDupOverwriting(false);
-          }
-        };
-      } else {
-        onError("Failed to submit");
-      }
+    } catch {
+      onError("Failed to submit");
     } finally {
       setSubmitting(false);
     }
   }
 
-  function handleOverwrite() {
-    pendingSubmitRef.current?.();
-  }
-
-  function handleCancelDup() {
-    setDupOpen(false);
-    setDupExisting(null);
-    pendingSubmitRef.current = null;
-  }
-
-  const duplicateDialog = (
-    <DuplicateDialog
-      open={dupOpen}
-      existing={dupExisting}
-      onOverwrite={handleOverwrite}
-      onCancel={handleCancelDup}
-      overwriting={dupOverwriting}
-    />
-  );
-
-  return { submitWithDuplicateCheck, duplicateDialog };
+  // duplicateDialog is null - no longer needed since backend auto-overwrites
+  return { submitWithDuplicateCheck, duplicateDialog: null };
 }
 
 // ─── Manager Checklist Form (formerly Operations Checklist) ───

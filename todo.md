@@ -966,3 +966,15 @@
 - [x] Items format maps to unified task structure with proper field names (item/label/en)
 - [x] Task names now display correctly: "Outside and entrance" instead of "Task 1"
 - [x] All 140 tests passing
+
+# Bug Fix: Duplicate Submissions & Missing Submitter Name
+- [x] Backend: Auto-overwrite existing report (same store + date + type) — deletes old entry before creating new one
+- [x] Frontend: All forms now send overwrite:true (DirectChecklist, ChecklistViewer, PositionChecklists)
+- [x] Frontend: Removed duplicate check dialogs from all forms (no more 409 handling)
+- [x] Frontend: Simplified useDuplicateCheck hook to just submit directly
+- [x] Frontend: Enforce required submitter name validation in all checklist forms
+- [x] Frontend: Added name field to DirectChecklist WasteReportForm (was hardcoded "Store Staff")
+- [x] Backend: Strengthened validation to reject empty/whitespace-only submitter names
+- [x] Database: Cleaned up 58 duplicate entries (kept only latest per store/date/type)
+- [x] Tests: Updated improvements.test.ts to expect auto-overwrite (200) instead of 409
+- [x] All 129 tests passing (15 test files, excluding Koomi integration timeouts)

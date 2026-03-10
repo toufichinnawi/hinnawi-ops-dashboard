@@ -1,0 +1,17 @@
+{
+  "query": "SELECT location, reportType, reportDate, status, COUNT(*) as cnt FROM report_submissions WHERE status = 'submitted' GROUP BY location, reportType, reportDate HAVING cnt > 1 ORDER BY cnt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT location, reportType, reportDate, status, COUNT(*) as cnt FROM report_submissions WHERE status = 'submitted' GROUP BY location, reportType, reportDate HAVING cnt > 1 ORDER BY cnt DESC LIMIT 20;",
+  "rows": [
+    {
+      "location": "MK",
+      "reportType": "manager-checklist",
+      "reportDate": "2026-03-03",
+      "status": "submitted",
+      "cnt": "59"
+    }
+  ],
+  "messages": [],
+  "stdout": "location\treportType\treportDate\tstatus\tcnt\nMK\tmanager-checklist\t2026-03-03\tsubmitted\t59\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}
