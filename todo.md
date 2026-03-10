@@ -1062,3 +1062,10 @@
 - [x] Empty state when no invoices for the selected period
 - [x] Cleaned up 8 test invoices from database
 - [x] All 171 tests passing across 19 test files
+
+# Bug Fix: /checklists/waste tRPC error (HTML instead of JSON)
+- [x] Added sendWasteEmail tRPC procedure to reports router using MS Graph Outlook API
+- [x] Email sends from systems@bagelandcafe.com to toufic@bagelandcafe.com via ROPC auth flow
+- [x] Waste page loads without errors, "Send by Email" button works end-to-end
+- [x] 4 new vitest tests for waste email endpoint (valid send, missing subject, missing body, empty input)
+- [x] All 175 tests passing across 20 test files

@@ -1329,6 +1329,72 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         return deleteReportSubmission(input.id);
       }),
+
+    sendWasteEmail: publicProcedure
+      .input(z.object({
+        subject: z.string(),
+        body: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          // Use MS Graph API to send email via systems@bagelandcafe.com
+          const axios = (await import("axios")).default;
+          const { ENV } = await import("./_core/env");
+          const { AXIOS_TIMEOUT_MS } = await import("../shared/const");
+
+          const { msGraphUsername, msGraphPassword, msGraphClientId } = ENV;
+          if (!msGraphUsername || !msGraphPassword) {
+            throw new Error("MS Graph credentials not configured");
+          }
+
+          // Get token via ROPC flow
+          const tokenParams = new URLSearchParams({
+            client_id: msGraphClientId,
+            scope: "https://graph.microsoft.com/.default",
+            username: msGraphUsername,
+            password: msGraphPassword,
+            grant_type: "password",
+          });
+          const tokenRes = await axios.post(
+            "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+            tokenParams.toString(),
+            { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: AXIOS_TIMEOUT_MS }
+          );
+          const accessToken = tokenRes.data.access_token;
+
+          // Send email via Graph API
+          const emailPayload = {
+            message: {
+              subject: input.subject,
+              body: {
+                contentType: "Text",
+                content: input.body,
+              },
+              toRecipients: [
+                { emailAddress: { address: "toufic@bagelandcafe.com" } },
+              ],
+            },
+            saveToSentItems: true,
+          };
+
+          await axios.post(
+            `https://graph.microsoft.com/v1.0/me/sendMail`,
+            emailPayload,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+              timeout: AXIOS_TIMEOUT_MS,
+            }
+          );
+
+          return { success: true };
+        } catch (err: any) {
+          console.error("[WasteEmail] Failed to send:", err?.response?.data || err.message);
+          return { success: false, error: err.message };
+        }
+      }),
   }),
 
   // ─── Store PINs ───────────────────────────────────────────────
