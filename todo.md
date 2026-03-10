@@ -978,3 +978,13 @@
 - [x] Database: Cleaned up 58 duplicate entries (kept only latest per store/date/type)
 - [x] Tests: Updated improvements.test.ts to expect auto-overwrite (200) instead of 409
 - [x] All 129 tests passing (15 test files, excluding Koomi integration timeouts)
+
+# Operations Manager Portal: Admin-Style Reports Tab
+- [x] Give Operations Manager portal access to admin Reports tab with full filtering (Store, Position, Checklist type)
+- [x] Filter bar matches admin dashboard: All Stores, All Positions, All Checklists dropdowns + date picker + Clear all + report count
+- [x] Date picker with Quick Select presets (All Time, Today, Yesterday, Last 7/30 Days) + custom calendar range
+- [x] Position filter cascades to checklist filter (selecting a position narrows checklist options)
+- [x] Ops Manager sees all stores; Store Manager has store filter hidden (scoped to their store)
+- [x] Reports table with Store, Date, Position, Checklist, Submitted By, Score, Submitted columns
+- [x] Clickable rows open detail dialog with full report data
+- [x] All 139 tests passing (15 test files, excluding Koomi integration timeouts)

@@ -11,11 +11,11 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Shield, Store, UserCheck, Users, Lock, Coffee,
-  ChevronRight, ChevronLeft, MapPin, ShieldCheck, ArrowLeft,
+  ChevronRight, ChevronLeft, ChevronDown, MapPin, ShieldCheck, ArrowLeft,
   ClipboardCheck, BarChart3, Star, Trash2, Wrench,
   GraduationCap, CircleDot, TrendingUp, Menu, X,
   FileText, DollarSign, Percent, Clock, CheckCircle2,
-  Pencil, Receipt,
+  Pencil, Receipt, CalendarIcon, Filter,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1627,6 +1627,187 @@ function PortalCompletedChecklists({
 
 // ─── Reports Page (for Ops Manager & Store Manager portals) ──────
 
+// ─── Portal Date Filter (matches admin ReportsDateFilter) ──────
+
+function PortalDateFilter({
+  value,
+  onChange,
+}: {
+  value: { from: Date | null; to: Date | null; label: string };
+  onChange: (v: { from: Date | null; to: Date | null; label: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [stagedRange, setStagedRange] = useState<
+    { from?: Date; to?: Date } | undefined
+  >(
+    value.from && value.to
+      ? { from: value.from, to: value.to }
+      : undefined
+  );
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const presets = [
+    { label: "All Time", getValue: () => ({ from: null, to: null, label: "All Time" }) },
+    { label: "Today", getValue: () => {
+      const t = new Date(); t.setHours(0, 0, 0, 0);
+      const e = new Date(); e.setHours(23, 59, 59, 999);
+      return { from: t, to: e, label: "Today" };
+    }},
+    { label: "Yesterday", getValue: () => {
+      const d = new Date(); d.setDate(d.getDate() - 1); d.setHours(0, 0, 0, 0);
+      const e = new Date(d); e.setHours(23, 59, 59, 999);
+      return { from: d, to: e, label: "Yesterday" };
+    }},
+    { label: "Last 7 Days", getValue: () => {
+      const f = new Date(); f.setDate(f.getDate() - 6); f.setHours(0, 0, 0, 0);
+      const e = new Date(); e.setHours(23, 59, 59, 999);
+      return { from: f, to: e, label: "Last 7 Days" };
+    }},
+    { label: "Last 30 Days", getValue: () => {
+      const f = new Date(); f.setDate(f.getDate() - 29); f.setHours(0, 0, 0, 0);
+      const e = new Date(); e.setHours(23, 59, 59, 999);
+      return { from: f, to: e, label: "Last 30 Days" };
+    }},
+  ];
+
+  const displayText = value.label || "All Time";
+  const rangeComplete = !!(stagedRange?.from && stagedRange?.to);
+
+  return (
+    <div className="relative">
+      <Button
+        variant="outline"
+        onClick={() => setOpen(!open)}
+        className="h-9 px-3 gap-2 text-sm font-normal bg-card border-border/60 hover:bg-accent/50"
+      >
+        <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />
+        <span>{displayText}</span>
+        <ChevronDown className="w-3 h-3 text-muted-foreground ml-auto" />
+      </Button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-2 z-50 bg-card border border-border rounded-xl shadow-xl">
+            <div className="flex">
+              <div className="border-r border-border p-2 space-y-0.5 min-w-[130px]">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-2 py-1.5 font-medium">Quick Select</p>
+                {presets.map((preset) => (
+                  <button
+                    key={preset.label}
+                    onClick={() => { onChange(preset.getValue()); setOpen(false); }}
+                    className={cn(
+                      "w-full text-left text-sm px-2 py-1.5 rounded-md transition-colors",
+                      value.label === preset.label
+                        ? "bg-[#D4A853]/10 text-[#D4A853] font-medium"
+                        : "text-foreground hover:bg-accent"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <div className="p-3">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-1 pb-2 font-medium">Custom Range</p>
+                <div className="text-sm">
+                  <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground mb-1">
+                    {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d => <div key={d}>{d}</div>)}
+                  </div>
+                  {/* Simple month calendar */}
+                  {(() => {
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const month = now.getMonth();
+                    const firstDay = new Date(year, month, 1).getDay();
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+                    const cells = [];
+                    for (let i = 0; i < firstDay; i++) cells.push(<div key={`e${i}`} />);
+                    for (let d = 1; d <= daysInMonth; d++) {
+                      const date = new Date(year, month, d);
+                      const isFrom = stagedRange?.from && date.toDateString() === stagedRange.from.toDateString();
+                      const isTo = stagedRange?.to && date.toDateString() === stagedRange.to.toDateString();
+                      const inRange = stagedRange?.from && stagedRange?.to && date >= stagedRange.from && date <= stagedRange.to;
+                      const isFuture = date > now;
+                      cells.push(
+                        <button
+                          key={d}
+                          disabled={isFuture}
+                          onClick={() => {
+                            if (!stagedRange?.from || (stagedRange.from && stagedRange.to)) {
+                              setStagedRange({ from: date, to: undefined });
+                            } else if (date < stagedRange.from) {
+                              setStagedRange({ from: date, to: stagedRange.from });
+                            } else {
+                              setStagedRange({ from: stagedRange.from, to: date });
+                            }
+                          }}
+                          className={cn(
+                            "w-8 h-8 rounded-md text-xs transition-colors",
+                            isFuture && "opacity-30 cursor-not-allowed",
+                            (isFrom || isTo) && "bg-[#D4A853] text-white font-bold",
+                            inRange && !isFrom && !isTo && "bg-[#D4A853]/15",
+                            !isFrom && !isTo && !inRange && !isFuture && "hover:bg-accent"
+                          )}
+                        >
+                          {d}
+                        </button>
+                      );
+                    }
+                    return (
+                      <div>
+                        <p className="text-xs font-medium text-center mb-2">
+                          {now.toLocaleString("en-US", { month: "long", year: "numeric" })}
+                        </p>
+                        <div className="grid grid-cols-7 gap-1">{cells}</div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                {rangeComplete && (
+                  <div className="flex justify-end mt-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (stagedRange?.from && stagedRange?.to) {
+                          const from = new Date(stagedRange.from); from.setHours(0, 0, 0, 0);
+                          const to = new Date(stagedRange.to); to.setHours(23, 59, 59, 999);
+                          const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                          onChange({ from, to, label: `${fmt(from)} – ${fmt(to)}` });
+                          setOpen(false);
+                        }
+                      }}
+                      className="bg-[#D4A853] hover:bg-[#c49843] text-white"
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Store filter options ───────────────────────────────────────
+const PORTAL_STORE_OPTIONS = [
+  { code: "PK", name: "President Kennedy" },
+  { code: "MK", name: "Mackay" },
+  { code: "ON", name: "Ontario" },
+  { code: "TN", name: "Tunnel" },
+];
+
+const PORTAL_POSITION_OPTIONS = Object.entries(POSITION_CHECKLISTS).map(
+  ([slug, config]) => ({ slug, label: config.label, checklists: config.checklists })
+);
+
+const PORTAL_CHECKLIST_OPTIONS = Object.entries(ALL_CHECKLISTS).map(
+  ([type, info]) => ({ type: type as ChecklistType, label: info.label, icon: info.icon })
+);
+
 function PortalReportsPage({
   reports,
   loading,
@@ -1640,12 +1821,27 @@ function PortalReportsPage({
   position: PositionDef;
   onRefresh?: () => void;
 }) {
-  const [filterType, setFilterType] = useState<string>("all");
+  const [filterStore, setFilterStore] = useState<string>("all");
+  const [filterPosition, setFilterPosition] = useState<string>("all");
+  const [filterChecklist, setFilterChecklist] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<{ from: Date | null; to: Date | null; label: string }>({
+    from: (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })(),
+    to: (() => { const d = new Date(); d.setHours(23, 59, 59, 999); return d; })(),
+    label: "Today",
+  });
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any>(null);
 
   const canEditDelete = position.slug === "ops-manager" || position.slug === "store-manager";
+  const showStoreFilter = !store; // Ops Manager sees store filter; store-locked positions don't
+
+  // Determine which checklist types belong to the selected position
+  const positionChecklists = useMemo(() => {
+    if (filterPosition === "all") return null;
+    const pos = PORTAL_POSITION_OPTIONS.find(p => p.slug === filterPosition);
+    return pos ? pos.checklists : null;
+  }, [filterPosition]);
 
   const sorted = useMemo(() =>
     [...reports].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
@@ -1653,15 +1849,39 @@ function PortalReportsPage({
   );
 
   const filtered = useMemo(() => {
-    if (filterType === "all") return sorted;
-    return sorted.filter(r => r.reportType === filterType);
-  }, [sorted, filterType]);
+    return sorted.filter(r => {
+      // Store filter (only for Ops Manager)
+      if (filterStore !== "all" && (r.normalizedLocation || r.location) !== filterStore) return false;
+      // Position filter
+      if (positionChecklists && !positionChecklists.includes(r.reportType as ChecklistType)) return false;
+      // Checklist type filter
+      if (filterChecklist !== "all" && r.reportType !== filterChecklist) return false;
+      // Date filter
+      if (dateFilter.from && r.reportDate) {
+        const reportDate = new Date(r.reportDate + "T00:00:00");
+        if (reportDate < dateFilter.from) return false;
+        if (dateFilter.to && reportDate > dateFilter.to) return false;
+      }
+      return true;
+    });
+  }, [sorted, filterStore, positionChecklists, filterChecklist, dateFilter]);
 
   const reportTypes = useMemo(() => {
     const types = new Set<string>();
     reports.forEach(r => { if (r.reportType) types.add(r.reportType); });
     return Array.from(types).sort();
   }, [reports]);
+
+  const hasActiveFilters = filterStore !== "all" || filterPosition !== "all" || filterChecklist !== "all" || dateFilter.label !== "All Time";
+
+  function clearFilters() {
+    setFilterStore("all");
+    setFilterPosition("all");
+    setFilterChecklist("all");
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    const e = new Date(); e.setHours(23, 59, 59, 999);
+    setDateFilter({ from: t, to: e, label: "Today" });
+  }
 
   async function handleDelete(id: number) {
     setDeleting(true);
@@ -1713,35 +1933,91 @@ function PortalReportsPage({
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1200px] space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-serif text-foreground">Reports</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {store
-            ? `All submitted checklists and reports for ${store.storeName}.`
-            : "All submitted checklists and reports across all stores."}
-        </p>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-serif text-foreground">Reports</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {store
+              ? `All submitted checklists and reports for ${store.storeName}.`
+              : "All submitted checklists and reports across all stores."}
+          </p>
+        </div>
+        <PortalDateFilter value={dateFilter} onChange={setDateFilter} />
       </div>
 
-      {/* Filter */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[220px]">
-            <SelectValue placeholder="All Checklists" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Checklists</SelectItem>
-            {reportTypes.map(type => {
-              const info = ALL_CHECKLISTS[type as ChecklistType];
-              return (
-                <SelectItem key={type} value={type}>
-                  {info?.icon || "📋"} {info?.label || type}
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
-        <span className="text-sm text-muted-foreground">{filtered.length} report{filtered.length !== 1 ? "s" : ""}</span>
+      {/* Filter Bar — matches admin dashboard */}
+      <div className="rounded-xl border border-border/60 bg-card p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">Filters</span>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-3 h-3" />
+              Clear all
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Store Filter (only for Ops Manager / all-stores view) */}
+          {showStoreFilter && (
+            <Select value={filterStore} onValueChange={setFilterStore}>
+              <SelectTrigger className="w-[170px] h-9 bg-background border-border/60">
+                <MapPin className="w-3.5 h-3.5 text-muted-foreground mr-1.5" />
+                <SelectValue placeholder="All Stores" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stores</SelectItem>
+                {PORTAL_STORE_OPTIONS.map(s => (
+                  <SelectItem key={s.code} value={s.code}>{s.code} — {s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Position Filter */}
+          <Select
+            value={filterPosition}
+            onValueChange={(v) => { setFilterPosition(v); setFilterChecklist("all"); }}
+          >
+            <SelectTrigger className="w-[200px] h-9 bg-background border-border/60">
+              <UserCheck className="w-3.5 h-3.5 text-muted-foreground mr-1.5" />
+              <SelectValue placeholder="All Positions" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Positions</SelectItem>
+              {PORTAL_POSITION_OPTIONS.map(p => (
+                <SelectItem key={p.slug} value={p.slug}>{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Checklist Type Filter */}
+          <Select value={filterChecklist} onValueChange={setFilterChecklist}>
+            <SelectTrigger className="w-[220px] h-9 bg-background border-border/60">
+              <ClipboardCheck className="w-3.5 h-3.5 text-muted-foreground mr-1.5" />
+              <SelectValue placeholder="All Checklists" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Checklists</SelectItem>
+              {(positionChecklists
+                ? PORTAL_CHECKLIST_OPTIONS.filter(c => positionChecklists.includes(c.type))
+                : PORTAL_CHECKLIST_OPTIONS
+              ).map(c => (
+                <SelectItem key={c.type} value={c.type}>{c.icon} {c.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Count */}
+          <span className="text-sm text-muted-foreground ml-auto">
+            {filtered.length} report{filtered.length !== 1 ? "s" : ""}
+          </span>
+        </div>
       </div>
 
       {loading ? (
