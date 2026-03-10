@@ -988,3 +988,19 @@
 - [x] Reports table with Store, Date, Position, Checklist, Submitted By, Score, Submitted columns
 - [x] Clickable rows open detail dialog with full report data
 - [x] All 139 tests passing (15 test files, excluding Koomi integration timeouts)
+
+# Report Export (CSV/PDF) for Operations Manager Portal
+- [x] Add CSV export button to portal Reports page (exports filtered reports)
+- [x] Add PDF export button to portal Reports page (print-to-PDF via new window)
+- [x] CSV includes: Store, Date, Position, Checklist, Submitted By, Score, Submitted timestamp, Flag
+- [x] PDF includes: formatted table with Hinnawi branding, filters applied, date generated, report count
+
+# Report Notes & Flagging for Operations Manager Portal
+- [x] Add report_notes table to database schema (reportId, note, flagType, createdBy, timestamps)
+- [x] Create backend endpoints: GET/POST notes, PUT/DELETE individual notes, POST flag, POST batch flags
+- [x] Add notes section to portal report detail dialog (add, edit, delete notes with author + timestamp)
+- [x] Add flag selector in detail dialog header (No Flag, Needs Review, Follow Up, Resolved)
+- [x] Show flag indicators as colored badges on the reports list table
+- [x] Flag changes in detail dialog instantly update the table row
+- [x] Write 18 vitest tests for notes/flags endpoints (all passing)
+- [x] All 147 tests passing across 16 test files

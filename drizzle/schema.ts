@@ -471,3 +471,18 @@ export const invoices = mysqlTable("invoices", {
 
 export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoice = typeof invoices.$inferInsert;
+
+// ─── Report Notes & Flags ───
+
+export const reportNotes = mysqlTable("report_notes", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull(),
+  note: text("note").notNull(),
+  flagType: mysqlEnum("flagType", ["none", "needs-review", "follow-up", "resolved"]).default("none").notNull(),
+  createdBy: varchar("createdBy", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ReportNote = typeof reportNotes.$inferSelect;
+export type InsertReportNote = typeof reportNotes.$inferInsert;

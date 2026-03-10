@@ -514,6 +514,97 @@ async function startServer() {
     }
   });
 
+  // ─── Report Notes & Flags ───
+
+  app.get("/api/public/reports/:id/notes", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.id);
+      if (isNaN(reportId)) return res.status(400).json({ error: "Invalid report ID" });
+      const { getReportNotes } = await import("../db");
+      const notes = await getReportNotes(reportId);
+      // Filter out flag-only entries for the notes list
+      const realNotes = notes.filter(n => n.note !== "__FLAG__");
+      const flagEntry = notes.find(n => n.note === "__FLAG__");
+      res.json({ success: true, notes: realNotes, flag: flagEntry?.flagType || "none" });
+    } catch (err) {
+      console.error("[ReportNotes] Get error:", err);
+      res.status(500).json({ error: "Failed to get notes" });
+    }
+  });
+
+  app.post("/api/public/reports/:id/notes", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.id);
+      if (isNaN(reportId)) return res.status(400).json({ error: "Invalid report ID" });
+      const { note, createdBy } = req.body;
+      if (!note || !note.trim()) return res.status(400).json({ error: "Note text is required" });
+      if (!createdBy || !createdBy.trim()) return res.status(400).json({ error: "Author name is required" });
+      const { createReportNote } = await import("../db");
+      const result = await createReportNote({ reportId, note: note.trim(), createdBy: createdBy.trim(), flagType: "none" });
+      res.json({ success: true, id: result.id });
+    } catch (err) {
+      console.error("[ReportNotes] Create error:", err);
+      res.status(500).json({ error: "Failed to create note" });
+    }
+  });
+
+  app.put("/api/public/report-notes/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid note ID" });
+      const { note } = req.body;
+      if (!note || !note.trim()) return res.status(400).json({ error: "Note text is required" });
+      const { updateReportNote } = await import("../db");
+      await updateReportNote(id, { note: note.trim() });
+      res.json({ success: true });
+    } catch (err) {
+      console.error("[ReportNotes] Update error:", err);
+      res.status(500).json({ error: "Failed to update note" });
+    }
+  });
+
+  app.delete("/api/public/report-notes/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid note ID" });
+      const { deleteReportNote } = await import("../db");
+      await deleteReportNote(id);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("[ReportNotes] Delete error:", err);
+      res.status(500).json({ error: "Failed to delete note" });
+    }
+  });
+
+  app.post("/api/public/reports/:id/flag", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.id);
+      if (isNaN(reportId)) return res.status(400).json({ error: "Invalid report ID" });
+      const { flagType, createdBy } = req.body;
+      if (!flagType) return res.status(400).json({ error: "Flag type is required" });
+      if (!createdBy || !createdBy.trim()) return res.status(400).json({ error: "Author name is required" });
+      const { setReportFlag } = await import("../db");
+      await setReportFlag(reportId, flagType, createdBy.trim());
+      res.json({ success: true });
+    } catch (err) {
+      console.error("[ReportNotes] Flag error:", err);
+      res.status(500).json({ error: "Failed to set flag" });
+    }
+  });
+
+  app.post("/api/public/reports/flags", async (req, res) => {
+    try {
+      const { reportIds } = req.body;
+      if (!Array.isArray(reportIds)) return res.status(400).json({ error: "reportIds must be an array" });
+      const { getReportFlags } = await import("../db");
+      const flags = await getReportFlags(reportIds);
+      res.json({ success: true, flags });
+    } catch (err) {
+      console.error("[ReportNotes] Flags error:", err);
+      res.status(500).json({ error: "Failed to get flags" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

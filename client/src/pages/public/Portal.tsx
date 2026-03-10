@@ -16,6 +16,7 @@ import {
   GraduationCap, CircleDot, TrendingUp, Menu, X,
   FileText, DollarSign, Percent, Clock, CheckCircle2,
   Pencil, Receipt, CalendarIcon, Filter,
+  Download, Flag, MessageSquare, Send, AlertTriangle, Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import InvoiceCapturePortal from "./InvoiceCapture";
@@ -1808,6 +1810,14 @@ const PORTAL_CHECKLIST_OPTIONS = Object.entries(ALL_CHECKLISTS).map(
   ([type, info]) => ({ type: type as ChecklistType, label: info.label, icon: info.icon })
 );
 
+// ─── Flag config ───
+const FLAG_OPTIONS: { value: string; label: string; color: string; bg: string; icon: typeof Flag }[] = [
+  { value: "none", label: "No Flag", color: "text-muted-foreground", bg: "bg-muted/30", icon: Flag },
+  { value: "needs-review", label: "Needs Review", color: "text-amber-600", bg: "bg-amber-50 border-amber-200", icon: AlertTriangle },
+  { value: "follow-up", label: "Follow Up", color: "text-blue-600", bg: "bg-blue-50 border-blue-200", icon: Clock },
+  { value: "resolved", label: "Resolved", color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200", icon: CheckCircle2 },
+];
+
 function PortalReportsPage({
   reports,
   loading,
@@ -1832,11 +1842,12 @@ function PortalReportsPage({
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [reportFlags, setReportFlags] = useState<Record<number, string>>({});
+  const [exporting, setExporting] = useState(false);
 
   const canEditDelete = position.slug === "ops-manager" || position.slug === "store-manager";
-  const showStoreFilter = !store; // Ops Manager sees store filter; store-locked positions don't
+  const showStoreFilter = !store;
 
-  // Determine which checklist types belong to the selected position
   const positionChecklists = useMemo(() => {
     if (filterPosition === "all") return null;
     const pos = PORTAL_POSITION_OPTIONS.find(p => p.slug === filterPosition);
@@ -1850,13 +1861,9 @@ function PortalReportsPage({
 
   const filtered = useMemo(() => {
     return sorted.filter(r => {
-      // Store filter (only for Ops Manager)
       if (filterStore !== "all" && (r.normalizedLocation || r.location) !== filterStore) return false;
-      // Position filter
       if (positionChecklists && !positionChecklists.includes(r.reportType as ChecklistType)) return false;
-      // Checklist type filter
       if (filterChecklist !== "all" && r.reportType !== filterChecklist) return false;
-      // Date filter
       if (dateFilter.from && r.reportDate) {
         const reportDate = new Date(r.reportDate + "T00:00:00");
         if (reportDate < dateFilter.from) return false;
@@ -1873,6 +1880,20 @@ function PortalReportsPage({
   }, [reports]);
 
   const hasActiveFilters = filterStore !== "all" || filterPosition !== "all" || filterChecklist !== "all" || dateFilter.label !== "All Time";
+
+  // Fetch flags for all visible reports
+  useEffect(() => {
+    const ids = filtered.map(r => r.id).filter(Boolean);
+    if (ids.length === 0) return;
+    fetch("/api/public/reports/flags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reportIds: ids }),
+    })
+      .then(r => r.json())
+      .then(d => { if (d.success) setReportFlags(d.flags); })
+      .catch(() => {});
+  }, [filtered]);
 
   function clearFilters() {
     setFilterStore("all");
@@ -1912,14 +1933,14 @@ function PortalReportsPage({
     if (payload?.submitterName) return payload.submitterName;
     if (payload?.name) return payload.name;
     if (report.userName) return report.userName;
-    return "—";
+    return "\u2014";
   }
 
   function getPositionLabel(reportType: string): string {
     for (const [, config] of Object.entries(POSITION_CHECKLISTS)) {
       if (config.checklists.includes(reportType as ChecklistType)) return config.label;
     }
-    return "—";
+    return "\u2014";
   }
 
   function renderStars(rating: number) {
@@ -1930,6 +1951,103 @@ function PortalReportsPage({
         ))}
       </div>
     );
+  }
+
+  // ─── CSV Export ───
+  function exportCSV() {
+    const headers = ["Store", "Date", "Position", "Checklist", "Submitted By", "Score", "Submitted At", "Flag"];
+    const rows = filtered.map(r => {
+      const info = ALL_CHECKLISTS[r.reportType as ChecklistType];
+      const flag = reportFlags[r.id] || "none";
+      return [
+        r.normalizedLocation || r.location || "",
+        r.reportDate || "",
+        getPositionLabel(r.reportType),
+        info?.label || r.reportType,
+        getSubmitter(r),
+        r.totalScore || "",
+        r.createdAt ? new Date(r.createdAt).toLocaleString("en-CA") : "",
+        flag === "none" ? "" : FLAG_OPTIONS.find(f => f.value === flag)?.label || flag,
+      ];
+    });
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reports-${dateFilter.label.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filtered.length} reports as CSV`);
+  }
+
+  // ─── PDF Export ───
+  function exportPDF() {
+    setExporting(true);
+    try {
+      const title = "Hinnawi Bros \u2014 Reports Export";
+      const filterDesc = [
+        filterStore !== "all" ? `Store: ${filterStore}` : null,
+        filterPosition !== "all" ? `Position: ${PORTAL_POSITION_OPTIONS.find(p => p.slug === filterPosition)?.label}` : null,
+        filterChecklist !== "all" ? `Checklist: ${ALL_CHECKLISTS[filterChecklist as ChecklistType]?.label}` : null,
+        `Date: ${dateFilter.label}`,
+      ].filter(Boolean).join(" | ");
+
+      // Build HTML for PDF
+      const tableRows = filtered.map(r => {
+        const info = ALL_CHECKLISTS[r.reportType as ChecklistType];
+        const flag = reportFlags[r.id] || "none";
+        const flagLabel = flag === "none" ? "" : FLAG_OPTIONS.find(f => f.value === flag)?.label || flag;
+        return `<tr>
+          <td>${r.normalizedLocation || r.location || ""}</td>
+          <td>${r.reportDate || ""}</td>
+          <td>${getPositionLabel(r.reportType)}</td>
+          <td>${info?.label || r.reportType}</td>
+          <td>${getSubmitter(r)}</td>
+          <td style="text-align:center">${r.totalScore || "\u2014"}</td>
+          <td>${r.createdAt ? new Date(r.createdAt).toLocaleString("en-CA") : ""}</td>
+          <td>${flagLabel}</td>
+        </tr>`;
+      }).join("");
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; color: #1a1a1a; }
+          h1 { font-size: 20px; margin-bottom: 4px; }
+          .meta { color: #666; font-size: 12px; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; font-size: 11px; }
+          th { background: #f5f0e8; text-align: left; padding: 8px 10px; border-bottom: 2px solid #d4a853; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+          td { padding: 7px 10px; border-bottom: 1px solid #eee; }
+          tr:nth-child(even) { background: #fafafa; }
+          .footer { margin-top: 24px; font-size: 10px; color: #999; text-align: right; }
+        </style></head><body>
+        <h1>${title}</h1>
+        <p class="meta">${filterDesc} &mdash; ${filtered.length} report${filtered.length !== 1 ? "s" : ""} &mdash; Generated ${new Date().toLocaleString("en-CA")}</p>
+        <table>
+          <thead><tr><th>Store</th><th>Date</th><th>Position</th><th>Checklist</th><th>Submitted By</th><th>Score</th><th>Submitted</th><th>Flag</th></tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+        <p class="footer">Hinnawi Bros Operations Dashboard</p>
+      </body></html>`;
+
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+        toast.success(`PDF export ready (${filtered.length} reports)`);
+      } else {
+        toast.error("Please allow pop-ups to export PDF");
+      }
+    } catch {
+      toast.error("Failed to generate PDF");
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -1944,10 +2062,36 @@ function PortalReportsPage({
               : "All submitted checklists and reports across all stores."}
           </p>
         </div>
-        <PortalDateFilter value={dateFilter} onChange={setDateFilter} />
+        <div className="flex items-center gap-2">
+          {/* Export Buttons */}
+          {filtered.length > 0 && (
+            <div className="flex items-center gap-1.5 mr-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportCSV}
+                className="h-8 text-xs gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportPDF}
+                disabled={exporting}
+                className="h-8 text-xs gap-1.5"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                PDF
+              </Button>
+            </div>
+          )}
+          <PortalDateFilter value={dateFilter} onChange={setDateFilter} />
+        </div>
       </div>
 
-      {/* Filter Bar — matches admin dashboard */}
+      {/* Filter Bar */}
       <div className="rounded-xl border border-border/60 bg-card p-4">
         <div className="flex items-center gap-2 mb-3">
           <Filter className="w-4 h-4 text-muted-foreground" />
@@ -1963,7 +2107,6 @@ function PortalReportsPage({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {/* Store Filter (only for Ops Manager / all-stores view) */}
           {showStoreFilter && (
             <Select value={filterStore} onValueChange={setFilterStore}>
               <SelectTrigger className="w-[170px] h-9 bg-background border-border/60">
@@ -1973,13 +2116,11 @@ function PortalReportsPage({
               <SelectContent>
                 <SelectItem value="all">All Stores</SelectItem>
                 {PORTAL_STORE_OPTIONS.map(s => (
-                  <SelectItem key={s.code} value={s.code}>{s.code} — {s.name}</SelectItem>
+                  <SelectItem key={s.code} value={s.code}>{s.code} \u2014 {s.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           )}
-
-          {/* Position Filter */}
           <Select
             value={filterPosition}
             onValueChange={(v) => { setFilterPosition(v); setFilterChecklist("all"); }}
@@ -1995,8 +2136,6 @@ function PortalReportsPage({
               ))}
             </SelectContent>
           </Select>
-
-          {/* Checklist Type Filter */}
           <Select value={filterChecklist} onValueChange={setFilterChecklist}>
             <SelectTrigger className="w-[220px] h-9 bg-background border-border/60">
               <ClipboardCheck className="w-3.5 h-3.5 text-muted-foreground mr-1.5" />
@@ -2012,8 +2151,6 @@ function PortalReportsPage({
               ))}
             </SelectContent>
           </Select>
-
-          {/* Count */}
           <span className="text-sm text-muted-foreground ml-auto">
             {filtered.length} report{filtered.length !== 1 ? "s" : ""}
           </span>
@@ -2042,6 +2179,7 @@ function PortalReportsPage({
                   <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Checklist</th>
                   <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Submitted By</th>
                   <th className="text-center px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Score</th>
+                  <th className="text-center px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Flag</th>
                   <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Submitted</th>
                   {canEditDelete && <th className="text-center px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Actions</th>}
                 </tr>
@@ -2050,6 +2188,8 @@ function PortalReportsPage({
                 {filtered.map((r) => {
                   const info = ALL_CHECKLISTS[r.reportType as ChecklistType];
                   const posLabel = getPositionLabel(r.reportType);
+                  const flagValue = reportFlags[r.id] || "none";
+                  const flagDef = FLAG_OPTIONS.find(f => f.value === flagValue);
                   return (
                     <tr
                       key={r.id}
@@ -2061,11 +2201,11 @@ function PortalReportsPage({
                           <span className="font-semibold text-xs">{r.normalizedLocation || r.location}</span>
                         </td>
                       )}
-                      <td className="px-4 py-3.5 font-mono text-xs">{r.reportDate || "—"}</td>
+                      <td className="px-4 py-3.5 font-mono text-xs">{r.reportDate || "\u2014"}</td>
                       <td className="px-4 py-3.5 text-xs text-muted-foreground">{posLabel}</td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm">{info?.icon || "📋"}</span>
+                          <span className="text-sm">{info?.icon || "\ud83d\udccb"}</span>
                           <span className="text-xs font-medium">{info?.label || r.reportType}</span>
                         </div>
                       </td>
@@ -2080,13 +2220,22 @@ function PortalReportsPage({
                             {r.totalScore}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground/40">—</span>
+                          <span className="text-muted-foreground/40">\u2014</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 text-center">
+                        {flagValue !== "none" && flagDef ? (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${flagDef.bg} ${flagDef.color}`}>
+                            {flagDef.label}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/30">\u2014</span>
                         )}
                       </td>
                       <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
                         {r.createdAt
                           ? new Date(r.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
-                          : "—"}
+                          : "\u2014"}
                       </td>
                       {canEditDelete && (
                         <td className="px-4 py-3.5 text-center">
@@ -2117,71 +2266,20 @@ function PortalReportsPage({
         </div>
       )}
 
-      {/* Report Detail Dialog — matches admin dashboard template */}
+      {/* Report Detail Dialog with Notes & Flags */}
       {selectedReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedReport(null)}>
-          <div className="bg-card rounded-xl p-6 max-w-lg mx-4 shadow-xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-lg">{ALL_CHECKLISTS[selectedReport.reportType as ChecklistType]?.icon || "📋"}</span>
-              <h3 className="text-lg font-serif">{ALL_CHECKLISTS[selectedReport.reportType as ChecklistType]?.label || selectedReport.reportType}</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-muted-foreground text-xs">Store</p>
-                <p className="font-medium mt-0.5">{selectedReport.normalizedLocation || selectedReport.location}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Report Date</p>
-                <p className="font-medium mt-0.5">{selectedReport.reportDate || "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Position</p>
-                <p className="font-medium mt-0.5">{getPositionLabel(selectedReport.reportType)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Submitted By</p>
-                <p className="font-medium mt-0.5">{getSubmitter(selectedReport)}</p>
-              </div>
-              {selectedReport.totalScore && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Score</p>
-                  <p className="font-bold text-lg mt-0.5">{selectedReport.totalScore}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-muted-foreground text-xs">Submitted At</p>
-                <p className="font-medium mt-0.5">
-                  {selectedReport.createdAt ? new Date(selectedReport.createdAt).toLocaleString("en-CA") : "—"}
-                </p>
-              </div>
-            </div>
-
-            {/* Detailed Data — proper template rendering */}
-            <div className="mt-4">
-              <ReportDetailRenderer reportType={selectedReport.reportType} data={selectedReport.data} />
-            </div>
-
-            {/* Action buttons — same as admin */}
-            {canEditDelete && (
-              <div className="flex justify-end gap-2 pt-3 border-t mt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={() => setDeleteConfirmId(selectedReport.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                  Delete Report
-                </Button>
-              </div>
-            )}
-
-            {/* Close button */}
-            <div className="flex justify-end mt-3">
-              <Button variant="outline" size="sm" onClick={() => setSelectedReport(null)}>Close</Button>
-            </div>
-          </div>
-        </div>
+        <ReportDetailDialog
+          report={selectedReport}
+          onClose={() => setSelectedReport(null)}
+          canEditDelete={canEditDelete}
+          onDelete={(id) => setDeleteConfirmId(id)}
+          getSubmitter={getSubmitter}
+          getPositionLabel={getPositionLabel}
+          position={position}
+          onFlagChanged={(reportId, flag) => {
+            setReportFlags(prev => ({ ...prev, [reportId]: flag }));
+          }}
+        />
       )}
 
       {/* Delete Confirmation */}
@@ -2206,6 +2304,293 @@ function PortalReportsPage({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Report Detail Dialog with Notes & Flags ───
+
+function ReportDetailDialog({
+  report,
+  onClose,
+  canEditDelete,
+  onDelete,
+  getSubmitter,
+  getPositionLabel,
+  position,
+  onFlagChanged,
+}: {
+  report: any;
+  onClose: () => void;
+  canEditDelete: boolean;
+  onDelete: (id: number) => void;
+  getSubmitter: (r: any) => string;
+  getPositionLabel: (rt: string) => string;
+  position: PositionDef;
+  onFlagChanged: (reportId: number, flag: string) => void;
+}) {
+  const [notes, setNotes] = useState<any[]>([]);
+  const [currentFlag, setCurrentFlag] = useState<string>("none");
+  const [loadingNotes, setLoadingNotes] = useState(true);
+  const [newNote, setNewNote] = useState("");
+  const [submittingNote, setSubmittingNote] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState("");
+  const [savingFlag, setSavingFlag] = useState(false);
+
+  const authorName = position.label || "Manager";
+
+  // Fetch notes and flag on mount
+  useEffect(() => {
+    setLoadingNotes(true);
+    fetch(`/api/public/reports/${report.id}/notes`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          setNotes(d.notes);
+          setCurrentFlag(d.flag || "none");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingNotes(false));
+  }, [report.id]);
+
+  async function addNote() {
+    if (!newNote.trim()) return;
+    setSubmittingNote(true);
+    try {
+      const res = await fetch(`/api/public/reports/${report.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: newNote.trim(), createdBy: authorName }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        setNotes(prev => [{ id: d.id, note: newNote.trim(), createdBy: authorName, createdAt: new Date().toISOString() }, ...prev]);
+        setNewNote("");
+        toast.success("Note added");
+      }
+    } catch {
+      toast.error("Failed to add note");
+    } finally {
+      setSubmittingNote(false);
+    }
+  }
+
+  async function updateNote(noteId: number) {
+    if (!editingNoteText.trim()) return;
+    try {
+      const res = await fetch(`/api/public/report-notes/${noteId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: editingNoteText.trim() }),
+      });
+      if (res.ok) {
+        setNotes(prev => prev.map(n => n.id === noteId ? { ...n, note: editingNoteText.trim() } : n));
+        setEditingNoteId(null);
+        toast.success("Note updated");
+      }
+    } catch {
+      toast.error("Failed to update note");
+    }
+  }
+
+  async function deleteNote(noteId: number) {
+    try {
+      const res = await fetch(`/api/public/report-notes/${noteId}`, { method: "DELETE" });
+      if (res.ok) {
+        setNotes(prev => prev.filter(n => n.id !== noteId));
+        toast.success("Note deleted");
+      }
+    } catch {
+      toast.error("Failed to delete note");
+    }
+  }
+
+  async function changeFlag(flagType: string) {
+    setSavingFlag(true);
+    try {
+      const res = await fetch(`/api/public/reports/${report.id}/flag`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flagType, createdBy: authorName }),
+      });
+      if (res.ok) {
+        setCurrentFlag(flagType);
+        onFlagChanged(report.id, flagType);
+        toast.success(flagType === "none" ? "Flag removed" : `Flagged as ${FLAG_OPTIONS.find(f => f.value === flagType)?.label}`);
+      }
+    } catch {
+      toast.error("Failed to update flag");
+    } finally {
+      setSavingFlag(false);
+    }
+  }
+
+  const currentFlagDef = FLAG_OPTIONS.find(f => f.value === currentFlag);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="bg-card rounded-xl p-6 max-w-2xl w-full mx-4 shadow-xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{ALL_CHECKLISTS[report.reportType as ChecklistType]?.icon || "\ud83d\udccb"}</span>
+            <h3 className="text-lg font-serif">{ALL_CHECKLISTS[report.reportType as ChecklistType]?.label || report.reportType}</h3>
+          </div>
+          {/* Flag Selector */}
+          {canEditDelete && (
+            <Select value={currentFlag} onValueChange={changeFlag} disabled={savingFlag}>
+              <SelectTrigger className={`w-[160px] h-8 text-xs border ${currentFlagDef?.bg || ""} ${currentFlagDef?.color || ""}`}>
+                <Flag className="w-3 h-3 mr-1" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FLAG_OPTIONS.map(f => (
+                  <SelectItem key={f.value} value={f.value}>
+                    <span className={`flex items-center gap-1.5 ${f.color}`}>
+                      {f.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {/* Report Info Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+          <div>
+            <p className="text-muted-foreground text-xs">Store</p>
+            <p className="font-medium mt-0.5">{report.normalizedLocation || report.location}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Report Date</p>
+            <p className="font-medium mt-0.5">{report.reportDate || "\u2014"}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Position</p>
+            <p className="font-medium mt-0.5">{getPositionLabel(report.reportType)}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Submitted By</p>
+            <p className="font-medium mt-0.5">{getSubmitter(report)}</p>
+          </div>
+          {report.totalScore && (
+            <div>
+              <p className="text-muted-foreground text-xs">Score</p>
+              <p className="font-bold text-lg mt-0.5">{report.totalScore}</p>
+            </div>
+          )}
+          <div>
+            <p className="text-muted-foreground text-xs">Submitted At</p>
+            <p className="font-medium mt-0.5">
+              {report.createdAt ? new Date(report.createdAt).toLocaleString("en-CA") : "\u2014"}
+            </p>
+          </div>
+        </div>
+
+        {/* Detailed Data */}
+        <div className="mt-4">
+          <ReportDetailRenderer reportType={report.reportType} data={report.data} />
+        </div>
+
+        {/* Notes Section */}
+        {canEditDelete && (
+          <div className="mt-5 pt-4 border-t">
+            <div className="flex items-center gap-2 mb-3">
+              <MessageSquare className="w-4 h-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium">Notes</h4>
+              <span className="text-xs text-muted-foreground">({notes.length})</span>
+            </div>
+
+            {/* Add Note */}
+            <div className="flex gap-2 mb-3">
+              <Textarea
+                placeholder="Add a note or comment..."
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                className="min-h-[60px] text-sm resize-none"
+                onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addNote(); }}
+              />
+              <Button
+                size="sm"
+                onClick={addNote}
+                disabled={submittingNote || !newNote.trim()}
+                className="self-end bg-[#D4A853] hover:bg-[#c49843] text-white h-8 px-3"
+              >
+                {submittingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              </Button>
+            </div>
+
+            {/* Notes List */}
+            {loadingNotes ? (
+              <div className="text-center py-4 text-xs text-muted-foreground">Loading notes...</div>
+            ) : notes.length === 0 ? (
+              <div className="text-center py-4 text-xs text-muted-foreground">No notes yet. Add one above.</div>
+            ) : (
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {notes.map((n) => (
+                  <div key={n.id} className="rounded-lg border border-border/40 bg-muted/20 p-3">
+                    {editingNoteId === n.id ? (
+                      <div className="flex gap-2">
+                        <Textarea
+                          value={editingNoteText}
+                          onChange={(e) => setEditingNoteText(e.target.value)}
+                          className="min-h-[40px] text-sm resize-none"
+                        />
+                        <div className="flex flex-col gap-1">
+                          <Button size="sm" className="h-7 text-xs px-2" onClick={() => updateNote(n.id)}>Save</Button>
+                          <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setEditingNoteId(null)}>Cancel</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm whitespace-pre-wrap">{n.note}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-[10px] text-muted-foreground">
+                            {n.createdBy} &middot; {n.createdAt ? new Date(n.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : ""}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => { setEditingNoteId(n.id); setEditingNoteText(n.note); }}
+                              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => deleteNote(n.id)}
+                              className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex items-center justify-between pt-3 border-t mt-4">
+          {canEditDelete ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-red-600 border-red-200 hover:bg-red-50"
+              onClick={() => onDelete(report.id)}
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              Delete
+            </Button>
+          ) : <div />}
+          <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
+        </div>
+      </div>
     </div>
   );
 }

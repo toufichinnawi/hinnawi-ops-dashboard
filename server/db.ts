@@ -1,4 +1,4 @@
-import { eq, desc, and, gte, lte, lt, sql } from "drizzle-orm";
+import { eq, desc, and, gte, lte, lt, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -26,6 +26,7 @@ import {
   qboTokens, InsertQboToken, QboToken,
   qboCogs, InsertQboCogs, QboCogs,
   invoices, InsertInvoice, Invoice,
+  reportNotes, InsertReportNote, ReportNote,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1254,4 +1255,84 @@ export async function deleteInvoice(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(invoices).where(eq(invoices.id, id));
+}
+
+// ─── Report Notes & Flags ───
+
+export async function getReportNotes(reportId: number): Promise<ReportNote[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reportNotes)
+    .where(eq(reportNotes.reportId, reportId))
+    .orderBy(desc(reportNotes.createdAt));
+}
+
+export async function getReportNotesByReportIds(reportIds: number[]): Promise<ReportNote[]> {
+  const db = await getDb();
+  if (!db) return [];
+  if (reportIds.length === 0) return [];
+  return db.select().from(reportNotes)
+    .where(inArray(reportNotes.reportId, reportIds))
+    .orderBy(desc(reportNotes.createdAt));
+}
+
+export async function createReportNote(data: InsertReportNote): Promise<{ id: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(reportNotes).values(data).$returningId();
+  return result;
+}
+
+export async function updateReportNote(id: number, data: { note?: string; flagType?: "none" | "needs-review" | "follow-up" | "resolved" }): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(reportNotes).set(data).where(eq(reportNotes.id, id));
+}
+
+export async function deleteReportNote(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(reportNotes).where(eq(reportNotes.id, id));
+}
+
+export async function setReportFlag(reportId: number, flagType: string, createdBy: string): Promise<{ id: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Upsert: if a flag note exists for this report, update it; otherwise create one
+  const existing = await db.select().from(reportNotes)
+    .where(and(
+      eq(reportNotes.reportId, reportId),
+      sql`${reportNotes.note} = '__FLAG__'`
+    ))
+    .limit(1);
+  if (existing.length > 0) {
+    await db.update(reportNotes)
+      .set({ flagType: flagType as any, createdBy })
+      .where(eq(reportNotes.id, existing[0].id));
+    return { id: existing[0].id };
+  }
+  const [result] = await db.insert(reportNotes).values({
+    reportId,
+    note: "__FLAG__",
+    flagType: flagType as any,
+    createdBy,
+  }).$returningId();
+  return result;
+}
+
+export async function getReportFlags(reportIds: number[]): Promise<Record<number, string>> {
+  const db = await getDb();
+  if (!db) return {};
+  if (reportIds.length === 0) return {};
+  const rows = await db.select().from(reportNotes)
+    .where(and(
+      inArray(reportNotes.reportId, reportIds),
+      sql`${reportNotes.note} = '__FLAG__'`,
+      sql`${reportNotes.flagType} != 'none'`
+    ));
+  const flags: Record<number, string> = {};
+  for (const r of rows) {
+    flags[r.reportId] = r.flagType;
+  }
+  return flags;
 }
