@@ -1925,6 +1925,120 @@ export const appRouter = router({
         );
       }),
   }),
+
+  // ─── Food Cost Analysis (from Invoice Captures) ───
+  foodCost: router({
+    byStore: protectedProcedure
+      .input(z.object({ fromDate: z.string(), toDate: z.string() }))
+      .query(async ({ input }) => {
+        const { getAllInvoices } = await import("./db");
+        const invoices = await getAllInvoices({
+          fromDate: input.fromDate,
+          toDate: input.toDate,
+          status: "verified",
+        });
+
+        // Map invoice storeCode to frontend store IDs
+        const storeCodeToId: Record<string, string> = {
+          pk: "pk", PK: "pk",
+          mk: "mk", MK: "mk",
+          on: "ontario", ON: "ontario", ontario: "ontario",
+          tn: "tunnel", TN: "tunnel", tunnel: "tunnel",
+        };
+
+        // Per-store aggregation
+        const byStore: Record<string, {
+          storeId: string;
+          invoiceCount: number;
+          subtotal: number;
+          tax: number;
+          total: number;
+          vendors: Record<string, { vendorName: string; invoiceCount: number; total: number }>;
+        }> = {};
+
+        // Global vendor aggregation
+        const vendorMap: Record<string, { vendorName: string; invoiceCount: number; total: number; stores: Set<string> }> = {};
+
+        for (const inv of invoices) {
+          // Only count COGS invoices for food cost
+          if (inv.category !== "cogs") continue;
+          // Skip invoices with no total
+          if (!inv.total || inv.total <= 0) continue;
+
+          const storeId = storeCodeToId[inv.storeCode] || inv.storeCode.toLowerCase();
+
+          if (!byStore[storeId]) {
+            byStore[storeId] = {
+              storeId,
+              invoiceCount: 0,
+              subtotal: 0,
+              tax: 0,
+              total: 0,
+              vendors: {},
+            };
+          }
+          const s = byStore[storeId];
+          s.invoiceCount++;
+          s.subtotal += inv.subtotal ?? 0;
+          s.tax += inv.tax ?? 0;
+          s.total += inv.total ?? 0;
+
+          // Per-store vendor breakdown
+          const vName = inv.vendorName || "Unknown";
+          if (!s.vendors[vName]) {
+            s.vendors[vName] = { vendorName: vName, invoiceCount: 0, total: 0 };
+          }
+          s.vendors[vName].invoiceCount++;
+          s.vendors[vName].total += inv.total ?? 0;
+
+          // Global vendor aggregation
+          if (!vendorMap[vName]) {
+            vendorMap[vName] = { vendorName: vName, invoiceCount: 0, total: 0, stores: new Set() };
+          }
+          vendorMap[vName].invoiceCount++;
+          vendorMap[vName].total += inv.total ?? 0;
+          vendorMap[vName].stores.add(storeId);
+        }
+
+        // Format byStore output (flatten vendors)
+        const byStoreResult = Object.values(byStore).map(s => ({
+          storeId: s.storeId,
+          invoiceCount: s.invoiceCount,
+          subtotal: Math.round(s.subtotal * 100) / 100,
+          tax: Math.round(s.tax * 100) / 100,
+          total: Math.round(s.total * 100) / 100,
+          topVendors: Object.values(s.vendors)
+            .sort((a, b) => b.total - a.total)
+            .slice(0, 10)
+            .map(v => ({
+              vendorName: v.vendorName,
+              invoiceCount: v.invoiceCount,
+              total: Math.round(v.total * 100) / 100,
+            })),
+        }));
+
+        // Global top vendors
+        const topVendors = Object.values(vendorMap)
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 15)
+          .map(v => ({
+            vendorName: v.vendorName,
+            invoiceCount: v.invoiceCount,
+            total: Math.round(v.total * 100) / 100,
+            storeCount: v.stores.size,
+          }));
+
+        const totalFoodCost = byStoreResult.reduce((sum, s) => sum + s.total, 0);
+        const totalInvoices = byStoreResult.reduce((sum, s) => sum + s.invoiceCount, 0);
+
+        return {
+          byStore: byStoreResult,
+          topVendors,
+          totalFoodCost: Math.round(totalFoodCost * 100) / 100,
+          totalInvoices,
+        };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

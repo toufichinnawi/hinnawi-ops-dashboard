@@ -1165,3 +1165,13 @@
 - [x] Fix: Added locationToStoreId mapping in wasteAnalysis.byStore procedure to normalize location codes to frontend store IDs
 - [x] Verified: Store cards show waste cost/rate, charts display correctly, top items table populated
 - [x] All 195 tests passing (2 pre-existing Koomi integration failures unrelated)
+
+# Food Cost on Store Performance Page (from Invoice Captures)
+- [x] Research invoice capture schema and data structure
+- [x] Create backend foodCost.byStore tRPC procedure (aggregate invoice data by store and date range)
+- [x] Add Food Cost, Food Cost %, and Gross Profit to per-store cards
+- [x] Build Food Cost Analysis section with charts (Food Cost by Store, Food Cost % by Store with 30% target line)
+- [x] Add Top Vendors table showing highest cost vendors per period
+- [x] Wire date filter to Food Cost queries (shares date filter with waste analysis)
+- [x] Write vitest tests for foodCost procedure (6 tests: empty data, aggregation, store ID mapping, non-cogs filtering, vendor sorting, zero-total filtering)
+- [x] Test end-to-end in browser — verified with Last 30 Days showing PK invoice data

@@ -6,7 +6,7 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ReferenceLine,
 } from "recharts";
-import { MapPin, CheckCircle2, Database, Loader2, CalendarX, Trash2, AlertTriangle } from "lucide-react";
+import { MapPin, CheckCircle2, Database, Loader2, CalendarX, Trash2, AlertTriangle, Receipt, DollarSign } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -55,6 +55,12 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
     return new Date().toISOString().split('T')[0];
   }, [dateFilter.to]);
   const { data: wasteData, isLoading: wasteLoading } = trpc.wasteAnalysis.byStore.useQuery(
+    { fromDate: wasteFromDate, toDate: wasteToDate },
+    { staleTime: 60_000 }
+  );
+
+  // Food Cost data (from invoice captures)
+  const { data: foodCostData, isLoading: foodCostLoading } = trpc.foodCost.byStore.useQuery(
     { fromDate: wasteFromDate, toDate: wasteToDate },
     { staleTime: 60_000 }
   );
@@ -194,6 +200,10 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
             const storeWasteCost = storeWasteInfo ? storeWasteInfo.wasteCost + storeWasteInfo.leftoverCost : 0;
             const wasteRate = labour.revenue > 0 ? (storeWasteCost / labour.revenue) * 100 : 0;
 
+            const storeFoodCost = (foodCostData?.byStore ?? []).find(fc => fc.storeId === store.id);
+            const foodCostTotal = storeFoodCost?.total ?? 0;
+            const foodCostPct = labour.revenue > 0 ? (foodCostTotal / labour.revenue) * 100 : 0;
+
             return (
               <motion.div
                 key={store.id}
@@ -251,6 +261,37 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
                       {labour.labourPercent > 0 ? labour.labourPercent.toFixed(1) + "%" : "—"}
                     </p>
                     <p className="text-[9px] text-muted-foreground mt-0.5">Target: {target}%</p>
+                  </div>
+                </div>
+
+                {/* Food Cost Row */}
+                <div className="px-4 pb-2 grid grid-cols-3 gap-3">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Food Cost</p>
+                    <p className={cn("text-lg font-mono font-semibold mt-0.5", foodCostPct > 35 ? "text-red-600" : foodCostPct > 30 ? "text-amber-600" : "text-foreground")}>
+                      {foodCostLoading ? "..." : (foodCostTotal > 0 ? `$${foodCostTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "\u2014")}
+                    </p>
+                    {storeFoodCost && storeFoodCost.invoiceCount > 0 && (
+                      <p className="text-[9px] text-muted-foreground mt-0.5">{storeFoodCost.invoiceCount} invoice{storeFoodCost.invoiceCount !== 1 ? "s" : ""}</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Food Cost %</p>
+                    <p className={cn("text-lg font-mono font-semibold mt-0.5", foodCostPct > 35 ? "text-red-600" : foodCostPct > 30 ? "text-amber-600" : "text-emerald-600")}>
+                      {foodCostTotal > 0 && labour.revenue > 0 ? `${foodCostPct.toFixed(1)}%` : "\u2014"}
+                    </p>
+                    {foodCostTotal > 0 && labour.revenue > 0 && (
+                      <p className="text-[9px] text-muted-foreground mt-0.5">Target: 30%</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Gross Profit</p>
+                    <p className="text-lg font-mono font-semibold mt-0.5 text-foreground">
+                      {foodCostTotal > 0 ? `$${(labour.revenue - foodCostTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "\u2014"}
+                    </p>
+                    {foodCostTotal > 0 && labour.revenue > 0 && (
+                      <p className="text-[9px] text-muted-foreground mt-0.5">{((1 - foodCostTotal / labour.revenue) * 100).toFixed(1)}% margin</p>
+                    )}
                   </div>
                 </div>
 
@@ -558,6 +599,237 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
                     </table>
                     {topItems.length > 10 && (
                       <p className="text-xs text-muted-foreground text-center mt-3">Showing top 10 of {topItems.length} items</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          );
+        })()}
+
+        {/* ─── Food Cost Analysis Section ─── */}
+        {(() => {
+          const storeList = storeFilter ? stores.filter(s => s.id === storeFilter) : stores;
+          const fcByStore = foodCostData?.byStore ?? [];
+          const topVendors = foodCostData?.topVendors ?? [];
+          const totalFoodCost = foodCostData?.totalFoodCost ?? 0;
+          const totalInvoices = foodCostData?.totalInvoices ?? 0;
+
+          // Total revenue for food cost %
+          const totalRevenue = storeList.reduce((sum, s) => sum + (getLabour(s.id).revenue ?? 0), 0);
+          const foodCostPct = totalRevenue > 0 ? (totalFoodCost / totalRevenue) * 100 : 0;
+          const grossProfit = totalRevenue - totalFoodCost;
+          const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+
+          const hasAnyFoodCost = fcByStore.length > 0 && totalFoodCost > 0;
+
+          // Bar chart: Food Cost by Store
+          const foodCostBarData = storeList.map(s => {
+            const fc = fcByStore.find(f => f.storeId === s.id);
+            const storeRevenue = getLabour(s.id).revenue ?? 0;
+            return {
+              store: s.shortName,
+              storeId: s.id,
+              foodCost: fc?.total ?? 0,
+              invoices: fc?.invoiceCount ?? 0,
+              pct: storeRevenue > 0 ? ((fc?.total ?? 0) / storeRevenue) * 100 : 0,
+              color: s.color,
+            };
+          });
+
+          // Food Cost % by Store for comparison chart
+          const foodCostPctBarData = storeList.map(s => {
+            const fc = fcByStore.find(f => f.storeId === s.id);
+            const storeRevenue = getLabour(s.id).revenue ?? 0;
+            const pct = storeRevenue > 0 ? ((fc?.total ?? 0) / storeRevenue) * 100 : 0;
+            return {
+              store: s.shortName,
+              storeId: s.id,
+              pct: Math.round(pct * 10) / 10,
+              color: pct > 35 ? "#DC2626" : pct > 30 ? "#D97706" : "#059669",
+            };
+          });
+
+          if (foodCostLoading) {
+            return (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading food cost analysis...</span>
+              </motion.div>
+            );
+          }
+
+          return (
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-6">
+              {/* Section Header */}
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-xs text-[#D4A853] uppercase tracking-[0.2em] font-medium">Food Cost</p>
+                  <h3 className="text-xl font-serif text-foreground mt-1">Food Cost Analysis</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {hasAnyFoodCost
+                      ? `${totalInvoices} invoice${totalInvoices !== 1 ? "s" : ""} — ${dateFilter.label}`
+                      : `No invoices captured for ${dateFilter.label}`}
+                  </p>
+                </div>
+                {hasAnyFoodCost && (
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Food Cost</p>
+                      <p className={cn("text-xl font-mono font-semibold", foodCostPct > 35 ? "text-red-600" : foodCostPct > 30 ? "text-amber-600" : "text-foreground")}>
+                        ${totalFoodCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    {totalRevenue > 0 && (
+                      <div className="text-right">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Food Cost %</p>
+                        <p className={cn("text-xl font-mono font-semibold", foodCostPct > 35 ? "text-red-600" : foodCostPct > 30 ? "text-amber-600" : "text-emerald-600")}>
+                          {foodCostPct.toFixed(1)}%
+                        </p>
+                      </div>
+                    )}
+                    {totalRevenue > 0 && (
+                      <div className="text-right">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Gross Margin</p>
+                        <p className="text-xl font-mono font-semibold text-emerald-600">
+                          {grossMargin.toFixed(1)}%
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Charts */}
+              {hasAnyFoodCost ? (
+                <div className={cn("grid gap-6", storeFilter ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}>
+                  {/* Food Cost by Store */}
+                  <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
+                    <h4 className="font-serif text-lg text-foreground mb-1">Food Cost by Store</h4>
+                    <p className="text-xs text-muted-foreground mb-4">Total invoice cost per location</p>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={foodCostBarData} barSize={storeFilter ? 60 : 36}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
+                        <XAxis dataKey="store" tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} />
+                        <YAxis tickFormatter={(v) => `$${v.toLocaleString()}`} tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} width={70} />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0].payload;
+                            return (
+                              <div className="bg-white border border-border rounded-lg px-3 py-2 shadow-lg">
+                                <p className="text-xs font-medium text-foreground mb-1">{d.store}</p>
+                                <div className="space-y-0.5 text-xs">
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Food Cost:</span><span className="font-mono font-medium">${d.foodCost.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Food Cost %:</span><span className="font-mono font-medium">{d.pct.toFixed(1)}%</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Invoices:</span><span className="font-mono font-medium">{d.invoices}</span></div>
+                                </div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="foodCost" radius={[6, 6, 0, 0]} name="Food Cost">
+                          {foodCostBarData.map((entry, idx) => (
+                            <Cell key={idx} fill={entry.color} fillOpacity={0.85} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </motion.div>
+
+                  {/* Food Cost % by Store */}
+                  <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
+                    <h4 className="font-serif text-lg text-foreground mb-1">Food Cost % by Store</h4>
+                    <p className="text-xs text-muted-foreground mb-4">Food cost as percentage of revenue — 30% target</p>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={foodCostPctBarData} barSize={storeFilter ? 60 : 36}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
+                        <XAxis dataKey="store" tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} />
+                        <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} width={50} domain={[0, 'auto']} />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0].payload;
+                            return (
+                              <div className="bg-white border border-border rounded-lg px-3 py-2 shadow-lg">
+                                <p className="text-xs font-medium text-foreground mb-1">{d.store}</p>
+                                <div className="text-xs">
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-muted-foreground">Food Cost %:</span>
+                                    <span className={cn("font-mono font-semibold", d.pct > 35 ? "text-red-600" : d.pct > 30 ? "text-amber-600" : "text-emerald-600")}>{d.pct}%</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <ReferenceLine y={30} stroke="#DC2626" strokeDasharray="6 4" label={{ value: "30% Target", position: "right", fontSize: 10, fill: "#DC2626" }} />
+                        <Bar dataKey="pct" radius={[6, 6, 0, 0]} name="Food Cost %">
+                          {foodCostPctBarData.map((entry, idx) => (
+                            <Cell key={idx} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </motion.div>
+                </div>
+              ) : (
+                /* Empty state */
+                <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-8 text-center">
+                  <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-3">
+                    <Receipt className="w-6 h-6 text-amber-400" />
+                  </div>
+                  <h4 className="font-serif text-lg text-foreground mb-1">No Food Cost Data Yet</h4>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    Capture invoices through the Invoice Management page to see food cost analysis here.
+                  </p>
+                  <Link href="/invoices">
+                    <button className="mt-4 px-4 py-2 rounded-lg bg-[#D4A853] text-white text-sm font-medium hover:bg-[#C49A48] transition-colors">
+                      Go to Invoice Capture
+                    </button>
+                  </Link>
+                </motion.div>
+              )}
+
+              {/* Top Vendors Table */}
+              {topVendors.length > 0 && (
+                <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
+                  <h4 className="font-serif text-lg text-foreground mb-1">Top Vendors</h4>
+                  <p className="text-xs text-muted-foreground mb-4">Highest food cost vendors — {dateFilter.label}</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border/60">
+                          <th className="text-left py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Vendor</th>
+                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Invoices</th>
+                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Total Cost</th>
+                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">% of Food Cost</th>
+                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Stores</th>
+                          <th className="text-left py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium w-40">Share</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topVendors.slice(0, 10).map((vendor, idx) => {
+                          const pct = totalFoodCost > 0 ? (vendor.total / totalFoodCost) * 100 : 0;
+                          return (
+                            <tr key={vendor.vendorName} className={cn("border-b border-border/30", idx % 2 === 0 ? "bg-muted/20" : "")}>
+                              <td className="py-2.5 px-3 font-medium text-foreground">{vendor.vendorName}</td>
+                              <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{vendor.invoiceCount}</td>
+                              <td className="py-2.5 px-3 text-right font-mono font-medium text-foreground">${vendor.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{pct.toFixed(1)}%</td>
+                              <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{vendor.storeCount}</td>
+                              <td className="py-2.5 px-3">
+                                <div className="w-full bg-muted/40 rounded-full h-2">
+                                  <div className="h-2 rounded-full bg-[#D4A853] transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    {topVendors.length > 10 && (
+                      <p className="text-xs text-muted-foreground text-center mt-3">Showing top 10 of {topVendors.length} vendors</p>
                     )}
                   </div>
                 </motion.div>
