@@ -1100,3 +1100,10 @@
 - [x] Added "TOTAL WHITE DOUGH" box (green) that sums Clients + Stores white dough
 - [x] Removed old single White Dough summary card and Store White Dough box
 - [x] All 168 non-integration tests passing (Koomi integration test is external dependency)
+
+# Operations Manager Portal — Sales Location on Bagel Orders
+- [x] Add "Sales" location option to the Bagel Orders form in the Operations Manager portal (PositionChecklists)
+- [x] Show Client Name field when Sales is selected
+- [x] Operations managers can submit client orders from the portal
+- [x] Location selector with Sales (purple) + all stores (amber) buttons
+- [x] All 168 non-integration tests passing

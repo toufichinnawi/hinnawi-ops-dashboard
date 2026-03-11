@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PhotoUpload, type UploadedPhoto } from "@/components/PhotoUpload";
+import { stores } from "@/lib/data";
 
 // ─── Save Draft Hook (server-side + localStorage fallback) ───
 
@@ -1396,12 +1397,18 @@ function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack }:
 // ─── Bagel Orders Form ───
 
 function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
+  // Operations Manager can select Sales or any store location
+  const [selectedLocation, setSelectedLocation] = useState(storeCode || "sales");
+  const isSales = selectedLocation === "sales";
+  const resolvedStoreName = isSales ? "Sales" : (stores.find(s => s.shortName === selectedLocation)?.name || storeName);
+
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
-    `bagel-orders-v2-${storeCode}`,
-    { name: "", orderForDate: new Date().toISOString().split("T")[0], quantities: Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])), itemUnits: Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])) as Record<string, "dozen" | "unit"> }
+    `bagel-orders-v2-${selectedLocation}`,
+    { name: "", clientName: "", orderForDate: new Date().toISOString().split("T")[0], quantities: Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])), itemUnits: Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])) as Record<string, "dozen" | "unit"> }
   );
-  const { name, orderForDate, quantities, itemUnits } = draft;
+  const { name, clientName, orderForDate, quantities, itemUnits } = draft;
   const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
+  const setClientName = (v: string) => setDraft((d) => ({ ...d, clientName: v }));
   const setOrderForDate = (v: string) => setDraft((d) => ({ ...d, orderForDate: v }));
   const setQuantity = (type: string, val: string) => setDraft((d) => ({ ...d, quantities: { ...d.quantities, [type]: val } }));
   const setItemUnit = (type: string, val: "dozen" | "unit") => setDraft((d) => ({ ...d, itemUnits: { ...d.itemUnits, [type]: val } }));
@@ -1411,23 +1418,74 @@ function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: { stor
 
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
+    if (isSales && !clientName.trim()) { toast.error("Please enter the client name"); return; }
     if (!orderForDate) { toast.error("Please select the order date"); return; }
     await submitWithDuplicateCheck(
       {
-        submitterName: name.trim(), reportType: "Bagel Orders", location: storeName, reportDate: orderForDate,
-        data: { orderForDate, orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: (itemUnits?.[type]) || "dozen" })), submittedVia: `Public - ${positionLabel}` },
+        submitterName: name.trim(), reportType: "Bagel Orders", location: isSales ? "sales" : selectedLocation, reportDate: orderForDate,
+        data: {
+          orderForDate,
+          ...(isSales ? { clientName: clientName.trim() } : {}),
+          orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: (itemUnits?.[type]) || "dozen" })),
+          submittedVia: `Public - ${positionLabel}`,
+        },
       },
-      () => { setSubmitted(true); clearDraft(); toast.success("Bagel orders submitted!"); },
+      () => { setSubmitted(true); clearDraft(); toast.success(`Bagel order submitted for ${resolvedStoreName}${isSales ? ` — ${clientName}` : ""}!`); },
       (msg) => toast.error(msg),
       setSubmitting,
     );
   };
 
-  if (submitted) return <SuccessScreen message={`Bagel orders for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setDraft((d) => ({ ...d, quantities: Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])), itemUnits: Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])) as Record<string, "dozen" | "unit"> })); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Bagel order for ${resolvedStoreName}${isSales ? ` — ${clientName}` : ""} submitted.`} onNew={() => { setSubmitted(false); setDraft((d) => ({ ...d, clientName: "", quantities: Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])), itemUnits: Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])) as Record<string, "dozen" | "unit"> })); }} onBack={onBack} />;
 
   return (
-    <PublicFormLayout title="Bagel Orders" subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
+    <PublicFormLayout title="Bagel Orders" subtitle={`${positionLabel} — ${resolvedStoreName}`} onBack={onBack}>
+      {/* Location Selector — Sales + all stores */}
+      <Card><CardContent className="pt-6">
+        <Label className="text-sm font-medium">Location</Label>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-2">
+          <button
+            type="button"
+            onClick={() => setSelectedLocation("sales")}
+            className={cn(
+              "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+              selectedLocation === "sales"
+                ? "border-purple-500 bg-purple-50 text-purple-700"
+                : "border-gray-200 bg-white hover:border-purple-400 text-gray-500 hover:text-gray-700"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-purple-500" />
+              <span>Sales</span>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-0.5">Client Orders</p>
+          </button>
+          {stores.map((store) => (
+            <button
+              key={store.id}
+              type="button"
+              onClick={() => setSelectedLocation(store.shortName)}
+              className={cn(
+                "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+                selectedLocation === store.shortName
+                  ? "border-[#faa600] bg-[#faa600]/10 text-[#e09500]"
+                  : "border-gray-200 bg-white hover:border-[#faa600]/40 text-gray-500 hover:text-gray-700"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
+                <span>{store.shortName}</span>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-0.5 truncate">{store.name}</p>
+            </button>
+          ))}
+        </div>
+      </CardContent></Card>
+
       <Card><CardContent className="pt-6 space-y-4">
+        {isSales && (
+          <div className="space-y-2"><Label>Client Name <span className="text-red-500">*</span></Label><Input placeholder="Enter client name" value={clientName} onChange={(e) => setClientName(e.target.value)} /></div>
+        )}
         <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="space-y-2"><Label>Order for Date *</Label><Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} /></div>
 
