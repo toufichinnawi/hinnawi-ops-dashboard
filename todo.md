@@ -1158,3 +1158,10 @@
 - [x] Per-store cards updated: COGS/COGS Rate replaced with Waste Cost/Waste Rate
 - [x] Empty state shown when no waste reports exist for the selected period
 - [x] All 197 tests passing across 22 test files
+
+# Bug Fix: Waste Report Analysis not showing data on Store Performance
+- [x] Investigated: waste reports exist in DB with location codes (PK, MK, ON, TN) but frontend uses store IDs (pk, mk, ontario, tunnel)
+- [x] Root cause: store ID mismatch — backend returned location codes, frontend expected lowercase store IDs
+- [x] Fix: Added locationToStoreId mapping in wasteAnalysis.byStore procedure to normalize location codes to frontend store IDs
+- [x] Verified: Store cards show waste cost/rate, charts display correctly, top items table populated
+- [x] All 195 tests passing (2 pre-existing Koomi integration failures unrelated)

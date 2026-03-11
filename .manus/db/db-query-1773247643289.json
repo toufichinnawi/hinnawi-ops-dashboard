@@ -1,0 +1,50 @@
+{
+  "query": "SELECT id, reportType, location, reportDate, status, LEFT(data, 500) as data_preview FROM report_submissions WHERE reportType = 'waste-report' ORDER BY id DESC LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, reportType, location, reportDate, status, LEFT(data, 500) as data_preview FROM report_submissions WHERE reportType = 'waste-report' ORDER BY id DESC LIMIT 5",
+  "rows": [
+    {
+      "id": "270145",
+      "reportType": "waste-report",
+      "location": "ON",
+      "reportDate": "2026-03-10",
+      "status": "submitted",
+      "data_preview": "{\"bagels\": [{\"comment\": \"\", \"item\": \"Sesame Bagel\", \"leftover\": \"8 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Plain Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Poppy Seeds Bagel\", \"leftover\": \"1 unit\", \"waste\": \"\"}], \"ckItems\": [], \"pastries\": [{\"comment\": \"\", \"item\": \"Banana Bread with Nuts\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Chocolate Chips Cookie\", \"leftover\": \"3 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Muffin a L'Erabe\", \"leftover\":"
+    },
+    {
+      "id": "270144",
+      "reportType": "waste-report",
+      "location": "TN",
+      "reportDate": "2026-03-10",
+      "status": "submitted",
+      "data_preview": "{\"bagels\": [{\"comment\": \"\", \"item\": \"Sesame Bagel\", \"leftover\": \"1 bag\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Everything Bagel\", \"leftover\": \"0 bag\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Plain Bagel\", \"leftover\": \"5 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Poppy Seeds Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Multigrain Bagel\", \"leftover\": \"0 bag\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Cheese Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\":"
+    },
+    {
+      "id": "180041",
+      "reportType": "waste-report",
+      "location": "TN",
+      "reportDate": "2026-03-09",
+      "status": "submitted",
+      "data_preview": "{\"bagels\": [{\"comment\": \"\", \"item\": \"Sesame Bagel\", \"leftover\": \"6 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Everything Bagel\", \"leftover\": \"6 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Plain Bagel\", \"leftover\": \"8 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Poppy Seeds Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Multigrain Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Cheese Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"ite"
+    },
+    {
+      "id": "180037",
+      "reportType": "waste-report",
+      "location": "ON",
+      "reportDate": "2026-03-09",
+      "status": "submitted",
+      "data_preview": "{\"bagels\": [{\"comment\": \"\", \"item\": \"Sesame Bagel\", \"leftover\": \"8 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Everything Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Multigrain Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Cinnamon Raisin Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}], \"ckItems\": [], \"pastries\": [{\"comment\": \"\", \"item\": \"Banana Bread with Nuts\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Chocolate Chips Cookie\", \"l"
+    },
+    {
+      "id": "150006",
+      "reportType": "waste-report",
+      "location": "ON",
+      "reportDate": "2026-03-07",
+      "status": "submitted",
+      "data_preview": "{\"bagels\": [{\"comment\": \"\", \"item\": \"Sesame Bagel\", \"leftover\": \"1 bag\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Everything Bagel\", \"leftover\": \"1 bag\", \"waste\": \"\"}], \"ckItems\": [], \"pastries\": [{\"comment\": \"\", \"item\": \"Banana Bread with Nuts\", \"leftover\": \"1 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Chocolate Chips Cookie\", \"leftover\": \"1 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Muffin Chocolat\", \"leftover\": \"1 unit\", \"waste\": \"\"}], \"submittedVia\": \"Public - Staff\", \"submitterName\": \"O"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\treportType\tlocation\treportDate\tstatus\tdata_preview\n270145\twaste-report\tON\t2026-03-10\tsubmitted\t{\"bagels\": [{\"comment\": \"\", \"item\": \"Sesame Bagel\", \"leftover\": \"8 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Plain Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Poppy Seeds Bagel\", \"leftover\": \"1 unit\", \"waste\": \"\"}], \"ckItems\": [], \"pastries\": [{\"comment\": \"\", \"item\": \"Banana Bread with Nuts\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Chocolate Chips Cookie\", \"leftover\": \"3 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Muffin a L'Erabe\", \"leftover\":\n270144\twaste-report\tTN\t2026-03-10\tsubmitted\t{\"bagels\": [{\"comment\": \"\", \"item\": \"Sesame Bagel\", \"leftover\": \"1 bag\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Everything Bagel\", \"leftover\": \"0 bag\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Plain Bagel\", \"leftover\": \"5 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Poppy Seeds Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Multigrain Bagel\", \"leftover\": \"0 bag\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Cheese Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\":\n180041\twaste-report\tTN\t2026-03-09\tsubmitted\t{\"bagels\": [{\"comment\": \"\", \"item\": \"Sesame Bagel\", \"leftover\": \"6 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Everything Bagel\", \"leftover\": \"6 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Plain Bagel\", \"leftover\": \"8 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Poppy Seeds Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Multigrain Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Cheese Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"ite\n180037\twaste-report\tON\t2026-03-09\tsubmitted\t{\"bagels\": [{\"comment\": \"\", \"item\": \"Sesame Bagel\", \"leftover\": \"8 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Everything Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Multigrain Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Cinnamon Raisin Bagel\", \"leftover\": \"2 unit\", \"waste\": \"\"}], \"ckItems\": [], \"pastries\": [{\"comment\": \"\", \"item\": \"Banana Bread with Nuts\", \"leftover\": \"2 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Chocolate Chips Cookie\", \"l\n150006\twaste-report\tON\t2026-03-07\tsubmitted\t{\"bagels\": [{\"comment\": \"\", \"item\": \"Sesame Bagel\", \"leftover\": \"1 bag\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Everything Bagel\", \"leftover\": \"1 bag\", \"waste\": \"\"}], \"ckItems\": [], \"pastries\": [{\"comment\": \"\", \"item\": \"Banana Bread with Nuts\", \"leftover\": \"1 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Chocolate Chips Cookie\", \"leftover\": \"1 unit\", \"waste\": \"\"}, {\"comment\": \"\", \"item\": \"Muffin Chocolat\", \"leftover\": \"1 unit\", \"waste\": \"\"}], \"submittedVia\": \"Public - Staff\", \"submitterName\": \"O\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

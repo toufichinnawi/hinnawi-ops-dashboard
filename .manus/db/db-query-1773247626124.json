@@ -1,0 +1,91 @@
+{
+  "query": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()",
+  "rows": [
+    {
+      "TABLE_NAME": "vendors"
+    },
+    {
+      "TABLE_NAME": "users"
+    },
+    {
+      "TABLE_NAME": "teams_webhooks"
+    },
+    {
+      "TABLE_NAME": "store_pins"
+    },
+    {
+      "TABLE_NAME": "seven_shifts_daily_sales"
+    },
+    {
+      "TABLE_NAME": "seven_shifts_connections"
+    },
+    {
+      "TABLE_NAME": "scheduled_summary"
+    },
+    {
+      "TABLE_NAME": "report_submissions"
+    },
+    {
+      "TABLE_NAME": "report_notes"
+    },
+    {
+      "TABLE_NAME": "qbo_tokens"
+    },
+    {
+      "TABLE_NAME": "qbo_cogs"
+    },
+    {
+      "TABLE_NAME": "position_pins"
+    },
+    {
+      "TABLE_NAME": "koomi_daily_sales"
+    },
+    {
+      "TABLE_NAME": "invoices"
+    },
+    {
+      "TABLE_NAME": "inventory_items"
+    },
+    {
+      "TABLE_NAME": "inventory_counts"
+    },
+    {
+      "TABLE_NAME": "expenses"
+    },
+    {
+      "TABLE_NAME": "expense_categories"
+    },
+    {
+      "TABLE_NAME": "excel_sync_meta"
+    },
+    {
+      "TABLE_NAME": "excel_labour_data"
+    },
+    {
+      "TABLE_NAME": "cogs_targets"
+    },
+    {
+      "TABLE_NAME": "clover_shifts"
+    },
+    {
+      "TABLE_NAME": "clover_daily_sales"
+    },
+    {
+      "TABLE_NAME": "clover_connections"
+    },
+    {
+      "TABLE_NAME": "alert_rules"
+    },
+    {
+      "TABLE_NAME": "alert_history"
+    },
+    {
+      "TABLE_NAME": "__drizzle_migrations"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\nvendors\nusers\nteams_webhooks\nstore_pins\nseven_shifts_daily_sales\nseven_shifts_connections\nscheduled_summary\nreport_submissions\nreport_notes\nqbo_tokens\nqbo_cogs\nposition_pins\nkoomi_daily_sales\ninvoices\ninventory_items\ninventory_counts\nexpenses\nexpense_categories\nexcel_sync_meta\nexcel_labour_data\ncogs_targets\nclover_shifts\nclover_daily_sales\nclover_connections\nalert_rules\nalert_history\n__drizzle_migrations\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

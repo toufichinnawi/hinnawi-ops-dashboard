@@ -1,0 +1,91 @@
+{
+  "query": "SHOW TABLES",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SHOW TABLES",
+  "rows": [
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "alert_history"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "alert_rules"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "clover_connections"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "clover_daily_sales"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "clover_shifts"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "cogs_targets"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "excel_labour_data"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "excel_sync_meta"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "expense_categories"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "expenses"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "inventory_counts"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "inventory_items"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "invoices"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "koomi_daily_sales"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "position_pins"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "qbo_cogs"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "qbo_tokens"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "report_notes"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "report_submissions"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "scheduled_summary"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "seven_shifts_connections"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "seven_shifts_daily_sales"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "store_pins"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "teams_webhooks"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "users"
+    },
+    {
+      "Tables_in_i5zcri4CVdStBBckDWTaVK": "vendors"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_i5zcri4CVdStBBckDWTaVK\n__drizzle_migrations\nalert_history\nalert_rules\nclover_connections\nclover_daily_sales\nclover_shifts\ncogs_targets\nexcel_labour_data\nexcel_sync_meta\nexpense_categories\nexpenses\ninventory_counts\ninventory_items\ninvoices\nkoomi_daily_sales\nposition_pins\nqbo_cogs\nqbo_tokens\nreport_notes\nreport_submissions\nscheduled_summary\nseven_shifts_connections\nseven_shifts_daily_sales\nstore_pins\nteams_webhooks\nusers\nvendors\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

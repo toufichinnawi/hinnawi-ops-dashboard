@@ -1774,8 +1774,16 @@ export const appRouter = router({
         const { calcBagelCost, calcPastryCost, calcCKCost } = await import("../shared/wastePricing");
         const reports = await getReportsByDateRange(input.fromDate, input.toDate);
         const wasteReports = reports.filter(
-          (r: any) => r.reportType === "waste" || r.reportType === "Leftovers & Waste"
+          (r: any) => r.reportType === "waste-report" || r.reportType === "waste" || r.reportType === "Leftovers & Waste"
         );
+
+        // Map location codes (from reports) to frontend store IDs
+        const locationToStoreId: Record<string, string> = {
+          PK: "pk", pk: "pk",
+          MK: "mk", mk: "mk",
+          ON: "ontario", on: "ontario", ontario: "ontario",
+          TN: "tunnel", tn: "tunnel", tunnel: "tunnel",
+        };
 
         // Per-store aggregation
         const byStore: Record<string, {
@@ -1790,7 +1798,8 @@ export const appRouter = router({
         const itemMap: Record<string, { name: string; category: string; wasteCost: number; wasteQty: number }> = {};
 
         for (const report of wasteReports) {
-          const storeId = report.location || "unknown";
+          const rawLocation = report.location || "unknown";
+          const storeId = locationToStoreId[rawLocation] || rawLocation.toLowerCase();
           if (!byStore[storeId]) {
             byStore[storeId] = {
               storeId, reportCount: 0,
@@ -1820,50 +1829,68 @@ export const appRouter = router({
             s.ckWaste += data.costs.ckWaste ?? 0;
           } else {
             // Recalculate from raw items
-            const sections = [
-              { key: "bagels", calc: (item: any) => calcBagelCost(item.leftover ?? 0, item.leftoverType ?? "bag") + calcBagelCost(item.waste ?? 0, item.wasteType ?? "bag"), category: "Bagels" },
-              { key: "pastries", calc: (item: any) => calcPastryCost(item.name, item.leftover ?? 0) + calcPastryCost(item.name, item.waste ?? 0), category: "Pastries" },
-              { key: "ckItems", calc: (item: any) => calcCKCost(item.name, item.leftover ?? 0, item.leftoverType ?? "unit") + calcCKCost(item.name, item.waste ?? 0, item.wasteType ?? "unit"), category: "CK Items" },
-            ];
-            for (const sec of sections) {
-              const items = data[sec.key] ?? [];
+            // Helper to parse quantity strings like "10 bag", "5 container", "3 dozen"
+            const parseQtyStr = (val: any): { qty: number; unit: string } => {
+              if (typeof val === "number") return { qty: val, unit: "unit" };
+              if (!val || typeof val !== "string" || val.trim() === "") return { qty: 0, unit: "unit" };
+              const parts = val.trim().split(/\s+/);
+              const qty = parseFloat(parts[0]) || 0;
+              const unit = parts[1] || "unit";
+              return { qty, unit };
+            };
+
+            for (const sec of ["bagels", "pastries", "ckItems"] as const) {
+              const items = data[sec] ?? [];
               for (const item of items) {
+                const itemName = item.name || item.item || "";
+                const leftoverParsed = parseQtyStr(item.leftover);
+                const wasteParsed = parseQtyStr(item.waste);
                 let lc = 0, wc = 0;
-                if (sec.key === "bagels") {
-                  lc = calcBagelCost(item.leftover ?? 0, item.leftoverType ?? "bag");
-                  wc = calcBagelCost(item.waste ?? 0, item.wasteType ?? "bag");
-                } else if (sec.key === "pastries") {
-                  lc = calcPastryCost(item.name, item.leftover ?? 0);
-                  wc = calcPastryCost(item.name, item.waste ?? 0);
+                if (sec === "bagels") {
+                  lc = calcBagelCost(leftoverParsed.qty, leftoverParsed.unit);
+                  wc = calcBagelCost(wasteParsed.qty, wasteParsed.unit);
+                } else if (sec === "pastries") {
+                  lc = calcPastryCost(itemName, leftoverParsed.qty);
+                  wc = calcPastryCost(itemName, wasteParsed.qty);
                 } else {
-                  lc = calcCKCost(item.name, item.leftover ?? 0, item.leftoverType ?? "unit");
-                  wc = calcCKCost(item.name, item.waste ?? 0, item.wasteType ?? "unit");
+                  lc = calcCKCost(itemName, leftoverParsed.qty, leftoverParsed.unit);
+                  wc = calcCKCost(wasteParsed.qty > 0 ? itemName : "", wasteParsed.qty, wasteParsed.unit);
+                  // Recalculate properly for CK
+                  wc = calcCKCost(itemName, wasteParsed.qty, wasteParsed.unit);
                 }
                 s.leftoverCost += lc;
                 s.wasteCost += wc;
                 s.totalCost += lc + wc;
-                if (sec.key === "bagels") { s.bagelLeftover += lc; s.bagelWaste += wc; }
-                else if (sec.key === "pastries") { s.pastryLeftover += lc; s.pastryWaste += wc; }
+                if (sec === "bagels") { s.bagelLeftover += lc; s.bagelWaste += wc; }
+                else if (sec === "pastries") { s.pastryLeftover += lc; s.pastryWaste += wc; }
                 else { s.ckLeftover += lc; s.ckWaste += wc; }
               }
             }
           }
 
           // Build top wasted items from raw data
+          // Reuse parseQtyStr if not in scope (for the costs branch)
+          const parseQty = (val: any): { qty: number; unit: string } => {
+            if (typeof val === "number") return { qty: val, unit: "unit" };
+            if (!val || typeof val !== "string" || val.trim() === "") return { qty: 0, unit: "unit" };
+            const parts = val.trim().split(/\s+/);
+            return { qty: parseFloat(parts[0]) || 0, unit: parts[1] || "unit" };
+          };
           for (const sec of ["bagels", "pastries", "ckItems"]) {
             const items = data[sec] ?? [];
             const category = sec === "bagels" ? "Bagels" : sec === "pastries" ? "Pastries" : "CK Items";
             for (const item of items) {
-              const wQty = item.waste ?? 0;
-              if (wQty <= 0) continue;
+              const itemName = item.name || item.item || "";
+              const wasteParsed = parseQty(item.waste);
+              if (wasteParsed.qty <= 0) continue;
               let wCost = 0;
-              if (sec === "bagels") wCost = calcBagelCost(wQty, item.wasteType ?? "bag");
-              else if (sec === "pastries") wCost = calcPastryCost(item.name, wQty);
-              else wCost = calcCKCost(item.name, wQty, item.wasteType ?? "unit");
-              const key = `${item.name}__${category}`;
-              if (!itemMap[key]) itemMap[key] = { name: item.name, category, wasteCost: 0, wasteQty: 0 };
+              if (sec === "bagels") wCost = calcBagelCost(wasteParsed.qty, wasteParsed.unit);
+              else if (sec === "pastries") wCost = calcPastryCost(itemName, wasteParsed.qty);
+              else wCost = calcCKCost(itemName, wasteParsed.qty, wasteParsed.unit);
+              const key = `${itemName}__${category}`;
+              if (!itemMap[key]) itemMap[key] = { name: itemName, category, wasteCost: 0, wasteQty: 0 };
               itemMap[key].wasteCost += wCost;
-              itemMap[key].wasteQty += wQty;
+              itemMap[key].wasteQty += wasteParsed.qty;
             }
           }
         }

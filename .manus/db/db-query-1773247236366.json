@@ -1,0 +1,30 @@
+{
+  "query": "SELECT reportType, COUNT(*) as cnt FROM report_submissions GROUP BY reportType ORDER BY cnt DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT reportType, COUNT(*) as cnt FROM report_submissions GROUP BY reportType ORDER BY cnt DESC;",
+  "rows": [
+    {
+      "reportType": "manager-checklist",
+      "cnt": "33"
+    },
+    {
+      "reportType": "bagel-orders",
+      "cnt": "11"
+    },
+    {
+      "reportType": "waste-report",
+      "cnt": "7"
+    },
+    {
+      "reportType": "ops-manager-checklist",
+      "cnt": "2"
+    },
+    {
+      "reportType": "weekly-scorecard",
+      "cnt": "2"
+    }
+  ],
+  "messages": [],
+  "stdout": "reportType\tcnt\nmanager-checklist\t33\nbagel-orders\t11\nwaste-report\t7\nops-manager-checklist\t2\nweekly-scorecard\t2\n",
+  "stderr": "",
+  "execution_time_ms": 68
+}
