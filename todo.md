@@ -1107,3 +1107,8 @@
 - [x] Operations managers can submit client orders from the portal
 - [x] Location selector with Sales (purple) + all stores (amber) buttons
 - [x] All 168 non-integration tests passing
+
+# Bug Fix: Sales location not visible on Operations Manager Portal
+- [x] Investigated: OpsStorePickerForChecklist was blocking Bagel Orders with store-only options
+- [x] Fixed: Bagel Orders now skips the store picker and goes directly to the form with built-in location selector
+- [x] Sales location visible and selectable on Operations Manager portal Bagel Orders form

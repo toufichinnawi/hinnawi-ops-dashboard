@@ -790,7 +790,19 @@ function PortalContent({
   }
 
   if (item.type === "checklist" && item.checklistType) {
-    // Ops Manager needs to pick a store for checklists
+    // Bagel Orders has its own built-in location selector (Sales + all stores)
+    // so skip the store picker and go directly to the form
+    if (item.checklistType === "bagel-orders" && !store && position.slug === "operations-manager") {
+      return (
+        <PortalChecklistPage
+          checklistType={item.checklistType}
+          store={{ storeCode: "sales", storeName: "Sales" }}
+          positionLabel={position.label}
+        />
+      );
+    }
+
+    // Ops Manager needs to pick a store for other checklists
     if (!store && position.slug === "operations-manager") {
       if (!opsChecklistStore) {
         return (
