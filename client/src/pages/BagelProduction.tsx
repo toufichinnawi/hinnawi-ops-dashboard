@@ -281,7 +281,7 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4 pb-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Orders</p>
@@ -300,17 +300,44 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
             <p className="text-2xl font-mono font-bold mt-1">{(totalDozens * 12).toFixed(0)}</p>
           </CardContent>
         </Card>
-        <Card className="border-[#D4A853]/30 bg-[#D4A853]/5">
-          <CardContent className="pt-4 pb-4">
-            <p className="text-xs text-[#D4A853] uppercase tracking-wide font-medium">White Dough</p>
-            <p className="text-2xl font-mono font-bold mt-1">{whiteDoughKg % 1 === 0 ? whiteDoughKg : whiteDoughKg.toFixed(1)} <span className="text-sm font-semibold">Kg</span></p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Sesame, Everything, Plain, Poppy</p>
-          </CardContent>
-        </Card>
         <Card>
           <CardContent className="pt-4 pb-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Locations</p>
             <p className="text-2xl font-mono font-bold mt-1">{storeIds.length + (salesOrders.length > 0 ? 1 : 0)}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* White Dough Summary — Three Separate Boxes */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="border-purple-200 bg-purple-50/50">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-3 h-3 rounded-full bg-purple-500" />
+              <p className="text-xs text-purple-600 uppercase tracking-wide font-medium">Clients White Dough Total</p>
+            </div>
+            <p className="text-2xl font-mono font-bold mt-1">{totalClientsWhiteDoughKg % 1 === 0 ? totalClientsWhiteDoughKg : totalClientsWhiteDoughKg.toFixed(1)} <span className="text-sm font-semibold">Kg</span></p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Sesame, Everything, Plain, Poppy</p>
+          </CardContent>
+        </Card>
+        <Card className="border-[#D4A853]/30 bg-[#D4A853]/5">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-3 h-3 rounded-full bg-[#D4A853]" />
+              <p className="text-xs text-[#D4A853] uppercase tracking-wide font-medium">Stores White Dough Total</p>
+            </div>
+            <p className="text-2xl font-mono font-bold mt-1">{storeWhiteDoughKg % 1 === 0 ? storeWhiteDoughKg : storeWhiteDoughKg.toFixed(1)} <span className="text-sm font-semibold">Kg</span></p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Sesame, Everything, Plain, Poppy</p>
+          </CardContent>
+        </Card>
+        <Card className="border-emerald-200 bg-emerald-50/50">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-3 h-3 rounded-full bg-emerald-500" />
+              <p className="text-xs text-emerald-600 uppercase tracking-wide font-bold">TOTAL WHITE DOUGH</p>
+            </div>
+            <p className="text-2xl font-mono font-bold mt-1">{whiteDoughKg % 1 === 0 ? whiteDoughKg : whiteDoughKg.toFixed(1)} <span className="text-sm font-semibold">Kg</span></p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Clients + Stores combined</p>
           </CardContent>
         </Card>
       </div>
@@ -505,18 +532,6 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
                 <h2 className="text-lg font-serif text-foreground">Store Orders</h2>
                 <span className="text-xs text-muted-foreground ml-1">({filteredStoreOrders.length} order{filteredStoreOrders.length !== 1 ? "s" : ""})</span>
               </div>
-
-              {/* Store White Dough Box */}
-              <Card className="border-[#D4A853]/30 bg-[#D4A853]/5">
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="w-3 h-3 rounded-full bg-[#D4A853]" />
-                    <p className="text-xs text-[#D4A853] uppercase tracking-wide font-medium">Store White Dough</p>
-                  </div>
-                  <p className="text-2xl font-mono font-bold">{storeWhiteDoughKg % 1 === 0 ? storeWhiteDoughKg : storeWhiteDoughKg.toFixed(1)} <span className="text-sm font-semibold">Kg</span></p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Sesame, Everything, Plain, Poppy — Store orders only</p>
-                </CardContent>
-              </Card>
 
               {/* Store Orders Table */}
               <Card>

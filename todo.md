@@ -1087,3 +1087,16 @@
 - [x] Store White Dough box remains for store orders only
 - [x] 5 new vitest tests for Sales bagel order uniqueness and production aggregation
 - [x] All 180 tests passing across 21 test files
+
+# Fix: Bagel Orders Admin Dashboard — Location Selector
+- [x] Restored location selector on the Bagel Orders tab in the admin dashboard (DirectChecklist)
+- [x] Admin can select any location: Sales, PK, MK, ON, TN (button grid)
+- [x] Client Name field appears only when Sales is selected
+- [x] Store orders submit without clientName; Sales orders require clientName
+
+# Bagel Production — Three Separate White Dough Boxes
+- [x] Added "Clients White Dough Total" box (purple) for Sales location orders
+- [x] Added "Stores White Dough Total" box (gold) for store location orders
+- [x] Added "TOTAL WHITE DOUGH" box (green) that sums Clients + Stores white dough
+- [x] Removed old single White Dough summary card and Store White Dough box
+- [x] All 168 non-integration tests passing (Koomi integration test is external dependency)

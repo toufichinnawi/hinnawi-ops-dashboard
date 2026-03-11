@@ -1724,8 +1724,10 @@ function TrainingEvaluationForm({ storeCode: initialStoreCode, storeName: _sn6, 
 
 // ─── Bagel Orders ───
 
-function BagelOrdersForm({ storeCode: _initialStoreCode, storeName: _sn7, positionLabel, onBack }: FormProps) {
-  // Bagel Orders is exclusively for the "Sales" location
+function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positionLabel, onBack }: FormProps) {
+  // Admin can select any location including Sales
+  const [selectedLocation, setSelectedLocation] = useState(initialStoreCode || "sales");
+  const isSales = selectedLocation === "sales";
   const [submitterName, setSubmitterName] = useState("");
   const [clientName, setClientName] = useState("");
   const [orderForDate, setOrderForDate] = useState("");
@@ -1734,44 +1736,91 @@ function BagelOrdersForm({ storeCode: _initialStoreCode, storeName: _sn7, positi
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const locationLabel = isSales ? "Sales" : (stores.find(s => s.shortName === selectedLocation)?.name || selectedLocation);
+
   const buildPayload = () => ({
     submitterName,
     reportType: "Bagel Orders",
-    location: "sales",
+    location: isSales ? "sales" : selectedLocation,
     reportDate: orderForDate,
-    data: { orderForDate, clientName: clientName.trim(), orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })) },
+    data: {
+      orderForDate,
+      ...(isSales ? { clientName: clientName.trim() } : {}),
+      orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })),
+    },
     overwrite: false,
   });
 
   const handleSubmit = async () => {
+    if (!selectedLocation) { toast.error("Please select a location"); return; }
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
-    if (!clientName.trim()) { toast.error("Please enter the client name"); return; }
+    if (isSales && !clientName.trim()) { toast.error("Please enter the client name"); return; }
     if (!orderForDate) { toast.error("Please select the order date"); return; }
     setSubmitting(true);
     try {
       const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload()) });
       if (!res.ok) throw new Error("Submit failed");
       setSubmitted(true);
-      toast.success("Bagel order submitted!");
+      toast.success(`Bagel order submitted for ${locationLabel}${isSales ? ` — ${clientName}` : ""}!`);
     } catch { toast.error("Failed to submit"); }
     finally { setSubmitting(false); }
   };
 
-  if (submitted) return <SuccessCard message={`Bagel order submitted for Sales — ${clientName}`} onNew={() => { setQuantities(Object.fromEntries(BAGEL_TYPES.map(t => [t, ""]))); setItemUnits(Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"]))); setClientName(""); setSubmitted(false); }} onBack={onBack} />;
+  if (submitted) return <SuccessCard message={`Bagel order submitted for ${locationLabel}${isSales ? ` — ${clientName}` : ""}`} onNew={() => { setQuantities(Object.fromEntries(BAGEL_TYPES.map(t => [t, ""]))); setItemUnits(Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"]))); setClientName(""); setSubmitted(false); }} onBack={onBack} />;
 
   return (
     <div>
       <FormHeader title="Bagel Orders" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
+        {/* Location Selector — includes Sales + all stores */}
+        <div className="bg-card rounded-xl border border-border/60 p-5">
+          <Label className="text-sm font-medium">Location</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-1.5">
+            <button
+              type="button"
+              onClick={() => setSelectedLocation("sales")}
+              className={cn(
+                "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+                selectedLocation === "sales"
+                  ? "border-purple-500 bg-purple-50 text-purple-700"
+                  : "border-border/60 bg-background hover:border-purple-400 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-purple-500" />
+                <span>Sales</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Client Orders</p>
+            </button>
+            {stores.map((store) => (
+              <button
+                key={store.id}
+                type="button"
+                onClick={() => setSelectedLocation(store.shortName)}
+                className={cn(
+                  "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+                  selectedLocation === store.shortName
+                    ? "border-[#D4A853] bg-[#D4A853]/10 text-[#D4A853]"
+                    : "border-border/60 bg-background hover:border-[#D4A853]/40 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
+                  <span>{store.shortName}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{store.name}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-50 border border-purple-200">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-            <span className="text-sm font-medium text-purple-700">Location: Sales</span>
-          </div>
-          <div>
-            <Label className="text-sm font-medium">Client Name <span className="text-red-500">*</span></Label>
-            <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Enter client name" className="mt-1.5" />
-          </div>
+          {isSales && (
+            <div>
+              <Label className="text-sm font-medium">Client Name <span className="text-red-500">*</span></Label>
+              <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Enter client name" className="mt-1.5" />
+            </div>
+          )}
           <div>
             <Label className="text-sm font-medium">Your Name <span className="text-red-500">*</span></Label>
             <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
