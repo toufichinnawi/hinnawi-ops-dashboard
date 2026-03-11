@@ -1,12 +1,13 @@
 // Design: "Golden Hour Operations" — Refined Editorial
 // Store Performance: Per-store cards with images, metrics, and comparison
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ReferenceLine,
 } from "recharts";
-import { MapPin, CheckCircle2, Database, Loader2, CalendarX } from "lucide-react";
+import { MapPin, CheckCircle2, Database, Loader2, CalendarX, Trash2, AlertTriangle } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { DateFilter, getDefaultDateFilter, type DateFilterValue } from "@/components/DateFilter";
@@ -44,30 +45,19 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
   const { hasLiveData, hasCloverData, hourlySales } = useData();
   const [dateFilter, setDateFilter] = useState<DateFilterValue>(getDefaultDateFilter);
 
-  // COGS data from invoices
-  const [cogsData, setCogsData] = useState<Record<string, { total: number; count: number; invoices: any[] }>>({});
-  const [cogsLoading, setCogsLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchCogs = async () => {
-      setCogsLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (dateFilter.from) params.set("fromDate", typeof dateFilter.from === 'string' ? dateFilter.from : new Date(dateFilter.from).toISOString().split('T')[0]);
-        if (dateFilter.to) params.set("toDate", typeof dateFilter.to === 'string' ? dateFilter.to : new Date(dateFilter.to).toISOString().split('T')[0]);
-        const res = await fetch(`/api/public/cogs-summary?${params}`);
-        const data = await res.json();
-        if (data.success) {
-          setCogsData(data.byStore || {});
-        }
-      } catch (err) {
-        console.error("Failed to fetch COGS data:", err);
-      } finally {
-        setCogsLoading(false);
-      }
-    };
-    fetchCogs();
-  }, [dateFilter]);
+  // Waste analysis data
+  const wasteFromDate = useMemo(() => {
+    if (dateFilter.from) return typeof dateFilter.from === 'string' ? dateFilter.from : new Date(dateFilter.from).toISOString().split('T')[0];
+    return new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+  }, [dateFilter.from]);
+  const wasteToDate = useMemo(() => {
+    if (dateFilter.to) return typeof dateFilter.to === 'string' ? dateFilter.to : new Date(dateFilter.to).toISOString().split('T')[0];
+    return new Date().toISOString().split('T')[0];
+  }, [dateFilter.to]);
+  const { data: wasteData, isLoading: wasteLoading } = trpc.wasteAnalysis.byStore.useQuery(
+    { fromDate: wasteFromDate, toDate: wasteToDate },
+    { staleTime: 60_000 }
+  );
 
   // Fetch filtered Clover data
   const {
@@ -200,8 +190,9 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
               ? labour.revenue // Revenue is already computed from filtered data
               : 0;
 
-            const storeCogs = cogsData[store.id] || { total: 0, count: 0, invoices: [] };
-            const cogsRate = labour.revenue > 0 ? (storeCogs.total / labour.revenue) * 100 : 0;
+            const storeWasteInfo = (wasteData?.byStore ?? []).find(w => w.storeId === store.id);
+            const storeWasteCost = storeWasteInfo ? storeWasteInfo.wasteCost + storeWasteInfo.leftoverCost : 0;
+            const wasteRate = labour.revenue > 0 ? (storeWasteCost / labour.revenue) * 100 : 0;
 
             return (
               <motion.div
@@ -263,24 +254,24 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
                   </div>
                 </div>
 
-                {/* COGS & Sales Row */}
+                {/* Waste & Sales Row */}
                 <div className="px-4 pb-4 grid grid-cols-3 gap-3">
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">COGS</p>
-                    <p className="text-lg font-mono font-semibold mt-0.5 text-blue-600">
-                      {cogsLoading ? "..." : (storeCogs.total > 0 ? `$${storeCogs.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—")}
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Waste Cost</p>
+                    <p className="text-lg font-mono font-semibold mt-0.5 text-red-600">
+                      {wasteLoading ? "..." : (storeWasteCost > 0 ? `$${storeWasteCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—")}
                     </p>
-                    {storeCogs.count > 0 && (
-                      <p className="text-[9px] text-muted-foreground mt-0.5">{storeCogs.count} invoice{storeCogs.count !== 1 ? "s" : ""}</p>
+                    {storeWasteInfo && storeWasteInfo.reportCount > 0 && (
+                      <p className="text-[9px] text-muted-foreground mt-0.5">{storeWasteInfo.reportCount} report{storeWasteInfo.reportCount !== 1 ? "s" : ""}</p>
                     )}
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">COGS Rate</p>
-                    <p className={cn("text-lg font-mono font-semibold mt-0.5", cogsRate > 40 ? "text-red-600" : cogsRate > 30 ? "text-amber-600" : "text-emerald-600")}>
-                      {cogsRate > 0 ? `${cogsRate.toFixed(1)}%` : "—"}
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Waste Rate</p>
+                    <p className={cn("text-lg font-mono font-semibold mt-0.5", wasteRate > 5 ? "text-red-600" : wasteRate > 3 ? "text-amber-600" : "text-emerald-600")}>
+                      {wasteRate > 0 ? `${wasteRate.toFixed(1)}%` : "—"}
                     </p>
-                    {cogsRate > 0 && (
-                      <p className="text-[9px] text-muted-foreground mt-0.5">COGS / Revenue</p>
+                    {wasteRate > 0 && (
+                      <p className="text-[9px] text-muted-foreground mt-0.5">Waste / Revenue</p>
                     )}
                   </div>
                   <div>
@@ -341,95 +332,113 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
           </div>
         )}
 
-        {/* ─── COGS Section ─── */}
-        {!(hasCloverData && noDataForPeriod) && (() => {
+        {/* ─── Waste Report Analysis Section ─── */}
+        {(() => {
           const storeList = storeFilter ? stores.filter(s => s.id === storeFilter) : stores;
-          const hasAnyCogs = storeList.some(s => (cogsData[s.id]?.total ?? 0) > 0);
-          const totalCogs = storeList.reduce((sum, s) => sum + (cogsData[s.id]?.total ?? 0), 0);
-          const totalRevenue = storeList.reduce((sum, s) => sum + (getLabour(s.id).revenue ?? 0), 0);
-          const overallCogsRate = totalRevenue > 0 ? (totalCogs / totalRevenue) * 100 : 0;
-          const totalInvoices = storeList.reduce((sum, s) => sum + (cogsData[s.id]?.count ?? 0), 0);
+          const storeWaste = wasteData?.byStore ?? [];
+          const topItems = wasteData?.topWastedItems ?? [];
+          const totalReports = wasteData?.totalReports ?? 0;
 
-          // Bar chart data: COGS by store
-          const cogsBarData = storeList.map(s => {
-            const cogs = cogsData[s.id]?.total ?? 0;
-            const rev = getLabour(s.id).revenue ?? 0;
-            const rate = rev > 0 ? (cogs / rev) * 100 : 0;
+          // Filter to only relevant stores
+          const filteredWaste = storeWaste.filter(sw => storeList.some(s => s.id === sw.storeId));
+          const totalLeftoverCost = filteredWaste.reduce((sum, s) => sum + s.leftoverCost, 0);
+          const totalWasteCost = filteredWaste.reduce((sum, s) => sum + s.wasteCost, 0);
+          const totalCost = totalLeftoverCost + totalWasteCost;
+          const hasAnyWaste = filteredWaste.length > 0 && totalCost > 0;
+
+          // Revenue for waste-to-revenue ratio
+          const totalRevenue = storeList.reduce((sum, s) => sum + (getLabour(s.id).revenue ?? 0), 0);
+          const wasteToRevenueRate = totalRevenue > 0 ? (totalWasteCost / totalRevenue) * 100 : 0;
+
+          // Bar chart: Waste Cost by Store
+          const wasteBarData = storeList.map(s => {
+            const sw = filteredWaste.find(w => w.storeId === s.id);
             return {
               store: s.shortName,
               storeId: s.id,
-              cogs,
-              revenue: rev,
-              rate,
-              color: s.color,
-              invoiceCount: cogsData[s.id]?.count ?? 0,
-            };
-          });
-
-          // COGS Rate comparison data
-          const cogsRateData = storeList.map(s => {
-            const cogs = cogsData[s.id]?.total ?? 0;
-            const rev = getLabour(s.id).revenue ?? 0;
-            const rate = rev > 0 ? (cogs / rev) * 100 : 0;
-            return {
-              store: s.shortName,
-              rate: parseFloat(rate.toFixed(1)),
-              target: 30, // default COGS target
+              leftover: sw?.leftoverCost ?? 0,
+              waste: sw?.wasteCost ?? 0,
+              total: (sw?.leftoverCost ?? 0) + (sw?.wasteCost ?? 0),
+              reports: sw?.reportCount ?? 0,
               color: s.color,
             };
           });
 
-          // Vendor breakdown across all stores
-          const vendorMap: Record<string, { vendor: string; total: number; count: number }> = {};
-          storeList.forEach(s => {
-            const storeInvoices = cogsData[s.id]?.invoices ?? [];
-            storeInvoices.forEach((inv: any) => {
-              const vendor = inv.vendorName || "Unknown";
-              if (!vendorMap[vendor]) vendorMap[vendor] = { vendor, total: 0, count: 0 };
-              vendorMap[vendor].total += inv.total ?? 0;
-              vendorMap[vendor].count += 1;
-            });
-          });
-          const vendorBreakdown = Object.values(vendorMap).sort((a, b) => b.total - a.total);
+          // Category breakdown: Bagels, Pastries, CK Items
+          const categoryData = [
+            {
+              category: "Bagels",
+              leftover: filteredWaste.reduce((sum, s) => sum + s.bagelLeftover, 0),
+              waste: filteredWaste.reduce((sum, s) => sum + s.bagelWaste, 0),
+              color: "#D4A853",
+            },
+            {
+              category: "Pastries",
+              leftover: filteredWaste.reduce((sum, s) => sum + s.pastryLeftover, 0),
+              waste: filteredWaste.reduce((sum, s) => sum + s.pastryWaste, 0),
+              color: "#8B5CF6",
+            },
+            {
+              category: "CK Items",
+              leftover: filteredWaste.reduce((sum, s) => sum + s.ckLeftover, 0),
+              waste: filteredWaste.reduce((sum, s) => sum + s.ckWaste, 0),
+              color: "#059669",
+            },
+          ].map(c => ({ ...c, total: c.leftover + c.waste }));
+
+          if (wasteLoading) {
+            return (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading waste analysis...</span>
+              </motion.div>
+            );
+          }
 
           return (
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-6">
-              {/* COGS Section Header */}
+              {/* Section Header */}
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div>
-                  <p className="text-xs text-blue-600 uppercase tracking-[0.2em] font-medium">Cost of Goods Sold</p>
-                  <h3 className="text-xl font-serif text-foreground mt-1">COGS Analysis</h3>
+                  <p className="text-xs text-red-600 uppercase tracking-[0.2em] font-medium">Waste & Leftovers</p>
+                  <h3 className="text-xl font-serif text-foreground mt-1">Waste Report Analysis</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {hasAnyCogs
-                      ? `${totalInvoices} invoice${totalInvoices !== 1 ? "s" : ""} — ${dateFilter.label}`
-                      : `No invoices recorded for ${dateFilter.label}`}
+                    {hasAnyWaste
+                      ? `${totalReports} report${totalReports !== 1 ? "s" : ""} — ${dateFilter.label}`
+                      : `No waste reports for ${dateFilter.label}`}
                   </p>
                 </div>
-                {hasAnyCogs && (
+                {hasAnyWaste && (
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total COGS</p>
-                      <p className="text-xl font-mono font-semibold text-blue-600">${totalCogs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Waste Cost</p>
+                      <p className="text-xl font-mono font-semibold text-red-600">${totalWasteCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Overall Rate</p>
-                      <p className={cn("text-xl font-mono font-semibold", overallCogsRate > 40 ? "text-red-600" : overallCogsRate > 30 ? "text-amber-600" : "text-emerald-600")}>
-                        {overallCogsRate > 0 ? `${overallCogsRate.toFixed(1)}%` : "—"}
-                      </p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Leftover</p>
+                      <p className="text-xl font-mono font-semibold text-amber-600">${totalLeftoverCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
+                    {totalRevenue > 0 && (
+                      <div className="text-right">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Waste/Revenue</p>
+                        <p className={cn("text-xl font-mono font-semibold", wasteToRevenueRate > 5 ? "text-red-600" : wasteToRevenueRate > 3 ? "text-amber-600" : "text-emerald-600")}>
+                          {wasteToRevenueRate.toFixed(1)}%
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* COGS Charts */}
-              {hasAnyCogs ? (
+              {/* Charts */}
+              {hasAnyWaste ? (
                 <div className={cn("grid gap-6", storeFilter ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}>
-                  {/* COGS by Store Bar Chart */}
+                  {/* Waste Cost by Store */}
                   <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
-                    <h4 className="font-serif text-lg text-foreground mb-1">COGS by Store</h4>
-                    <p className="text-xs text-muted-foreground mb-4">Total cost of goods sold per location</p>
+                    <h4 className="font-serif text-lg text-foreground mb-1">Waste Cost by Store</h4>
+                    <p className="text-xs text-muted-foreground mb-4">Leftover + waste cost per location</p>
                     <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={cogsBarData} barSize={storeFilter ? 60 : 36}>
+                      <BarChart data={wasteBarData} barSize={storeFilter ? 60 : 36}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
                         <XAxis dataKey="store" tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} />
                         <YAxis tickFormatter={(v) => `$${v.toLocaleString()}`} tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} width={70} />
@@ -441,113 +450,105 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
                               <div className="bg-white border border-border rounded-lg px-3 py-2 shadow-lg">
                                 <p className="text-xs font-medium text-foreground mb-1">{d.store}</p>
                                 <div className="space-y-0.5 text-xs">
-                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">COGS:</span><span className="font-mono font-medium">${d.cogs.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
-                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Revenue:</span><span className="font-mono font-medium">${d.revenue.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
-                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">COGS Rate:</span><span className={cn("font-mono font-medium", d.rate > 40 ? "text-red-600" : d.rate > 30 ? "text-amber-600" : "text-emerald-600")}>{d.rate.toFixed(1)}%</span></div>
-                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Invoices:</span><span className="font-mono font-medium">{d.invoiceCount}</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Leftover:</span><span className="font-mono font-medium text-amber-600">${d.leftover.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Waste:</span><span className="font-mono font-medium text-red-600">${d.waste.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Total:</span><span className="font-mono font-semibold">${d.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Reports:</span><span className="font-mono font-medium">{d.reports}</span></div>
                                 </div>
                               </div>
                             );
                           }}
                         />
-                        <Bar dataKey="cogs" radius={[6, 6, 0, 0]}>
-                          {cogsBarData.map((entry, idx) => (
-                            <Cell key={idx} fill={entry.color} />
-                          ))}
-                        </Bar>
+                        <Bar dataKey="leftover" stackId="a" fill="#D97706" radius={[0, 0, 0, 0]} name="Leftover" />
+                        <Bar dataKey="waste" stackId="a" fill="#DC2626" radius={[6, 6, 0, 0]} name="Waste" />
                       </BarChart>
                     </ResponsiveContainer>
-                    <div className="flex items-center justify-center gap-4 mt-2">
-                      {storeList.map((s) => (
-                        <div key={s.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <div className="w-2.5 h-2.5 rounded-full" style={{ background: s.color }} />
-                          {s.shortName}
-                        </div>
-                      ))}
+                    <div className="flex items-center justify-center gap-6 mt-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm bg-amber-600" /> Leftover</div>
+                      <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm bg-red-600" /> Waste</div>
                     </div>
                   </motion.div>
 
-                  {/* COGS Rate Comparison */}
+                  {/* Waste by Category */}
                   <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
-                    <h4 className="font-serif text-lg text-foreground mb-1">COGS Rate by Store</h4>
-                    <p className="text-xs text-muted-foreground mb-4">COGS as percentage of revenue — target: 30%</p>
+                    <h4 className="font-serif text-lg text-foreground mb-1">Waste by Category</h4>
+                    <p className="text-xs text-muted-foreground mb-4">Breakdown by Bagels, Pastries, and CK Items</p>
                     <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={cogsRateData} barSize={storeFilter ? 60 : 36}>
+                      <BarChart data={categoryData} barSize={50}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
-                        <XAxis dataKey="store" tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} />
-                        <YAxis domain={[0, 'auto']} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} width={50} />
+                        <XAxis dataKey="category" tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} />
+                        <YAxis tickFormatter={(v) => `$${v.toLocaleString()}`} tick={{ fontSize: 11, fill: "#78716C" }} tickLine={false} axisLine={false} width={70} />
                         <Tooltip
                           content={({ active, payload }) => {
                             if (!active || !payload?.length) return null;
                             const d = payload[0].payload;
                             return (
                               <div className="bg-white border border-border rounded-lg px-3 py-2 shadow-lg">
-                                <p className="text-xs font-medium text-foreground mb-1">{d.store}</p>
+                                <p className="text-xs font-medium text-foreground mb-1">{d.category}</p>
                                 <div className="space-y-0.5 text-xs">
-                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">COGS Rate:</span><span className={cn("font-mono font-medium", d.rate > 40 ? "text-red-600" : d.rate > 30 ? "text-amber-600" : "text-emerald-600")}>{d.rate}%</span></div>
-                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Target:</span><span className="font-mono font-medium text-blue-600">{d.target}%</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Leftover:</span><span className="font-mono font-medium text-amber-600">${d.leftover.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Waste:</span><span className="font-mono font-medium text-red-600">${d.waste.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Total:</span><span className="font-mono font-semibold">${d.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></div>
                                 </div>
                               </div>
                             );
                           }}
                         />
-                        <ReferenceLine y={30} stroke="#3B82F6" strokeDasharray="6 4" strokeWidth={2} label={{ value: "Target 30%", position: "right", fill: "#3B82F6", fontSize: 10 }} />
-                        <Bar dataKey="rate" radius={[6, 6, 0, 0]}>
-                          {cogsRateData.map((entry, idx) => (
-                            <Cell key={idx} fill={entry.rate > 40 ? "#DC2626" : entry.rate > 30 ? "#D97706" : "#059669"} />
-                          ))}
-                        </Bar>
+                        <Bar dataKey="leftover" stackId="a" fill="#D97706" radius={[0, 0, 0, 0]} name="Leftover" />
+                        <Bar dataKey="waste" stackId="a" fill="#DC2626" radius={[6, 6, 0, 0]} name="Waste" />
                       </BarChart>
                     </ResponsiveContainer>
-                    {/* Target line legend */}
                     <div className="flex items-center justify-center gap-6 mt-2 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm bg-emerald-600" /> &lt;30% Good</div>
-                      <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm bg-amber-600" /> 30-40% Watch</div>
-                      <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm bg-red-600" /> &gt;40% High</div>
+                      <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm" style={{ background: "#D4A853" }} /> Bagels</div>
+                      <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm" style={{ background: "#8B5CF6" }} /> Pastries</div>
+                      <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm" style={{ background: "#059669" }} /> CK Items</div>
                     </div>
                   </motion.div>
                 </div>
               ) : (
-                /* Empty state when no COGS data */
+                /* Empty state */
                 <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-8 text-center">
-                  <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" /></svg>
+                  <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+                    <Trash2 className="w-6 h-6 text-red-400" />
                   </div>
-                  <h4 className="font-serif text-lg text-foreground mb-1">No COGS Data Yet</h4>
+                  <h4 className="font-serif text-lg text-foreground mb-1">No Waste Data Yet</h4>
                   <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                    Start capturing invoices through the portal to see COGS analysis here. Each invoice is recorded as Cost of Goods Sold.
+                    Submit Leftovers & Waste reports through the portal or admin dashboard to see waste analysis here.
                   </p>
                 </motion.div>
               )}
 
-              {/* Vendor Breakdown Table */}
-              {vendorBreakdown.length > 0 && (
+              {/* Top Wasted Items Table */}
+              {topItems.length > 0 && (
                 <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
-                  <h4 className="font-serif text-lg text-foreground mb-1">COGS by Vendor</h4>
-                  <p className="text-xs text-muted-foreground mb-4">Spending breakdown by supplier — {dateFilter.label}</p>
+                  <h4 className="font-serif text-lg text-foreground mb-1">Top Wasted Items</h4>
+                  <p className="text-xs text-muted-foreground mb-4">Highest waste cost items — {dateFilter.label}</p>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border/60">
-                          <th className="text-left py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Vendor</th>
-                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Invoices</th>
-                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Total</th>
-                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">% of COGS</th>
+                          <th className="text-left py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Item</th>
+                          <th className="text-left py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Category</th>
+                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Qty Wasted</th>
+                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Waste Cost</th>
+                          <th className="text-right py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">% of Total</th>
                           <th className="text-left py-2 px-3 text-[10px] text-muted-foreground uppercase tracking-wider font-medium w-40">Share</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {vendorBreakdown.slice(0, 10).map((v, idx) => {
-                          const pct = totalCogs > 0 ? (v.total / totalCogs) * 100 : 0;
+                        {topItems.slice(0, 10).map((item, idx) => {
+                          const pct = totalWasteCost > 0 ? (item.wasteCost / totalWasteCost) * 100 : 0;
+                          const catColor = item.category === "Bagels" ? "bg-amber-100 text-amber-700" : item.category === "Pastries" ? "bg-purple-100 text-purple-700" : "bg-emerald-100 text-emerald-700";
                           return (
-                            <tr key={v.vendor} className={cn("border-b border-border/30", idx % 2 === 0 ? "bg-muted/20" : "")}>
-                              <td className="py-2.5 px-3 font-medium text-foreground">{v.vendor}</td>
-                              <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{v.count}</td>
-                              <td className="py-2.5 px-3 text-right font-mono font-medium">${v.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <tr key={`${item.name}-${item.category}`} className={cn("border-b border-border/30", idx % 2 === 0 ? "bg-muted/20" : "")}>
+                              <td className="py-2.5 px-3 font-medium text-foreground">{item.name}</td>
+                              <td className="py-2.5 px-3"><span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium", catColor)}>{item.category}</span></td>
+                              <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{item.wasteQty}</td>
+                              <td className="py-2.5 px-3 text-right font-mono font-medium text-red-600">${item.wasteCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{pct.toFixed(1)}%</td>
                               <td className="py-2.5 px-3">
                                 <div className="w-full bg-muted/40 rounded-full h-2">
-                                  <div className="h-2 rounded-full bg-blue-500 transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+                                  <div className="h-2 rounded-full bg-red-500 transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
                                 </div>
                               </td>
                             </tr>
@@ -555,8 +556,8 @@ export function StorePerformanceContent({ storeFilter }: StorePerformanceContent
                         })}
                       </tbody>
                     </table>
-                    {vendorBreakdown.length > 10 && (
-                      <p className="text-xs text-muted-foreground text-center mt-3">Showing top 10 of {vendorBreakdown.length} vendors</p>
+                    {topItems.length > 10 && (
+                      <p className="text-xs text-muted-foreground text-center mt-3">Showing top 10 of {topItems.length} items</p>
                     )}
                   </div>
                 </motion.div>

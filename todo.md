@@ -1147,3 +1147,14 @@
 - [x] ReportDetailRenderer shows cost summary when viewing waste reports
 - [x] 17 vitest tests for waste pricing module (bagels, pastries, CK preps, edge cases)
 - [x] All 195 tests passing (17 new + 178 existing)
+
+# Replace COGS Analysis with Waste Report Analysis on Store Performance
+- [x] Removed COGS Analysis section from Store Performance tab
+- [x] Added wasteAnalysis.byStore tRPC procedure to backend (parses waste reports, computes costs per store)
+- [x] Waste Report Analysis section with header showing Total Waste Cost, Total Leftover, Waste/Revenue ratio
+- [x] Waste Cost by Store stacked bar chart (leftover + waste per location)
+- [x] Waste by Category bar chart (Bagels, Pastries, CK Items breakdown)
+- [x] Top Wasted Items table with item name, category, qty, cost, and % share
+- [x] Per-store cards updated: COGS/COGS Rate replaced with Waste Cost/Waste Rate
+- [x] Empty state shown when no waste reports exist for the selected period
+- [x] All 197 tests passing across 22 test files

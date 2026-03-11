@@ -1765,6 +1765,119 @@ export const appRouter = router({
       }),
   }),
 
+  // ─── Waste Analysis ───
+  wasteAnalysis: router({
+    byStore: protectedProcedure
+      .input(z.object({ fromDate: z.string(), toDate: z.string() }))
+      .query(async ({ input }) => {
+        const { getReportsByDateRange } = await import("./db");
+        const { calcBagelCost, calcPastryCost, calcCKCost } = await import("../shared/wastePricing");
+        const reports = await getReportsByDateRange(input.fromDate, input.toDate);
+        const wasteReports = reports.filter(
+          (r: any) => r.reportType === "waste" || r.reportType === "Leftovers & Waste"
+        );
+
+        // Per-store aggregation
+        const byStore: Record<string, {
+          storeId: string; reportCount: number;
+          leftoverCost: number; wasteCost: number; totalCost: number;
+          bagelLeftover: number; bagelWaste: number;
+          pastryLeftover: number; pastryWaste: number;
+          ckLeftover: number; ckWaste: number;
+        }> = {};
+
+        // Top wasted items
+        const itemMap: Record<string, { name: string; category: string; wasteCost: number; wasteQty: number }> = {};
+
+        for (const report of wasteReports) {
+          const storeId = report.location || "unknown";
+          if (!byStore[storeId]) {
+            byStore[storeId] = {
+              storeId, reportCount: 0,
+              leftoverCost: 0, wasteCost: 0, totalCost: 0,
+              bagelLeftover: 0, bagelWaste: 0,
+              pastryLeftover: 0, pastryWaste: 0,
+              ckLeftover: 0, ckWaste: 0,
+            };
+          }
+          const s = byStore[storeId];
+          s.reportCount++;
+
+          let data: any;
+          try { data = typeof report.data === "string" ? JSON.parse(report.data) : report.data; } catch { continue; }
+          if (!data) continue;
+
+          // If the form already computed costs, use them
+          if (data.costs) {
+            s.leftoverCost += data.costs.leftoverTotal ?? 0;
+            s.wasteCost += data.costs.wasteTotal ?? 0;
+            s.totalCost += data.costs.grandTotal ?? 0;
+            s.bagelLeftover += data.costs.bagelLeftover ?? 0;
+            s.bagelWaste += data.costs.bagelWaste ?? 0;
+            s.pastryLeftover += data.costs.pastryLeftover ?? 0;
+            s.pastryWaste += data.costs.pastryWaste ?? 0;
+            s.ckLeftover += data.costs.ckLeftover ?? 0;
+            s.ckWaste += data.costs.ckWaste ?? 0;
+          } else {
+            // Recalculate from raw items
+            const sections = [
+              { key: "bagels", calc: (item: any) => calcBagelCost(item.leftover ?? 0, item.leftoverType ?? "bag") + calcBagelCost(item.waste ?? 0, item.wasteType ?? "bag"), category: "Bagels" },
+              { key: "pastries", calc: (item: any) => calcPastryCost(item.name, item.leftover ?? 0) + calcPastryCost(item.name, item.waste ?? 0), category: "Pastries" },
+              { key: "ckItems", calc: (item: any) => calcCKCost(item.name, item.leftover ?? 0, item.leftoverType ?? "unit") + calcCKCost(item.name, item.waste ?? 0, item.wasteType ?? "unit"), category: "CK Items" },
+            ];
+            for (const sec of sections) {
+              const items = data[sec.key] ?? [];
+              for (const item of items) {
+                let lc = 0, wc = 0;
+                if (sec.key === "bagels") {
+                  lc = calcBagelCost(item.leftover ?? 0, item.leftoverType ?? "bag");
+                  wc = calcBagelCost(item.waste ?? 0, item.wasteType ?? "bag");
+                } else if (sec.key === "pastries") {
+                  lc = calcPastryCost(item.name, item.leftover ?? 0);
+                  wc = calcPastryCost(item.name, item.waste ?? 0);
+                } else {
+                  lc = calcCKCost(item.name, item.leftover ?? 0, item.leftoverType ?? "unit");
+                  wc = calcCKCost(item.name, item.waste ?? 0, item.wasteType ?? "unit");
+                }
+                s.leftoverCost += lc;
+                s.wasteCost += wc;
+                s.totalCost += lc + wc;
+                if (sec.key === "bagels") { s.bagelLeftover += lc; s.bagelWaste += wc; }
+                else if (sec.key === "pastries") { s.pastryLeftover += lc; s.pastryWaste += wc; }
+                else { s.ckLeftover += lc; s.ckWaste += wc; }
+              }
+            }
+          }
+
+          // Build top wasted items from raw data
+          for (const sec of ["bagels", "pastries", "ckItems"]) {
+            const items = data[sec] ?? [];
+            const category = sec === "bagels" ? "Bagels" : sec === "pastries" ? "Pastries" : "CK Items";
+            for (const item of items) {
+              const wQty = item.waste ?? 0;
+              if (wQty <= 0) continue;
+              let wCost = 0;
+              if (sec === "bagels") wCost = calcBagelCost(wQty, item.wasteType ?? "bag");
+              else if (sec === "pastries") wCost = calcPastryCost(item.name, wQty);
+              else wCost = calcCKCost(item.name, wQty, item.wasteType ?? "unit");
+              const key = `${item.name}__${category}`;
+              if (!itemMap[key]) itemMap[key] = { name: item.name, category, wasteCost: 0, wasteQty: 0 };
+              itemMap[key].wasteCost += wCost;
+              itemMap[key].wasteQty += wQty;
+            }
+          }
+        }
+
+        const topWastedItems = Object.values(itemMap).sort((a, b) => b.wasteCost - a.wasteCost).slice(0, 15);
+
+        return {
+          byStore: Object.values(byStore),
+          topWastedItems,
+          totalReports: wasteReports.length,
+        };
+      }),
+  }),
+
   // ─── Production ───
   production: router({
     bagelOrders: protectedProcedure
