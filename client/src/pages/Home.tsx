@@ -278,7 +278,7 @@ export default function Home() {
         >
           {kpis.map((kpi) => (
             <motion.div key={kpi.title} variants={fadeUp}>
-              <KPICard kpi={kpi} invertTrend={kpi.title === "Labour %"} />
+              <KPICard kpi={kpi} invertTrend={kpi.title === "Labour %"} alertAbove={kpi.title === "Labour %" ? 23.5 : undefined} />
             </motion.div>
           ))}
         </motion.div>

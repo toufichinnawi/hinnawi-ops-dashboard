@@ -1118,3 +1118,9 @@
 - [x] Added "Tomorrow" and "Next 7 Days" quick select presets
 - [x] Calendar now allows selecting any future date
 - [x] All 168 tests passing
+
+# Labour % KPI card — Red when above 23.5% target
+- [x] Added alertAbove prop to KPICard component
+- [x] Labour % card turns red with "Above Target" badge when value > 23.5%
+- [x] Red border, accent line, and text; other cards unaffected
+- [x] All 168 tests passing
