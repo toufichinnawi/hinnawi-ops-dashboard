@@ -3,7 +3,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { useState, useMemo } from "react";
-import { format, startOfDay, endOfDay, subDays } from "date-fns";
+import { format, startOfDay, endOfDay, subDays, addDays } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -163,6 +163,25 @@ const DATE_PRESETS: {
       label: "Last 30 Days",
     }),
   },
+  {
+    label: "Tomorrow",
+    getValue: () => {
+      const d = addDays(today, 1);
+      return {
+        from: startOfDay(d),
+        to: endOfDay(d),
+        label: "Tomorrow",
+      };
+    },
+  },
+  {
+    label: "Next 7 Days",
+    getValue: () => ({
+      from: startOfDay(today),
+      to: endOfDay(addDays(today, 6)),
+      label: "Next 7 Days",
+    }),
+  },
 ];
 
 function ReportsDateFilter({
@@ -233,7 +252,7 @@ function ReportsDateFilter({
               selected={stagedRange}
               onSelect={setStagedRange}
               numberOfMonths={1}
-              disabled={{ after: new Date() }}
+              /* allow future dates for bagel orders etc. */
             />
             {rangeComplete && (
               <div className="flex justify-end mt-2">

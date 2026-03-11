@@ -1112,3 +1112,9 @@
 - [x] Investigated: OpsStorePickerForChecklist was blocking Bagel Orders with store-only options
 - [x] Fixed: Bagel Orders now skips the store picker and goes directly to the form with built-in location selector
 - [x] Sales location visible and selectable on Operations Manager portal Bagel Orders form
+
+# Fix: Reports tab date filter should allow future dates
+- [x] Removed `disabled={{ after: new Date() }}` from ReportHistory.tsx calendar
+- [x] Added "Tomorrow" and "Next 7 Days" quick select presets
+- [x] Calendar now allows selecting any future date
+- [x] All 168 tests passing
