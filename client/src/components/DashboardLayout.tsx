@@ -101,6 +101,7 @@ const navSections: NavSection[] = [
       { path: "/checklists/equipment", label: "Equipment & Maintenance", icon: Wrench },
       { path: "/checklists/training", label: "Training Evaluation", icon: GraduationCap },
       { path: "/checklists/bagel-orders", label: "Bagel Orders", icon: CircleDot },
+      { path: "/checklists/pastry-orders", label: "Pastry Orders", icon: CakeSlice },
       { path: "/reports/history", label: "Reports", icon: History },
       { path: "/invoices", label: "Invoice Management", icon: Receipt },
     ],

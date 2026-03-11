@@ -104,6 +104,13 @@ const BAGEL_TYPES = [
   "Cinnamon Sugar Bagel", "Cinnamon Raisin Bagel", "Blueberry Bagel", "Coconut Bagel",
 ];
 
+const PASTRY_ITEMS = [
+  "Banana Bread with Nuts", "Croissant", "Croissant aux Amandes", "Chocolatine",
+  "Chocolate Chips Cookie", "Muffin a L'Erable", "Muffin Bleuets", "Muffin Pistaches",
+  "Muffin Chocolat", "Yogurt Granola", "Fresh orange juice", "Gateau aux Carottes",
+  "Granola bag", "Bagel Chips Bags", "Maple Pecan Bar", "Pudding",
+];
+
 const TRAINING_AREAS = [
   { title: "Customer Service", items: ["Greeting customers promptly and warmly", "Taking orders accurately", "Handling complaints professionally", "Upselling and suggestive selling", "Speed of service"] },
   { title: "Food Preparation", items: ["Bagel preparation and toasting", "Sandwich assembly and presentation", "Coffee preparation (espresso, filter)", "Pastry handling and display", "Food safety and hygiene practices"] },
@@ -158,6 +165,7 @@ const SLUG_TO_CHECKLIST: Record<string, ChecklistType> = {
   "equipment": "equipment-maintenance",
   "training": "training-evaluation",
   "bagel-orders": "bagel-orders",
+  "pastry-orders": "pastry-orders",
 };
 
 const SLUG_TO_LABEL: Record<string, string> = {
@@ -169,6 +177,7 @@ const SLUG_TO_LABEL: Record<string, string> = {
   "equipment": "Equipment & Maintenance",
   "training": "Training Evaluation",
   "bagel-orders": "Bagel Orders",
+  "pastry-orders": "Pastry Orders",
 };
 
 // ─── Form Components ───
@@ -1328,6 +1337,104 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
   );
 }
 
+// ─── Pastry Orders Form (Admin) ───
+
+function PastryOrdersForm({ onBack }: { onBack: () => void }) {
+  const [selectedLocation, setSelectedLocation] = useState(stores[0]?.shortName || "");
+  const [ordererName, setOrdererName] = useState("");
+  const [orderForDate, setOrderForDate] = useState("");
+  const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(PASTRY_ITEMS.map(t => [t, ""])));
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const locationLabel = stores.find(s => s.shortName === selectedLocation)?.name || selectedLocation;
+
+  const buildPayload = () => ({
+    reportType: "pastry-orders", location: selectedLocation, submitterName: ordererName, reportDate: orderForDate,
+    data: {
+      orderForDate,
+      orders: PASTRY_ITEMS.map(type => ({ type, quantity: quantities[type] || "0", unit: "unit" })),
+    },
+    overwrite: false,
+  });
+
+  const handleSubmit = async () => {
+    if (!selectedLocation) { toast.error("Please select a location"); return; }
+    if (!ordererName.trim()) { toast.error("Please enter your name"); return; }
+    if (!orderForDate) { toast.error("Please select the order date"); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload()) });
+      if (!res.ok) throw new Error("Submit failed");
+      setSubmitted(true);
+      toast.success(`Pastry order submitted for ${locationLabel}!`);
+    } catch { toast.error("Failed to submit"); }
+    finally { setSubmitting(false); }
+  };
+
+  if (submitted) return (
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
+      <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" /><h3 className="text-xl font-serif">Order Submitted</h3>
+      <p className="text-muted-foreground">Pastry Order for {locationLabel}</p>
+      <Button onClick={onBack} variant="outline">Back</Button>
+    </motion.div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Location Selector — stores only (no Sales for pastry) */}
+      <Card><CardContent className="pt-6">
+        <Label className="text-sm font-medium">Location</Label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+          {stores.map((store) => (
+            <button
+              key={store.id}
+              type="button"
+              onClick={() => setSelectedLocation(store.shortName)}
+              className={cn(
+                "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+                selectedLocation === store.shortName
+                  ? "border-rose-500 bg-rose-50 text-rose-700"
+                  : "border-border/60 bg-background hover:border-rose-400 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
+                <span>{store.shortName}</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{store.name}</p>
+            </button>
+          ))}
+        </div>
+      </CardContent></Card>
+
+      <Card><CardContent className="pt-6 space-y-4">
+        <div className="space-y-1.5"><Label>Your Name <span className="text-red-500">*</span></Label><Input value={ordererName} onChange={(e) => setOrdererName(e.target.value)} placeholder="Enter your name" /></div>
+        <div className="space-y-1.5"><Label>Order for Date <span className="text-red-500">*</span></Label><Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} /></div>
+      </CardContent></Card>
+
+      <Card><CardContent className="pt-6 space-y-4">
+        <div>
+          <h3 className="font-serif text-lg">Pastry Quantities</h3>
+          <p className="text-sm text-rose-600 font-medium mt-1 bg-rose-50 border border-rose-200 rounded-md px-3 py-1.5">Enter the quantity for each pastry item (in units).</p>
+        </div>
+        <div className="space-y-2">
+          {PASTRY_ITEMS.map((type) => (
+            <div key={type} className="flex items-center justify-between gap-4 py-1.5 border-b last:border-0">
+              <span className="text-sm">{type}</span>
+              <div className="flex items-center gap-2">
+                <Input type="number" min="0" step="1" placeholder="0" value={quantities[type]} onChange={(e) => setQuantities(prev => ({ ...prev, [type]: e.target.value }))} className="h-8 w-20 text-center text-sm" />
+                <span className="text-xs text-muted-foreground w-10">unit</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent></Card>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-rose-500 text-white hover:bg-rose-600">{submitting ? "Submitting..." : "Submit Order"}</Button></div>
+    </div>
+  );
+}
+
 // ─── Copy Link Helper ───
 
 function CopyChecklistLink({ slug, label }: { slug: string; label: string }) {
@@ -1419,6 +1526,7 @@ export default function DirectChecklist() {
     "equipment": <EquipmentMaintenanceForm onBack={() => navigate("/")} />,
     "training": <TrainingEvaluationForm onBack={() => navigate("/")} />,
     "bagel-orders": <BagelOrdersForm onBack={() => navigate("/")} />,
+    "pastry-orders": <PastryOrdersForm onBack={() => navigate("/")} />,
   };
 
   return (

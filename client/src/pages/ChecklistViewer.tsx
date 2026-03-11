@@ -140,6 +140,12 @@ const BAGEL_TYPES = [
 ];
 const PASTRY_TYPES = ["Croissant", "Pain au Chocolat", "Muffin", "Cookie", "Brownie", "Scone", "Danish", "Cinnamon Roll"];
 const CK_ITEMS = ["Cream Cheese (tubs)", "Hummus (tubs)", "Egg Salad (kg)", "Tuna Salad (kg)", "Chicken Salad (kg)", "Smoked Salmon (packs)", "Avocado (units)"];
+const PASTRY_ORDER_ITEMS = [
+  "Banana Bread with Nuts", "Croissant", "Croissant aux Amandes", "Chocolatine",
+  "Chocolate Chips Cookie", "Muffin a L'Erable", "Muffin Bleuets", "Muffin Pistaches",
+  "Muffin Chocolat", "Yogurt Granola", "Fresh orange juice", "Gateau aux Carottes",
+  "Granola bag", "Bagel Chips Bags", "Maple Pecan Bar", "Pudding",
+];
 
 const TRAINING_AREAS = [
   { title: "Customer Service", items: ["Greeting customers promptly and warmly", "Taking orders accurately", "Handling complaints professionally", "Upselling and suggestive selling", "Speed of service"] },
@@ -401,6 +407,15 @@ function DashboardChecklistForm({
     case "bagel-orders":
       return (
         <BagelOrdersForm
+          storeCode={storeCode}
+          storeName={storeName}
+          positionLabel={positionLabel}
+          onBack={onBack}
+        />
+      );
+    case "pastry-orders":
+      return (
+        <PastryOrdersForm
           storeCode={storeCode}
           storeName={storeName}
           positionLabel={positionLabel}
@@ -1947,6 +1962,110 @@ function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positio
         </Button>
       </div>
 
+    </div>
+  );
+}
+
+// ─── Pastry Orders (Portal) ───
+
+function PastryOrdersForm({ storeCode: initialStoreCode, storeName: _sn9, positionLabel, onBack }: FormProps) {
+  const [selectedLocation, setSelectedLocation] = useState(initialStoreCode || stores[0]?.shortName || "");
+  const [submitterName, setSubmitterName] = useState("");
+  const [orderForDate, setOrderForDate] = useState("");
+  const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(PASTRY_ORDER_ITEMS.map(t => [t, ""])));
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const locationLabel = stores.find(s => s.shortName === selectedLocation)?.name || selectedLocation;
+
+  const buildPayload = () => ({
+    submitterName,
+    reportType: "Pastry Orders",
+    location: selectedLocation,
+    reportDate: orderForDate,
+    data: {
+      orderForDate,
+      orders: PASTRY_ORDER_ITEMS.map(type => ({ type, quantity: quantities[type] || "0", unit: "unit" })),
+    },
+    overwrite: false,
+  });
+
+  const handleSubmit = async () => {
+    if (!selectedLocation) { toast.error("Please select a location"); return; }
+    if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
+    if (!orderForDate) { toast.error("Please select the order date"); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload()) });
+      if (!res.ok) throw new Error("Submit failed");
+      setSubmitted(true);
+      toast.success(`Pastry order submitted for ${locationLabel}!`);
+    } catch { toast.error("Failed to submit"); }
+    finally { setSubmitting(false); }
+  };
+
+  if (submitted) return <SuccessCard message={`Pastry order submitted for ${locationLabel}`} onNew={() => { setQuantities(Object.fromEntries(PASTRY_ORDER_ITEMS.map(t => [t, ""]))); setSubmitted(false); }} onBack={onBack} />;
+
+  return (
+    <div>
+      <FormHeader title="Pastry Orders" subtitle={`${positionLabel}`} onBack={onBack} />
+      <div className="space-y-4">
+        {/* Location Selector — stores only (no Sales for pastry) */}
+        <div className="bg-card rounded-xl border border-border/60 p-5">
+          <Label className="text-sm font-medium">Location</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5">
+            {stores.map((store) => (
+              <button
+                key={store.id}
+                type="button"
+                onClick={() => setSelectedLocation(store.shortName)}
+                className={cn(
+                  "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+                  selectedLocation === store.shortName
+                    ? "border-rose-500 bg-rose-50 text-rose-700"
+                    : "border-border/60 bg-background hover:border-rose-400 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
+                  <span>{store.shortName}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{store.name}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
+          <div>
+            <Label className="text-sm font-medium">Your Name <span className="text-red-500">*</span></Label>
+            <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
+          </div>
+          <div>
+            <Label className="text-sm font-medium">Order for Date <span className="text-red-500">*</span></Label>
+            <Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} className="mt-1.5" />
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl border border-border/60 p-5">
+          <h3 className="font-semibold mb-1">Pastry Quantities</h3>
+          <p className="text-sm text-rose-600 font-medium mb-4 bg-rose-50 border border-rose-200 rounded-md px-3 py-1.5">Enter the quantity for each pastry item (in units).</p>
+          <div className="space-y-2">
+            {PASTRY_ORDER_ITEMS.map((type) => (
+              <div key={type} className="flex items-center justify-between gap-4 py-1.5 border-b last:border-0">
+                <span className="text-sm">{type}</span>
+                <div className="flex items-center gap-2">
+                  <Input type="number" min="0" step="1" placeholder="0" value={quantities[type]} onChange={(e) => setQuantities(prev => ({ ...prev, [type]: e.target.value }))} className="h-8 w-20 text-center text-sm" />
+                  <span className="text-xs text-muted-foreground w-10">unit</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-rose-500 hover:bg-rose-600 text-white">
+          {submitting ? "Submitting..." : "Submit Order"}
+        </Button>
+      </div>
     </div>
   );
 }

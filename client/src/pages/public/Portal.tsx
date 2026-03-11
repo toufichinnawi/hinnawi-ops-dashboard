@@ -13,7 +13,7 @@ import {
   Shield, Store, UserCheck, Users, Lock, Coffee,
   ChevronRight, ChevronLeft, ChevronDown, MapPin, ShieldCheck, ArrowLeft,
   ClipboardCheck, BarChart3, Star, Trash2, Wrench,
-  GraduationCap, CircleDot, TrendingUp, Menu, X,
+  GraduationCap, CircleDot, CakeSlice, TrendingUp, Menu, X,
   FileText, DollarSign, Percent, Clock, CheckCircle2,
   Pencil, Receipt, CalendarIcon, Filter,
   Download, Flag, MessageSquare, Send, AlertTriangle, Loader2,
@@ -39,6 +39,7 @@ import { ScorecardContent } from "@/pages/OperationsScorecard";
 import { ReportDetailRenderer } from "@/components/ReportDetailRenderer";
 import { StorePerformanceContent } from "@/pages/Stores";
 import { BagelProductionContent } from "@/pages/BagelProduction";
+import { PastryProductionContent } from "@/pages/PastryProduction";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -177,6 +178,20 @@ const POSITIONS: PositionDef[] = [
     requiresStore: false,
     sidebarItems: [
       si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
+    ],
+  },
+  {
+    slug: "pastry-kitchen",
+    label: "Pastry Kitchen",
+    icon: <CakeSlice className="w-6 h-6" />,
+    color: "text-rose-700",
+    bg: "bg-rose-50",
+    border: "border-rose-200",
+    gradient: "from-rose-500 to-rose-600",
+    requiresPin: true,
+    requiresStore: false,
+    sidebarItems: [
+      si("pastry-production", "Pastry Production", CakeSlice, "info", { infoContent: "pastry-production" }),
     ],
   },
 ];
@@ -1017,6 +1032,16 @@ function PortalInfoPage({
     return (
       <div className="max-w-[1400px]">
         <BagelProductionContent defaultToToday storeFilter={bagelStoreFilter} />
+      </div>
+    );
+  }
+
+  if (pageId === "pastry-production") {
+    // Pastry Kitchen sees all stores; Store/Asst Manager see only their store
+    const pastryStoreFilter = store?.storeCode || undefined;
+    return (
+      <div className="max-w-[1400px]">
+        <PastryProductionContent defaultToToday storeFilter={pastryStoreFilter} />
       </div>
     );
   }

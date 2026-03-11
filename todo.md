@@ -1175,3 +1175,13 @@
 - [x] Wire date filter to Food Cost queries (shares date filter with waste analysis)
 - [x] Write vitest tests for foodCost procedure (6 tests: empty data, aggregation, store ID mapping, non-cogs filtering, vendor sorting, zero-total filtering)
 - [x] Test end-to-end in browser — verified with Last 30 Days showing PK invoice data
+
+# Pastry Kitchen Portal + Pastry Orders Admin Tab
+- [x] Research existing Bagel Orders, Bagel Production, and Portal Bagel Factory code patterns
+- [x] Add 16 pastry items to data definitions (PASTRY_ITEMS / PASTRY_ORDER_ITEMS constants)
+- [x] Create Pastry Kitchen section in Portal (rose/pink theme, CakeSlice icon, PIN required, Pastry Production view)
+- [x] Create Pastry Orders admin page with sidebar tab below Bagel Orders (4 store locations, name, date, 16 items)
+- [x] Link Pastry Orders to Pastry Production page (full production view with per-store breakdown, grand total table)
+- [x] Wire backend procedures: production.pastryOrders tRPC procedure + PastryOrdersForm in DirectChecklist + ChecklistViewer
+- [x] Write vitest tests for pastry order procedures (4 tests: empty data, type filtering, param validation, bagel exclusion)
+- [x] Test end-to-end in browser — Portal, Admin Pastry Orders, Pastry Production all verified

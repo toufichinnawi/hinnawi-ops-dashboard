@@ -13,6 +13,7 @@ export type ChecklistType =
   | "weekly-scorecard"
   | "training-evaluation"
   | "bagel-orders"
+  | "pastry-orders"
   | "performance-evaluation";
 
 export interface ChecklistInfo {
@@ -77,6 +78,12 @@ export const ALL_CHECKLISTS: Record<ChecklistType, ChecklistInfo> = {
     description: "Enter daily bagel order quantities by type",
     icon: "🥯",
   },
+  "pastry-orders": {
+    type: "pastry-orders",
+    label: "Pastry Orders",
+    description: "Enter daily pastry order quantities by type",
+    icon: "🥐",
+  },
   "performance-evaluation": {
     type: "performance-evaluation",
     label: "Performance Evaluation",
@@ -138,6 +145,11 @@ export const POSITION_CHECKLISTS: Record<
   "bagel-factory": {
     slug: "bagel-factory",
     label: "Bagel Factory",
+    checklists: [],
+  },
+  "pastry-kitchen": {
+    slug: "pastry-kitchen",
+    label: "Pastry Kitchen",
     checklists: [],
   },
 };

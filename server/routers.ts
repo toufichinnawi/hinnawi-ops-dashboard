@@ -1924,6 +1924,23 @@ export const appRouter = router({
             r.reportType === "Bagel Orders"
         );
       }),
+    pastryOrders: protectedProcedure
+      .input(
+        z.object({
+          fromDate: z.string(),
+          toDate: z.string(),
+        })
+      )
+      .query(async ({ input }) => {
+        const { getReportsByDateRange } = await import("./db");
+        const reports = await getReportsByDateRange(input.fromDate, input.toDate);
+        // Filter to only pastry order reports (handle both report type formats)
+        return reports.filter(
+          (r: any) =>
+            r.reportType === "pastry-orders" ||
+            r.reportType === "Pastry Orders"
+        );
+      }),
   }),
 
   // ─── Food Cost Analysis (from Invoice Captures) ───
