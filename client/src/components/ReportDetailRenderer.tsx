@@ -361,6 +361,8 @@ function WeeklyScorecardDetail({ data }: { data: any }) {
 
 // ─── Waste Report ────────────────────────────────────────────────
 function WasteReportDetail({ data }: { data: any }) {
+  const costs = data.costs;
+
   const renderWasteSection = (title: string, items: any[]) => {
     if (!items || !Array.isArray(items) || items.length === 0) return null;
     const hasData = items.some((item) => item.leftover || item.waste);
@@ -383,8 +385,8 @@ function WasteReportDetail({ data }: { data: any }) {
               {items.filter((item) => item.leftover || item.waste).map((item: any, i: number) => (
                 <tr key={i} className="border-t">
                   <td className="p-2 text-sm">{item.item || item.name || `Item ${i + 1}`}</td>
-                  <td className="p-2 text-center font-mono">{item.leftover || "—"}</td>
-                  <td className="p-2 text-center font-mono">{item.waste || "—"}</td>
+                  <td className="p-2 text-center font-mono">{item.leftover || "\u2014"}</td>
+                  <td className="p-2 text-center font-mono">{item.waste || "\u2014"}</td>
                   <td className="p-2 text-xs text-muted-foreground italic">{item.comment || ""}</td>
                 </tr>
               ))}
@@ -397,6 +399,27 @@ function WasteReportDetail({ data }: { data: any }) {
 
   return (
     <div className="space-y-4">
+      {/* Cost Summary */}
+      {costs && costs.grandTotal > 0 && (
+        <div className="rounded-lg border border-red-200 bg-red-50/50 p-4">
+          <p className="text-xs font-semibold text-red-800 uppercase tracking-wider mb-3">Cost Summary</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="text-center p-2.5 rounded-lg bg-blue-50 border border-blue-200">
+              <p className="text-[10px] text-blue-600 font-medium mb-0.5">Leftover</p>
+              <p className="text-base font-mono font-bold text-blue-700">${Number(costs.leftoverTotal).toFixed(2)}</p>
+            </div>
+            <div className="text-center p-2.5 rounded-lg bg-orange-50 border border-orange-200">
+              <p className="text-[10px] text-orange-600 font-medium mb-0.5">Waste</p>
+              <p className="text-base font-mono font-bold text-orange-700">${Number(costs.wasteTotal).toFixed(2)}</p>
+            </div>
+            <div className="text-center p-2.5 rounded-lg bg-red-50 border border-red-300">
+              <p className="text-[10px] text-red-600 font-medium mb-0.5">Total</p>
+              <p className="text-base font-mono font-bold text-red-700">${Number(costs.grandTotal).toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {renderWasteSection("Bagels", data.bagels)}
       {renderWasteSection("Pastry", data.pastries)}
       {renderWasteSection("CK Items", data.ckItems)}

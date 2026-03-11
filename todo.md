@@ -1133,3 +1133,17 @@
 - [x] Add "Dube Loiselle Orders" section showing box orders grouped by client name
 - [x] Display format: "X boxes [Type]" per client
 - [x] All 168 tests passing
+
+# Waste & Leftovers — Item Prices and Cost Calculations
+- [x] Created shared/wastePricing.ts with all price constants from Excel
+- [x] Bagels: $0.50/unit, $6.00/dozen for all types
+- [x] Pastries: Croissant $2.19, Chocolatine $2.39, Almond Croissant $2.79, default $2.00
+- [x] CK Preps: unit cost + container cost per item (20 items with alternate spellings)
+- [x] Updated all 3 waste forms (DirectChecklist, ChecklistViewer, PositionChecklists) with L.Cost and W.Cost columns
+- [x] Real-time per-item cost calculation as quantities are entered
+- [x] Section totals shown in top-right badge per category
+- [x] Grand total cost summary card (Leftover / Waste / Total) above submit buttons
+- [x] Cost data included in submitted report payload
+- [x] ReportDetailRenderer shows cost summary when viewing waste reports
+- [x] 17 vitest tests for waste pricing module (bagels, pastries, CK preps, edge cases)
+- [x] All 195 tests passing (17 new + 178 existing)
