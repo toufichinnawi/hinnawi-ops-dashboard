@@ -1124,3 +1124,12 @@
 - [x] Labour % card turns red with "Above Target" badge when value > 23.5%
 - [x] Red border, accent line, and text; other cards unaffected
 - [x] All 168 tests passing
+
+# Box Quantity Option for Sales + Dube Loiselle Orders Section
+- [x] Add "Box" quantity option to Bagel Orders form (Sales location ONLY) — all 3 forms updated
+- [x] Box option appears alongside dz and units when Sales is selected; hidden for stores
+- [x] On Bagel Production, box orders are excluded from ALL White Dough calculations
+- [x] Add separate "Dube Loiselle Orders" summary card (blue) with total box count
+- [x] Add "Dube Loiselle Orders" section showing box orders grouped by client name
+- [x] Display format: "X boxes [Type]" per client
+- [x] All 168 tests passing

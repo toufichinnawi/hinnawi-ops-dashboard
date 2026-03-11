@@ -1075,7 +1075,7 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
   const [clientName, setClientName] = useState("");
   const [orderForDate, setOrderForDate] = useState("");
   const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])));
-  const [itemUnits, setItemUnits] = useState<Record<string, "dozen" | "unit">>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])));
+  const [itemUnits, setItemUnits] = useState<Record<string, "dozen" | "unit" | "box">>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -1169,7 +1169,7 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
       <Card><CardContent className="pt-6 space-y-4">
         <div>
           <h3 className="font-serif text-lg">Order Quantities</h3>
-          <p className="text-sm text-amber-600 font-medium mt-1 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">Select dozen or unit per item. Default is dozen (12 units per dozen).</p>
+          <p className="text-sm text-amber-600 font-medium mt-1 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">Select dozen or unit per item.{isSales ? " Box option available for Sales orders." : ""} Default is dozen (12 units per dozen).</p>
         </div>
         <div className="space-y-2">
           {BAGEL_TYPES.map((type) => (
@@ -1177,9 +1177,10 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
               <span className="text-sm">{type}</span>
               <div className="flex items-center gap-2">
                 <Input type="number" min="0" step="0.5" placeholder="0" value={quantities[type]} onChange={(e) => setQuantities(prev => ({ ...prev, [type]: e.target.value }))} className="h-8 w-20 text-center text-sm" />
-                <select value={itemUnits[type]} onChange={(e) => setItemUnits(prev => ({ ...prev, [type]: e.target.value as "dozen" | "unit" }))} className="h-8 w-16 rounded-md border border-border bg-background px-1 text-xs">
+                <select value={itemUnits[type]} onChange={(e) => setItemUnits(prev => ({ ...prev, [type]: e.target.value as "dozen" | "unit" | "box" }))} className={cn("h-8 rounded-md border border-border bg-background px-1 text-xs", isSales ? "w-[4.5rem]" : "w-16")}>
                   <option value="dozen">doz.</option>
                   <option value="unit">pcs</option>
+                  {isSales && <option value="box">box</option>}
                 </select>
               </div>
             </div>

@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { stores } from "@/lib/data";
-import { CircleDot, Package, Users2, Store } from "lucide-react";
+import { CircleDot, Package, Users2, Store, BoxIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DateFilter, getDefaultDateFilter, type DateFilterValue } from "@/components/DateFilter";
 import { format } from "date-fns";
@@ -160,7 +160,35 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
     return storeOrders.filter(o => o.storeId === selectedStore);
   }, [orders, salesOrders, storeOrders, selectedStore]);
 
-  // ─── Sales: Group by Client Name ───
+  // ─── Box Orders: Extract box items from Sales orders ───
+  // Box orders are completely separate — NOT included in White Dough or dozen calculations
+  const boxOrdersByClient = useMemo(() => {
+    const clientMap: Record<string, { type: string; quantity: number }[]> = {};
+    salesOrders.forEach(order => {
+      const client = order.clientName || "Unknown Client";
+      order.orders.forEach((item: any) => {
+        const qty = parseFloat(item.quantity) || 0;
+        if (qty <= 0) return;
+        const itemUnit = item.unit || order.globalUnit || "dozen";
+        if (itemUnit === "box") {
+          if (!clientMap[client]) clientMap[client] = [];
+          // Check if this type already exists for this client, merge if so
+          const existing = clientMap[client].find(e => e.type === item.type);
+          if (existing) {
+            existing.quantity += qty;
+          } else {
+            clientMap[client].push({ type: item.type, quantity: qty });
+          }
+        }
+      });
+    });
+    return clientMap;
+  }, [salesOrders]);
+
+  const boxClientNames = Object.keys(boxOrdersByClient).sort();
+  const hasBoxOrders = boxClientNames.length > 0;
+
+  // ─── Sales: Group by Client Name (EXCLUDING box items) ───
   const salesByClient = useMemo(() => {
     const clientMap: Record<string, Record<string, number>> = {};
     salesOrders.forEach(order => {
@@ -172,6 +200,8 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
       order.orders.forEach((item: any) => {
         const qty = parseFloat(item.quantity) || 0;
         const itemUnit = item.unit || order.globalUnit || "dozen";
+        // SKIP box items — they are handled separately
+        if (itemUnit === "box") return;
         const dozenQty = itemUnit === "unit" ? qty / 12 : qty;
         if (clientMap[client][item.type] !== undefined) {
           clientMap[client][item.type] += dozenQty;
@@ -183,7 +213,7 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
 
   const clientNames = Object.keys(salesByClient).sort();
 
-  // Clients White Dough: total white dough Kg per client
+  // Clients White Dough: total white dough Kg per client (EXCLUDING box items)
   const clientsWhiteDough = useMemo(() => {
     const result: Record<string, number> = {};
     clientNames.forEach(client => {
@@ -195,6 +225,7 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
   const totalClientsWhiteDoughKg = Object.values(clientsWhiteDough).reduce((a, b) => a + b, 0);
 
   // ─── Store Orders: Aggregate by store ───
+  // aggregatedByType now also excludes box items from all orders
   const aggregatedByType = useMemo(() => {
     const totals: Record<string, number> = {};
     BAGEL_TYPES.forEach(t => { totals[t] = 0; });
@@ -202,6 +233,8 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
       order.orders.forEach((item: any) => {
         const qty = parseFloat(item.quantity) || 0;
         const itemUnit = item.unit || order.globalUnit || "dozen";
+        // SKIP box items
+        if (itemUnit === "box") return;
         const dozenQty = itemUnit === "unit" ? qty / 12 : qty;
         if (totals[item.type] !== undefined) {
           totals[item.type] += dozenQty;
@@ -213,7 +246,7 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
 
   const totalDozens = Object.values(aggregatedByType).reduce((a, b) => a + b, 0);
 
-  // White Dough total in Kg (1 DZ = 1 Kg) — all orders combined
+  // White Dough total in Kg (1 DZ = 1 Kg) — all orders combined (excluding box)
   const whiteDoughKg = WHITE_DOUGH_TYPES.reduce((sum, t) => sum + (aggregatedByType[t] || 0), 0);
 
   // Aggregate store orders by store (excluding sales)
@@ -250,6 +283,11 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
     ...stores.map(s => ({ id: s.id, name: s.name })),
   ];
 
+  // Total box count across all clients
+  const totalBoxCount = boxClientNames.reduce((sum, client) => {
+    return sum + boxOrdersByClient[client].reduce((s, item) => s + item.quantity, 0);
+  }, 0);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -261,6 +299,7 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
           <div>
             <h1 className="text-2xl font-serif text-foreground">Bagel Production</h1>
             <p className="text-sm text-muted-foreground">View bagel orders by store and item</p>
+         
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -308,8 +347,8 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
         </Card>
       </div>
 
-      {/* White Dough Summary — Three Separate Boxes */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* White Dough Summary — Three Separate Boxes + Dube Loiselle Orders */}
+      <div className={cn("grid grid-cols-1 gap-4", hasBoxOrders ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
         <Card className="border-purple-200 bg-purple-50/50">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-2 mb-1">
@@ -340,6 +379,18 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
             <p className="text-[10px] text-muted-foreground mt-0.5">Clients + Stores combined</p>
           </CardContent>
         </Card>
+        {hasBoxOrders && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-3 h-3 rounded-full bg-blue-500" />
+                <p className="text-xs text-blue-600 uppercase tracking-wide font-bold">Dube Loiselle Orders</p>
+              </div>
+              <p className="text-2xl font-mono font-bold mt-1">{totalBoxCount % 1 === 0 ? totalBoxCount : totalBoxCount.toFixed(1)} <span className="text-sm font-semibold">Boxes</span></p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Separate from White Dough</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {isLoading ? (
@@ -359,7 +410,46 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
       ) : (
         <>
           {/* ═══════════════════════════════════════════════════════════════
-              SALES SECTION — Orders by Client
+              DUBE LOISELLE ORDERS — Box orders (separate from White Dough)
+              ═══════════════════════════════════════════════════════════════ */}
+          {hasBoxOrders && (selectedStore === "all" || selectedStore === "sales") && (
+            <>
+              <div className="flex items-center gap-2 pt-2">
+                <BoxIcon className="w-5 h-5 text-blue-500" />
+                <h2 className="text-lg font-serif text-foreground">Dube Loiselle Orders</h2>
+                <span className="text-xs text-muted-foreground ml-1">(Box orders — not included in White Dough)</span>
+              </div>
+
+              <Card className="border-blue-200 bg-blue-50/30">
+                <CardContent className="pt-5 pb-5">
+                  <div className="space-y-5">
+                    {boxClientNames.map(client => (
+                      <div key={client}>
+                        <h3 className="font-semibold text-sm text-blue-700 mb-2">{client}</h3>
+                        <div className="space-y-1.5 pl-4">
+                          {boxOrdersByClient[client].map((item, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                              <span className="text-sm font-mono">
+                                <span className="font-bold">{item.quantity % 1 === 0 ? item.quantity : item.quantity.toFixed(1)}</span>
+                                {" "}
+                                <span className="text-muted-foreground">box{item.quantity !== 1 ? "es" : ""}</span>
+                                {" "}
+                                <span className="font-medium">{item.type}</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════
+              SALES SECTION — Orders by Client (excluding box items)
               ═══════════════════════════════════════════════════════════════ */}
           {salesOrders.length > 0 && (selectedStore === "all" || selectedStore === "sales") && (
             <>
@@ -447,7 +537,7 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
                 <CardHeader>
                   <CardTitle className="text-base">Sales — All Bagel Types by Client</CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    {dateFilter.label} — Quantities shown as DZ (dozens) or Units
+                    {dateFilter.label} — Quantities shown as DZ (dozens) or Units. Box orders shown separately above.
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -646,6 +736,14 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
                             {nonZeroItems.map((item: any, i: number) => {
                               const qty = parseFloat(item.quantity) || 0;
                               const itemUnit = item.unit || order.globalUnit || "dozen";
+                              if (itemUnit === "box") {
+                                // Display box items distinctly
+                                return (
+                                  <span key={i} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                    {item.type}: <span className="font-mono font-semibold">{qty % 1 === 0 ? qty : qty.toFixed(1)} box{qty !== 1 ? "es" : ""}</span>
+                                  </span>
+                                );
+                              }
                               // Convert to dozens first, then format
                               const dozenVal = itemUnit === "unit" ? qty / 12 : qty;
                               const formatted = formatDozenValue(dozenVal);
