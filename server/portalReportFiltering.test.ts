@@ -15,7 +15,7 @@
  * 3. Simulating the same filtering logic used in Portal.tsx
  * 4. Verifying that filtering by storeCode (e.g. "ontario") returns the correct reports
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
 
 const BASE_URL = "http://localhost:3000";
 
@@ -63,6 +63,36 @@ describe("Portal Report Filtering — Store Code Normalization", () => {
   // Use unique dates far in the past to avoid conflicts
   const runId = Date.now().toString(36);
   const testDate = `2018-06-15`;
+  const idsToCleanup: number[] = [];
+
+  async function cleanupId(id: number) {
+    try {
+      await fetch(`${BASE_URL}/api/public/reports/${id}`, { method: "DELETE" });
+    } catch {
+      // ignore
+    }
+  }
+
+  // Clean up ALL test data after all tests complete
+  afterAll(async () => {
+    for (const id of idsToCleanup) {
+      await cleanupId(id);
+    }
+    // Also clean up by date/location for the 4 stores
+    for (const loc of ["ON", "MK", "PK", "TN"]) {
+      try {
+        const checkRes = await fetch(
+          `${BASE_URL}/api/public/check-existing-report?location=${loc}&reportType=manager-checklist&reportDate=${testDate}`
+        );
+        const checkJson = await checkRes.json();
+        if (checkJson.exists && checkJson.report?.id) {
+          await cleanupId(checkJson.report.id);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  });
 
   // Submit test reports for each store with abbreviated locations
   it("should submit test reports for all 4 stores", async () => {
@@ -88,6 +118,8 @@ describe("Portal Report Filtering — Store Code Normalization", () => {
         }),
       });
       expect(res.status).toBe(200);
+      const json = await res.json();
+      if (json.id) idsToCleanup.push(json.id);
     }
   });
 

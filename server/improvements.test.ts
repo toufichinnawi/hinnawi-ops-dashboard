@@ -1,8 +1,37 @@
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 
 const BASE_URL = "http://localhost:3000";
 
+// Track all IDs created during tests for cleanup
+const idsToCleanup: number[] = [];
+
+async function cleanupId(id: number) {
+  try {
+    await fetch(`${BASE_URL}/api/public/reports/${id}`, { method: "DELETE" });
+  } catch {
+    // ignore
+  }
+}
+
 describe("Improvement Batch — March 5, 2026", () => {
+  // Clean up ALL test data after all tests complete
+  afterAll(async () => {
+    for (const id of idsToCleanup) {
+      await cleanupId(id);
+    }
+    // Also clean up by date/location for the known test data
+    try {
+      const checkRes = await fetch(
+        `${BASE_URL}/api/public/check-existing-report?location=PK&reportType=manager-checklist&reportDate=2020-01-15`
+      );
+      const checkJson = await checkRes.json();
+      if (checkJson.exists && checkJson.report?.id) {
+        await cleanupId(checkJson.report.id);
+      }
+    } catch {
+      // ignore
+    }
+  });
   // ─── Report Edit/Delete Endpoints ───
   describe("Report Edit/Delete Public API", () => {
     it("should return 400 for invalid report ID on edit", async () => {
@@ -98,6 +127,7 @@ describe("Improvement Batch — March 5, 2026", () => {
       expect(json.success).toBe(true);
       expect(json.id).toBeDefined();
       createdId = json.id;
+      idsToCleanup.push(json.id);
     });
 
     it("should return 409 when duplicate exists with overwrite:false", async () => {
@@ -125,21 +155,7 @@ describe("Improvement Batch — March 5, 2026", () => {
       expect(json.id).toBeDefined();
       // New ID should be different from original (old was deleted, new was created)
       expect(json.id).not.toBe(createdId);
-    });
-
-    // Cleanup
-    it("should clean up test report", async () => {
-      // Get the latest report for PK on 2020-01-15
-      const checkRes = await fetch(
-        `${BASE_URL}/api/public/check-existing-report?location=PK&reportType=manager-checklist&reportDate=2020-01-15`
-      );
-      const checkJson = await checkRes.json();
-      if (checkJson.exists && checkJson.report?.id) {
-        const delRes = await fetch(`${BASE_URL}/api/public/reports/${checkJson.report.id}`, {
-          method: "DELETE",
-        });
-        expect(delRes.status).toBe(200);
-      }
+      idsToCleanup.push(json.id);
     });
   });
 

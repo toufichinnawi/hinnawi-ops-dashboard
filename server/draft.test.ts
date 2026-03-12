@@ -1,7 +1,32 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterAll, beforeAll } from "vitest";
 
 const BASE_URL = "http://localhost:3000";
 const uniqueDate = "2019-06-15"; // Far past date to avoid conflicts
+
+// Track all IDs created during tests for cleanup
+const idsToCleanup: number[] = [];
+
+async function cleanupId(id: number) {
+  try {
+    await fetch(`${BASE_URL}/api/public/reports/${id}`, { method: "DELETE" });
+  } catch {
+    // ignore
+  }
+}
+
+async function cleanupByDateAndLocation(date: string, location: string, reportType: string) {
+  try {
+    const checkRes = await fetch(
+      `${BASE_URL}/api/public/check-existing-report?location=${location}&reportType=${reportType}&reportDate=${date}`
+    );
+    const checkJson = await checkRes.json();
+    if (checkJson.exists && checkJson.report?.id) {
+      await cleanupId(checkJson.report.id);
+    }
+  } catch {
+    // ignore
+  }
+}
 
 describe("Draft Save/Load API", () => {
   const draftPayload = {
@@ -20,17 +45,17 @@ describe("Draft Save/Load API", () => {
   };
 
   // Clean up any existing draft/report for this date before tests
-  it("should clean up test data first", async () => {
-    // Try to delete any existing draft
-    const draftRes = await fetch(
-      `${BASE_URL}/api/public/draft?location=PK&reportType=manager-checklist&reportDate=${uniqueDate}`
-    );
-    const draftBody = await draftRes.json();
-    if (draftBody.draft) {
-      await fetch(`${BASE_URL}/api/public/reports/${draftBody.draft.id}`, {
-        method: "DELETE",
-      });
+  beforeAll(async () => {
+    await cleanupByDateAndLocation(uniqueDate, "PK", "manager-checklist");
+  });
+
+  // Clean up ALL test data after all tests complete
+  afterAll(async () => {
+    for (const id of idsToCleanup) {
+      await cleanupId(id);
     }
+    // Also clean up by date/location in case IDs weren't tracked
+    await cleanupByDateAndLocation(uniqueDate, "PK", "manager-checklist");
   });
 
   it("should save a draft via POST /api/public/save-draft", async () => {
@@ -43,6 +68,7 @@ describe("Draft Save/Load API", () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.id).toBeDefined();
+    idsToCleanup.push(body.id);
   });
 
   it("should load the saved draft via GET /api/public/draft", async () => {
@@ -72,6 +98,7 @@ describe("Draft Save/Load API", () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.updated).toBe(true);
+    if (body.id) idsToCleanup.push(body.id);
 
     // Verify the update
     const loadRes = await fetch(
@@ -108,6 +135,7 @@ describe("Draft Save/Load API", () => {
     expect(submitRes.status).toBe(200);
     const submitBody = await submitRes.json();
     expect(submitBody.success).toBe(true);
+    if (submitBody.id) idsToCleanup.push(submitBody.id);
 
     // Draft should be gone now
     const draftRes = await fetch(
@@ -135,23 +163,16 @@ describe("Draft Save/Load API", () => {
     expect(body.error).toBeDefined();
   });
 
-  // Clean up: delete the submitted report
-  it("should clean up test data", async () => {
-    const reportsRes = await fetch(`${BASE_URL}/api/public/reports`);
-    const reportsBody = await reportsRes.json();
-    const testReport = reportsBody.data?.find(
-      (r: any) => r.reportDate === uniqueDate && r.location === "PK" && r.reportType === "manager-checklist"
-    );
-    if (testReport) {
-      await fetch(`${BASE_URL}/api/public/reports/${testReport.id}`, {
-        method: "DELETE",
-      });
-    }
-  });
+
 });
 
 describe("Draft normalization", () => {
   const uniqueDate2 = "2019-07-01";
+
+  afterAll(async () => {
+    // Clean up normalized draft
+    await cleanupByDateAndLocation(uniqueDate2, "MK", "ops-manager-checklist");
+  });
 
   it("should normalize report type names in save-draft", async () => {
     const res = await fetch(`${BASE_URL}/api/public/save-draft`, {
@@ -176,9 +197,7 @@ describe("Draft normalization", () => {
     expect(loadBody.draft.reportType).toBe("ops-manager-checklist");
     expect(loadBody.draft.location).toBe("MK");
 
-    // Clean up
-    await fetch(`${BASE_URL}/api/public/reports/${loadBody.draft.id}`, {
-      method: "DELETE",
-    });
+    // Track for cleanup
+    if (loadBody.draft?.id) idsToCleanup.push(loadBody.draft.id);
   });
 });

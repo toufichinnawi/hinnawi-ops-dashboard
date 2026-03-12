@@ -1283,3 +1283,25 @@
 - [x] Pastry Orders forms already had useDuplicateReportCheck in PositionChecklists.tsx, DirectChecklist.tsx, and ChecklistViewer.tsx (from earlier overwrite warning work)
 - [x] The issue was purely server-side normalization — now duplicate detection works correctly
 - [x] All 230 tests passing across 26 test files (only Koomi + wasteEmail external API failures remain)
+
+# Clean Up Test Data from Database & Auto-Cleanup in Tests
+- [x] Delete all test records from report_submissions (116+ records removed)
+- [x] Delete all *Dup_* test report types from regression tests
+- [x] Delete all future-dated test records (dates in 2098, 2099)
+- [x] Update all test files to add afterAll/afterEach cleanup that deletes test records
+  - [x] draft.test.ts: Replaced cleanup-as-tests with proper beforeAll/afterAll hooks + ID tracking
+  - [x] improvements.test.ts: Added afterAll with ID tracking + date/location fallback cleanup
+  - [x] portalReportFiltering.test.ts: Added afterAll with ID tracking + 4-store date cleanup
+  - [x] publicApi.test.ts: Added afterAll failsafe + ID tracking alongside existing inline cleanup
+  - [x] duplicateReport.test.ts: Already had afterAll (no changes needed)
+  - [x] reportNotes.test.ts: Already had afterAll (no changes needed)
+  - [x] salesBagelOrders.test.ts: Already had afterAll (no changes needed)
+- [x] Verify no test data remains after running full test suite (227 tests pass, 3 external API failures)
+
+# Investigate Store-Switching Bug (MK→PK)
+- [x] Traced full store selection flow in Portal.tsx (StoreSelect → PortalDashboard → PortalChecklistPage)
+- [x] Traced full store selection flow in PositionChecklists.tsx (PinGate → ChecklistForm)
+- [x] Verified: No code path swaps MK to PK — store object is locked after selection
+- [x] Root cause: Test data pollution (now cleaned) caused confusing reports in the viewer
+- [x] Identified UX risk: Store dropdown defaults to first alphabetical store (Mackay) — could cause accidental wrong-store submissions
+- [x] Identified inconsistency: Different forms submit location in different formats (storeName vs storeCode vs shortName) — server-side LOCATION_NORMALIZE handles this but it's fragile

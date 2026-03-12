@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, reportType, location, reportDate, data FROM report_submissions WHERE reportType LIKE '%Dup_%' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, reportType, location, reportDate, data FROM report_submissions WHERE reportType LIKE '%Dup_%' LIMIT 5;",
+  "rows": [
+    {
+      "id": "300076",
+      "reportType": "TestDup_mmnn8nbv",
+      "location": "PK",
+      "reportDate": "2098-01-01",
+      "data": "{\"items\": [{\"label\": \"Overwritten data\", \"rating\": 4}], \"submitterName\": \"Test User B\"}"
+    },
+    {
+      "id": "300078",
+      "reportType": "BagelDup_mmnn8nbv",
+      "location": "MK",
+      "reportDate": "2098-02-01",
+      "data": "{\"orders\": [{\"quantity\": \"10\", \"type\": \"Sesame\", \"unit\": \"dozen\"}], \"submitterName\": \"Baker B\"}"
+    },
+    {
+      "id": "300079",
+      "reportType": "PastryDup_mmnn8nbv",
+      "location": "TN",
+      "reportDate": "2098-03-01",
+      "data": "{\"orders\": [{\"quantity\": \"20\", \"type\": \"Croissant\", \"unit\": \"unit\"}], \"submitterName\": \"Pastry Chef A\"}"
+    },
+    {
+      "id": "300080",
+      "reportType": "DateDup_mmnn8nbv",
+      "location": "PK",
+      "reportDate": "2098-04-01",
+      "data": "{\"bagels\": [], \"submitterName\": \"User X\"}"
+    },
+    {
+      "id": "300081",
+      "reportType": "DateDup_mmnn8nbv",
+      "location": "PK",
+      "reportDate": "2098-04-02",
+      "data": "{\"bagels\": [], \"submitterName\": \"User X\"}"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\treportType\tlocation\treportDate\tdata\n300076\tTestDup_mmnn8nbv\tPK\t2098-01-01\t{\"items\": [{\"label\": \"Overwritten data\", \"rating\": 4}], \"submitterName\": \"Test User B\"}\n300078\tBagelDup_mmnn8nbv\tMK\t2098-02-01\t{\"orders\": [{\"quantity\": \"10\", \"type\": \"Sesame\", \"unit\": \"dozen\"}], \"submitterName\": \"Baker B\"}\n300079\tPastryDup_mmnn8nbv\tTN\t2098-03-01\t{\"orders\": [{\"quantity\": \"20\", \"type\": \"Croissant\", \"unit\": \"unit\"}], \"submitterName\": \"Pastry Chef A\"}\n300080\tDateDup_mmnn8nbv\tPK\t2098-04-01\t{\"bagels\": [], \"submitterName\": \"User X\"}\n300081\tDateDup_mmnn8nbv\tPK\t2098-04-02\t{\"bagels\": [], \"submitterName\": \"User X\"}\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

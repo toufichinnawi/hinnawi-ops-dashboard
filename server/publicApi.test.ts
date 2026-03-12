@@ -1,7 +1,37 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
 
 describe("Public API Endpoints", () => {
   const BASE_URL = "http://localhost:3000";
+  const idsToCleanup: number[] = [];
+
+  async function cleanupId(id: number) {
+    try {
+      await fetch(`${BASE_URL}/api/public/reports/${id}`, { method: "DELETE" });
+    } catch {
+      // ignore
+    }
+  }
+
+  // Failsafe: clean up ALL tracked IDs after all tests complete
+  afterAll(async () => {
+    for (const id of idsToCleanup) {
+      await cleanupId(id);
+    }
+    // Also clean up by known test dates
+    for (const date of ["2019-01-01", "2019-01-02"]) {
+      try {
+        const checkRes = await fetch(
+          `${BASE_URL}/api/public/check-existing-report?location=PK&reportType=manager-checklist&reportDate=${date}`
+        );
+        const checkJson = await checkRes.json();
+        if (checkJson.exists && checkJson.report?.id) {
+          await cleanupId(checkJson.report.id);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  });
 
   describe("GET /api/public/reports", () => {
     it("should return reports without authentication", async () => {
@@ -52,8 +82,9 @@ describe("Public API Endpoints", () => {
       const json = await res.json();
       expect(json.success).toBe(true);
       expect(json.id).toBeDefined();
+      idsToCleanup.push(json.id);
 
-      // Cleanup
+      // Immediate cleanup attempt
       await fetch(`${BASE_URL}/api/public/reports/${json.id}`, { method: "DELETE" });
     });
 
@@ -90,8 +121,9 @@ describe("Public API Endpoints", () => {
       const json = await res.json();
       expect(json.success).toBe(true);
 
-      // Cleanup
+      // Immediate cleanup attempt
       if (json.id) {
+        idsToCleanup.push(json.id);
         await fetch(`${BASE_URL}/api/public/reports/${json.id}`, { method: "DELETE" });
       }
     });
