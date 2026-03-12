@@ -1265,3 +1265,13 @@
 - [x] Added old misspelling as fallback in pricing map for existing reports
 - [x] LOCKED: 25 regression tests in wastePricing.test.ts covering bag/dozen/unit costing, all pastry prices, missing items at $0
 - [x] All 231 tests passing across 26 test files (only Koomi external API failures remain)
+
+# Add Pastry Orders & Pastry Production to Portal Sidebar
+- [x] Studied existing Bagel Orders/Production portal implementation (sidebar config, rendering, store auto-linking)
+- [x] Added Pastry Orders sidebar entry to Operations Manager (all stores, store selector shown)
+- [x] Added Pastry Production sidebar entry to Operations Manager (all stores, location filter)
+- [x] Added Pastry Orders sidebar entry to Store Manager (auto-linked to locked store, no store selector)
+- [x] Added Pastry Production sidebar entry to Store Manager (auto-linked to locked store)
+- [x] Verified Ops Manager: Pastry Orders shows 4-store selector, Pastry Production shows aggregated view
+- [x] Verified Store Manager (Mackay): Pastry Orders locked to MK with lock icon, no store selector
+- [x] All 231 tests passing across 26 test files (only Koomi external API failures remain)
