@@ -1231,4 +1231,5 @@
 - [x] Fix: Normalize storeCode through the same LOCATION_NORMALIZE map used for report locations (ontario→ON, mk→MK, pk→PK, tunnel→TN)
 - [x] Verified: Ontario Store Manager now shows 9 reports correctly (was showing "No Reports Found")
 - [x] Fix applies to all positions — PortalReportsPage filtering is shared
-- [x] All 212 tests passing (only Koomi external API failures remain)
+- [x] LOCKED: 11 regression tests in portalReportFiltering.test.ts covering all 4 stores, full names, mixed case, Ops Manager (no filter), wrong-store rejection, and live API validation
+- [x] All 223 tests passing across 26 test files (only Koomi external API failures remain)
