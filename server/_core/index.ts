@@ -124,6 +124,7 @@ async function startServer() {
         "Weekly Scorecard": "weekly-scorecard",
         "Training Evaluation": "training-evaluation",
         "Bagel Orders": "bagel-orders",
+        "Pastry Orders": "pastry-orders",
         "Performance Evaluation": "performance-evaluation",
       };
       const normLoc = LOCATION_MAP[location] || location;
@@ -171,6 +172,7 @@ async function startServer() {
         "Weekly Scorecard": "weekly-scorecard",
         "Training Evaluation": "training-evaluation",
         "Bagel Orders": "bagel-orders",
+        "Pastry Orders": "pastry-orders",
         "Performance Evaluation": "performance-evaluation",
       };
       const normalizedReportType = REPORT_TYPE_MAP[reportType] || reportType;
@@ -374,6 +376,7 @@ async function startServer() {
         "Weekly Scorecard": "weekly-scorecard",
         "Training Evaluation": "training-evaluation",
         "Bagel Orders": "bagel-orders",
+        "Pastry Orders": "pastry-orders",
         "Performance Evaluation": "performance-evaluation",
       };
       const normalizedReportType = REPORT_TYPE_MAP[reportType] || reportType;

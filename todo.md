@@ -1275,3 +1275,11 @@
 - [x] Verified Ops Manager: Pastry Orders shows 4-store selector, Pastry Production shows aggregated view
 - [x] Verified Store Manager (Mackay): Pastry Orders locked to MK with lock icon, no store selector
 - [x] All 231 tests passing across 26 test files (only Koomi external API failures remain)
+
+# Bug Fix: Duplicate Pastry Orders - Add Overwrite Warning
+- [x] Root cause: "Pastry Orders" was NOT in the server-side REPORT_TYPE_MAP, so it wasn't normalized to "pastry-orders" — duplicate check compared different strings and missed the match
+- [x] Fix: Added "Pastry Orders": "pastry-orders" to all 3 REPORT_TYPE_MAP instances in server/_core/index.ts
+- [x] Cleaned up existing duplicate records in database (normalized reportType, deleted duplicate ON 2026-03-12)
+- [x] Pastry Orders forms already had useDuplicateReportCheck in PositionChecklists.tsx, DirectChecklist.tsx, and ChecklistViewer.tsx (from earlier overwrite warning work)
+- [x] The issue was purely server-side normalization — now duplicate detection works correctly
+- [x] All 230 tests passing across 26 test files (only Koomi + wasteEmail external API failures remain)

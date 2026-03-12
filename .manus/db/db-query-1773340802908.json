@@ -1,0 +1,106 @@
+{
+  "query": "SELECT id, reportType, location, reportDate, status, createdAt FROM report_submissions WHERE reportType LIKE '%astry%' ORDER BY createdAt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, reportType, location, reportDate, status, createdAt FROM report_submissions WHERE reportType LIKE '%astry%' ORDER BY createdAt DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "300301",
+      "reportType": "Pastry Orders",
+      "location": "ON",
+      "reportDate": "2026-03-12",
+      "status": "submitted",
+      "createdAt": "2026-03-12 18:33:34"
+    },
+    {
+      "id": "300282",
+      "reportType": "PastryDup_mmnsiotv",
+      "location": "TN",
+      "reportDate": "2098-03-01",
+      "status": "submitted",
+      "createdAt": "2026-03-12 18:17:25"
+    },
+    {
+      "id": "300253",
+      "reportType": "PastryDup_mmnr0ilc",
+      "location": "TN",
+      "reportDate": "2098-03-01",
+      "status": "submitted",
+      "createdAt": "2026-03-12 17:35:17"
+    },
+    {
+      "id": "300223",
+      "reportType": "PastryDup_mmnpr0qn",
+      "location": "TN",
+      "reportDate": "2098-03-01",
+      "status": "submitted",
+      "createdAt": "2026-03-12 16:59:54"
+    },
+    {
+      "id": "300189",
+      "reportType": "PastryDup_mmnohrik",
+      "location": "TN",
+      "reportDate": "2098-03-01",
+      "status": "submitted",
+      "createdAt": "2026-03-12 16:24:43"
+    },
+    {
+      "id": "300164",
+      "reportType": "PastryDup_mmnnz9x8",
+      "location": "TN",
+      "reportDate": "2098-03-01",
+      "status": "submitted",
+      "createdAt": "2026-03-12 16:10:20"
+    },
+    {
+      "id": "300158",
+      "reportType": "pastry-orders",
+      "location": "ON",
+      "reportDate": "2026-03-12",
+      "status": "submitted",
+      "createdAt": "2026-03-12 15:58:52"
+    },
+    {
+      "id": "300138",
+      "reportType": "PastryDup_mmnncsnr",
+      "location": "TN",
+      "reportDate": "2098-03-01",
+      "status": "submitted",
+      "createdAt": "2026-03-12 15:52:52"
+    },
+    {
+      "id": "300113",
+      "reportType": "PastryDup_mmnncc3t",
+      "location": "TN",
+      "reportDate": "2098-03-01",
+      "status": "submitted",
+      "createdAt": "2026-03-12 15:52:30"
+    },
+    {
+      "id": "300096",
+      "reportType": "PastryDup_mmnn91gc",
+      "location": "TN",
+      "reportDate": "2098-03-01",
+      "status": "submitted",
+      "createdAt": "2026-03-12 15:49:56"
+    },
+    {
+      "id": "300079",
+      "reportType": "PastryDup_mmnn8nbv",
+      "location": "TN",
+      "reportDate": "2098-03-01",
+      "status": "submitted",
+      "createdAt": "2026-03-12 15:49:38"
+    },
+    {
+      "id": "300044",
+      "reportType": "Pastry Orders",
+      "location": "TN",
+      "reportDate": "2099-11-29",
+      "status": "submitted",
+      "createdAt": "2026-03-12 15:48:14"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\treportType\tlocation\treportDate\tstatus\tcreatedAt\n300301\tPastry Orders\tON\t2026-03-12\tsubmitted\t2026-03-12 18:33:34\n300282\tPastryDup_mmnsiotv\tTN\t2098-03-01\tsubmitted\t2026-03-12 18:17:25\n300253\tPastryDup_mmnr0ilc\tTN\t2098-03-01\tsubmitted\t2026-03-12 17:35:17\n300223\tPastryDup_mmnpr0qn\tTN\t2098-03-01\tsubmitted\t2026-03-12 16:59:54\n300189\tPastryDup_mmnohrik\tTN\t2098-03-01\tsubmitted\t2026-03-12 16:24:43\n300164\tPastryDup_mmnnz9x8\tTN\t2098-03-01\tsubmitted\t2026-03-12 16:10:20\n300158\tpastry-orders\tON\t2026-03-12\tsubmitted\t2026-03-12 15:58:52\n300138\tPastryDup_mmnncsnr\tTN\t2098-03-01\tsubmitted\t2026-03-12 15:52:52\n300113\tPastryDup_mmnncc3t\tTN\t2098-03-01\tsubmitted\t2026-03-12 15:52:30\n300096\tPastryDup_mmnn91gc\tTN\t2098-03-01\tsubmitted\t2026-03-12 15:49:56\n300079\tPastryDup_mmnn8nbv\tTN\t2098-03-01\tsubmitted\t2026-03-12 15:49:38\n300044\tPastry Orders\tTN\t2099-11-29\tsubmitted\t2026-03-12 15:48:14\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}
