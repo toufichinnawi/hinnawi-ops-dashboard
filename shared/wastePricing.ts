@@ -31,12 +31,12 @@ export const PASTRY_PRICES: Record<string, number> = {
   "Muffin Pistaches": 1.36,
   "Muffin Chocolat": 1.27,
   "Yogurt Granola": 1.77,
-  "Fresh orange juice": 0, // Missing from costing sheet
-  "G\u00e2teau aux Carottes": 0, // Missing from costing sheet
-  "Gateau aux Carottes": 0, // alternate spelling without accents
-  "Granola bag": 0, // Missing from costing sheet
-  "Bagel Chips Bags": 0, // Missing from costing sheet
-  "Maple Pecan Bar": 0, // Missing from costing sheet
+  "Fresh orange juice": 2.40,
+  "Gâteau aux Carottes": 0.85,
+  "Gateau aux Carottes": 0.85, // alternate spelling without accents
+  "Granola bag": 0.70,
+  "Bagel Chips Bags": 0.90,
+  "Maple Pecan Bar": 1.10,
   "Pudding": 1.21,
 };
 

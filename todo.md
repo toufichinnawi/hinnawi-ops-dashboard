@@ -1305,3 +1305,13 @@
 - [x] Root cause: Test data pollution (now cleaned) caused confusing reports in the viewer
 - [x] Identified UX risk: Store dropdown defaults to first alphabetical store (Mackay) — could cause accidental wrong-store submissions
 - [x] Identified inconsistency: Different forms submit location in different formats (storeName vs storeCode vs shortName) — server-side LOCATION_NORMALIZE handles this but it's fragile
+
+# Update Pastry Pricing — Add Missing Item Costs
+- [x] Fresh orange juice: $0 → $2.40
+- [x] Gâteau aux Carottes: $0 → $0.85
+- [x] Granola bag: $0 → $0.70
+- [x] Bagel Chips Bags: $0 → $0.90
+- [x] Maple Pecan Bar: $0 → $1.10
+- [x] Updated shared/wastePricing.ts (single source of truth for all forms)
+- [x] Updated wastePricing.test.ts to reflect new prices (25/25 passing)
+- [x] All 228 tests passing (only Koomi external API failures remain)

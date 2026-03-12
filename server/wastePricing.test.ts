@@ -83,12 +83,13 @@ describe("Waste Pricing — Pastries (updated from COSTING sheet)", () => {
     expect(PASTRY_PRICES["Pudding"]).toBe(1.21);
   });
 
-  it("missing items from COSTING sheet are priced at $0", () => {
-    expect(PASTRY_PRICES["Fresh orange juice"]).toBe(0);
-    expect(PASTRY_PRICES["Gateau aux Carottes"]).toBe(0);
-    expect(PASTRY_PRICES["Granola bag"]).toBe(0);
-    expect(PASTRY_PRICES["Bagel Chips Bags"]).toBe(0);
-    expect(PASTRY_PRICES["Maple Pecan Bar"]).toBe(0);
+  it("previously missing items now have correct prices", () => {
+    expect(PASTRY_PRICES["Fresh orange juice"]).toBe(2.40);
+    expect(PASTRY_PRICES["Gateau aux Carottes"]).toBe(0.85);
+    expect(PASTRY_PRICES["G\u00e2teau aux Carottes"]).toBe(0.85);
+    expect(PASTRY_PRICES["Granola bag"]).toBe(0.70);
+    expect(PASTRY_PRICES["Bagel Chips Bags"]).toBe(0.90);
+    expect(PASTRY_PRICES["Maple Pecan Bar"]).toBe(1.10);
   });
 
   it("default pastry price for unknown items is $0", () => {
