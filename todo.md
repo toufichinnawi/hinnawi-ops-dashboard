@@ -1322,3 +1322,8 @@
 - [x] Fixed: Updated `getPositionLabel()` to extract actual position from `submittedVia` field first, falling back to type-based lookup
 - [x] Updated all 5 call sites (table, CSV export, PDF export, detail dialog) + prop type
 - [x] All 227 tests passing (only pre-existing Koomi + wasteEmail external API failures)
+
+# Bug Fix: wasteEmail.test.ts Sends Real Emails
+- [x] Skipped the "valid input" test that actually sends real emails via MS Graph to toufic@bagelandcafe.com
+- [x] Kept input validation tests (missing subject, missing body, empty input) — these fail at tRPC validation before any email is sent
+- [x] Verified: 3 tests pass, 1 skipped, no real emails sent (was 1 failed due to timeout + 1 real email sent)
