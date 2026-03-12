@@ -1693,9 +1693,30 @@ function PortalDateFilter({
       ? { from: value.from, to: value.to }
       : undefined
   );
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  const goToPrevMonth = () => {
+    if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); }
+    else setCalMonth(calMonth - 1);
+  };
+  const goToNextMonth = () => {
+    const now = new Date();
+    const nextMonth = calMonth === 11 ? 0 : calMonth + 1;
+    const nextYear = calMonth === 11 ? calYear + 1 : calYear;
+    if (nextYear > now.getFullYear() || (nextYear === now.getFullYear() && nextMonth > now.getMonth())) return;
+    if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); }
+    else setCalMonth(calMonth + 1);
+  };
+  const isNextDisabled = (() => {
+    const now = new Date();
+    const nextMonth = calMonth === 11 ? 0 : calMonth + 1;
+    const nextYear = calMonth === 11 ? calYear + 1 : calYear;
+    return nextYear > now.getFullYear() || (nextYear === now.getFullYear() && nextMonth > now.getMonth());
+  })();
 
   const presets = [
     { label: "All Time", getValue: () => ({ from: null, to: null, label: "All Time" }) },
@@ -1763,17 +1784,15 @@ function PortalDateFilter({
                   <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground mb-1">
                     {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d => <div key={d}>{d}</div>)}
                   </div>
-                  {/* Simple month calendar */}
+                  {/* Month calendar with navigation */}
                   {(() => {
                     const now = new Date();
-                    const year = now.getFullYear();
-                    const month = now.getMonth();
-                    const firstDay = new Date(year, month, 1).getDay();
-                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+                    const firstDay = new Date(calYear, calMonth, 1).getDay();
+                    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
                     const cells = [];
                     for (let i = 0; i < firstDay; i++) cells.push(<div key={`e${i}`} />);
                     for (let d = 1; d <= daysInMonth; d++) {
-                      const date = new Date(year, month, d);
+                      const date = new Date(calYear, calMonth, d);
                       const isFrom = stagedRange?.from && date.toDateString() === stagedRange.from.toDateString();
                       const isTo = stagedRange?.to && date.toDateString() === stagedRange.to.toDateString();
                       const inRange = stagedRange?.from && stagedRange?.to && date >= stagedRange.from && date <= stagedRange.to;
@@ -1805,9 +1824,17 @@ function PortalDateFilter({
                     }
                     return (
                       <div>
-                        <p className="text-xs font-medium text-center mb-2">
-                          {now.toLocaleString("en-US", { month: "long", year: "numeric" })}
-                        </p>
+                        <div className="flex items-center justify-between mb-2 px-1">
+                          <button onClick={goToPrevMonth} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-accent text-muted-foreground">
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <p className="text-xs font-medium">
+                            {new Date(calYear, calMonth).toLocaleString("en-US", { month: "long", year: "numeric" })}
+                          </p>
+                          <button onClick={goToNextMonth} disabled={isNextDisabled} className={cn("w-6 h-6 rounded-md flex items-center justify-center hover:bg-accent text-muted-foreground", isNextDisabled && "opacity-30 cursor-not-allowed")}>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                         <div className="grid grid-cols-7 gap-1">{cells}</div>
                       </div>
                     );
@@ -1882,9 +1909,9 @@ function PortalReportsPage({
   const [filterPosition, setFilterPosition] = useState<string>("all");
   const [filterChecklist, setFilterChecklist] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<{ from: Date | null; to: Date | null; label: string }>({
-    from: (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })(),
+    from: (() => { const d = new Date(); d.setDate(d.getDate() - 6); d.setHours(0, 0, 0, 0); return d; })(),
     to: (() => { const d = new Date(); d.setHours(23, 59, 59, 999); return d; })(),
-    label: "Today",
+    label: "Last 7 Days",
   });
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -1926,7 +1953,7 @@ function PortalReportsPage({
     return Array.from(types).sort();
   }, [reports]);
 
-  const hasActiveFilters = filterStore !== "all" || filterPosition !== "all" || filterChecklist !== "all" || dateFilter.label !== "All Time";
+  const hasActiveFilters = filterStore !== "all" || filterPosition !== "all" || filterChecklist !== "all" || dateFilter.label !== "Last 7 Days";
 
   // Fetch flags for all visible reports
   useEffect(() => {
@@ -1946,9 +1973,9 @@ function PortalReportsPage({
     setFilterStore("all");
     setFilterPosition("all");
     setFilterChecklist("all");
-    const t = new Date(); t.setHours(0, 0, 0, 0);
+    const f = new Date(); f.setDate(f.getDate() - 6); f.setHours(0, 0, 0, 0);
     const e = new Date(); e.setHours(23, 59, 59, 999);
-    setDateFilter({ from: t, to: e, label: "Today" });
+    setDateFilter({ from: f, to: e, label: "Last 7 Days" });
   }
 
   async function handleDelete(id: number) {

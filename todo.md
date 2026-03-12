@@ -1185,3 +1185,10 @@
 - [x] Wire backend procedures: production.pastryOrders tRPC procedure + PastryOrdersForm in DirectChecklist + ChecklistViewer
 - [x] Write vitest tests for pastry order procedures (4 tests: empty data, type filtering, param validation, bagel exclusion)
 - [x] Test end-to-end in browser — Portal, Admin Pastry Orders, Pastry Production all verified
+
+# Bug Fix: Reports tab on Managers portal
+- [x] Investigated: default filter was "Today" so reports with past reportDate were hidden on load
+- [x] Fix 1: Changed default date filter from "Today" to "Last 7 Days" so recent reports are visible immediately
+- [x] Fix 2: Added month navigation arrows (prev/next) to the custom calendar so users can browse previous months
+- [x] Tested: 15 reports visible on load, calendar navigates to Feb 2026, report detail views work for both Bagel Orders and Waste Reports
+- [x] All 207 tests passing
