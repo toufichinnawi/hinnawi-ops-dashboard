@@ -1706,6 +1706,19 @@ function PortalDateFilter({
   );
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
   const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
+
+  // Calculate fixed position when dropdown opens
+  useEffect(() => {
+    if (open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [open]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1759,6 +1772,7 @@ function PortalDateFilter({
   return (
     <div className="relative">
       <Button
+        ref={btnRef}
         variant="outline"
         onClick={() => setOpen(!open)}
         className="h-9 px-3 gap-2 text-sm font-normal bg-card border-border/60 hover:bg-accent/50"
@@ -1770,9 +1784,12 @@ function PortalDateFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 z-50 bg-card border border-border rounded-xl shadow-xl">
+          <div
+            className="fixed z-50 bg-card border border-border rounded-xl shadow-xl"
+            style={{ top: dropdownPos.top, right: dropdownPos.right, minWidth: 440 }}
+          >
             <div className="flex">
-              <div className="border-r border-border p-2 space-y-0.5 min-w-[130px]">
+              <div className="border-r border-border p-2 space-y-0.5 min-w-[130px] shrink-0">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-2 py-1.5 font-medium">Quick Select</p>
                 {presets.map((preset) => (
                   <button
@@ -1789,7 +1806,7 @@ function PortalDateFilter({
                   </button>
                 ))}
               </div>
-              <div className="p-3">
+              <div className="p-3 min-w-[270px]">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-1 pb-2 font-medium">Custom Range</p>
                 <div className="text-sm">
                   <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground mb-1">

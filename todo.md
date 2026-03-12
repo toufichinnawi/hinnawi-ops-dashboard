@@ -1217,3 +1217,11 @@
 - [x] Updated salesBagelOrders.test.ts to use overwrite:true and unique run IDs (6 tests passing)
 - [x] Updated improvements.test.ts to test 409 behavior explicitly (all tests passing)
 - [x] All 212 tests passing across 25 test files (only 2 Koomi integration failures from external API)
+
+# Bug Fix: Portal Reports tab date filter calendar is cut off / messed up
+- [x] Diagnosed root cause: overflow-hidden parent containers (MAIN + wrapper DIV) clipping the absolutely-positioned dropdown
+- [x] Converted PortalDateFilter dropdown from absolute to fixed positioning with dynamic rect calculation via useRef + useEffect
+- [x] Calendar now fully visible: all 7 day headers (Su-Sa), month name (March 2026), navigation arrows, all 31 days, Apply button
+- [x] Fix applies to all portal positions — PortalDateFilter is shared across Ops Manager, Store Manager, and Assistant Manager Reports tabs
+- [x] Verified working on Store Manager portal Reports tab — Today, Last 7 Days, custom range all functional
+- [x] All 212 tests passing (only Koomi external API failures remain)
