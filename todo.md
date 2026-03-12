@@ -1315,3 +1315,10 @@
 - [x] Updated shared/wastePricing.ts (single source of truth for all forms)
 - [x] Updated wastePricing.test.ts to reflect new prices (25/25 passing)
 - [x] All 228 tests passing (only Koomi external API failures remain)
+
+# Bug Fix: Leftover/Waste Report Shows Wrong Position Label
+- [x] Investigated: position label stored as `submittedVia: "Public - Staff"` in report data JSON
+- [x] Root cause: `getPositionLabel()` iterates POSITION_CHECKLISTS and returns first match; "store-manager" comes before "staff" so waste reports always showed "Store Manager"
+- [x] Fixed: Updated `getPositionLabel()` to extract actual position from `submittedVia` field first, falling back to type-based lookup
+- [x] Updated all 5 call sites (table, CSV export, PDF export, detail dialog) + prop type
+- [x] All 227 tests passing (only pre-existing Koomi + wasteEmail external API failures)

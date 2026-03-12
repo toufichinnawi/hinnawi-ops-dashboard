@@ -2043,7 +2043,17 @@ function PortalReportsPage({
     return "\u2014";
   }
 
-  function getPositionLabel(reportType: string): string {
+  function getPositionLabel(reportType: string, report?: any): string {
+    // First, try to extract the actual position from the submittedVia field
+    // Format is "Public - <PositionLabel>" e.g. "Public - Staff", "Public - Store Manager"
+    if (report) {
+      const payload = parsePayload(report.data);
+      const via = payload?.submittedVia;
+      if (typeof via === "string" && via.startsWith("Public - ")) {
+        return via.replace("Public - ", "");
+      }
+    }
+    // Fallback: infer from report type (first matching position)
     for (const [, config] of Object.entries(POSITION_CHECKLISTS)) {
       if (config.checklists.includes(reportType as ChecklistType)) return config.label;
     }
@@ -2069,7 +2079,7 @@ function PortalReportsPage({
       return [
         r.normalizedLocation || r.location || "",
         r.reportDate || "",
-        getPositionLabel(r.reportType),
+        getPositionLabel(r.reportType, r),
         info?.label || r.reportType,
         getSubmitter(r),
         r.status === "draft" ? "NOT SUBMITTED" : "SUBMITTED",
@@ -2114,7 +2124,7 @@ function PortalReportsPage({
         return `<tr>
           <td>${r.normalizedLocation || r.location || ""}</td>
           <td>${r.reportDate || ""}</td>
-          <td>${getPositionLabel(r.reportType)}</td>
+          <td>${getPositionLabel(r.reportType, r)}</td>
           <td>${info?.label || r.reportType}</td>
           <td>${getSubmitter(r)}</td>
           <td style="text-align:center">${statusLabel}</td>
@@ -2300,7 +2310,7 @@ function PortalReportsPage({
               <tbody>
                 {filtered.map((r) => {
                   const info = ALL_CHECKLISTS[r.reportType as ChecklistType];
-                  const posLabel = getPositionLabel(r.reportType);
+                  const posLabel = getPositionLabel(r.reportType, r);
                   const flagValue = reportFlags[r.id] || "none";
                   const flagDef = FLAG_OPTIONS.find(f => f.value === flagValue);
                   return (
@@ -2449,7 +2459,7 @@ function ReportDetailDialog({
   canEditDelete: boolean;
   onDelete: (id: number) => void;
   getSubmitter: (r: any) => string;
-  getPositionLabel: (rt: string) => string;
+  getPositionLabel: (rt: string, report?: any) => string;
   position: PositionDef;
   onFlagChanged: (reportId: number, flag: string) => void;
 }) {
@@ -2594,7 +2604,7 @@ function ReportDetailDialog({
           </div>
           <div>
             <p className="text-muted-foreground text-xs">Position</p>
-            <p className="font-medium mt-0.5">{getPositionLabel(report.reportType)}</p>
+            <p className="font-medium mt-0.5">{getPositionLabel(report.reportType, report)}</p>
           </div>
           <div>
             <p className="text-muted-foreground text-xs">Submitted By</p>
