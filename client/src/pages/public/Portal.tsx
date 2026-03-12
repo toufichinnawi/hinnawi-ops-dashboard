@@ -985,10 +985,11 @@ function PortalInfoPage({
   // Filter to store if locked
   const filteredReports = useMemo(() => {
     if (!store) return normalizedReports; // Ops Manager sees all
-    const storeCode = (store.storeCode || "").toUpperCase();
+    // Normalize the store code through the same map used for reports
+    const normalizedStoreCode = LOCATION_NORMALIZE[store.storeCode] || LOCATION_NORMALIZE[store.storeName] || (store.storeCode || "").toUpperCase();
     const storeName = store.storeName;
     return normalizedReports.filter(r =>
-      r.normalizedLocation === storeCode ||
+      r.normalizedLocation === normalizedStoreCode ||
       r.normalizedLocation === storeName ||
       r.location === storeName ||
       r.location === store.storeCode

@@ -1225,3 +1225,10 @@
 - [x] Fix applies to all portal positions — PortalDateFilter is shared across Ops Manager, Store Manager, and Assistant Manager Reports tabs
 - [x] Verified working on Store Manager portal Reports tab — Today, Last 7 Days, custom range all functional
 - [x] All 212 tests passing (only Koomi external API failures remain)
+
+# Bug Fix: Portal Reports tab empty for Store Manager and Assistant Manager
+- [x] Root cause: store.storeCode (e.g. "ontario") was uppercased to "ONTARIO" but reports use abbreviation "ON" — mismatch in LOCATION_NORMALIZE map lookup
+- [x] Fix: Normalize storeCode through the same LOCATION_NORMALIZE map used for report locations (ontario→ON, mk→MK, pk→PK, tunnel→TN)
+- [x] Verified: Ontario Store Manager now shows 9 reports correctly (was showing "No Reports Found")
+- [x] Fix applies to all positions — PortalReportsPage filtering is shared
+- [x] All 212 tests passing (only Koomi external API failures remain)
