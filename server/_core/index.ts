@@ -216,12 +216,26 @@ async function startServer() {
         const { checkExistingSalesOrder } = await import("../db");
         const existingSalesOrder = await checkExistingSalesOrder(normalizedLocation, normalizedReportType, reportDate, clientName);
         if (existingSalesOrder) {
+          if (!overwrite) {
+            return res.status(409).json({
+              error: "duplicate",
+              message: `A ${reportType} for this client on ${reportDate} already exists.`,
+              existing: { id: existingSalesOrder.id, submitterName: (existingSalesOrder as any).data?.submitterName || "Unknown", submittedAt: existingSalesOrder.createdAt },
+            });
+          }
           await deleteReportSubmission(existingSalesOrder.id);
         }
       } else {
-        // Auto-overwrite: delete any existing submitted report for the same store/type/date
+        // Check for existing submitted report for the same store/type/date
         const existing = await checkExistingReport(normalizedLocation, normalizedReportType, reportDate);
         if (existing) {
+          if (!overwrite) {
+            return res.status(409).json({
+              error: "duplicate",
+              message: `A ${reportType} for ${location} on ${reportDate} has already been submitted.`,
+              existing: { id: existing.id, submitterName: (existing as any).data?.submitterName || "Unknown", submittedAt: existing.createdAt },
+            });
+          }
           await deleteReportSubmission(existing.id);
         }
       }

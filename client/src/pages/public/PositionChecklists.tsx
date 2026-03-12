@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/StarRating";
 import { CheckCircle2, ClipboardCheck, ArrowLeft, ChevronRight, Save, Camera, Lock } from "lucide-react";
+import { useDuplicateReportCheck } from "@/hooks/useDuplicateReportCheck";
 import { toast } from "sonner";
 import { useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -446,37 +447,19 @@ function SuccessScreen({ message, onNew, onBack }: { message: string; onNew: () 
   );
 }
 
-async function submitPublicReport(data: { submitterName: string; reportType: string; location: string; reportDate: string; data: any; totalScore?: string | null; overwrite?: boolean }) {
-  const res = await fetch("/api/public/submit-report", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...data, overwrite: true }),
-  });
-  if (!res.ok) throw new Error("Failed to submit");
-  return res.json();
-}
-
-// Simplified submit hook - always auto-overwrites (no duplicate dialog needed)
+// Shared duplicate-check hook — first tries overwrite:false, shows dialog on 409, then re-submits with overwrite:true
 function useDuplicateCheck() {
+  const { submitWithCheck, duplicateDialog } = useDuplicateReportCheck();
+  // Adapter to match existing call sites: submitWithDuplicateCheck(payload, onSuccess, onError, setSubmitting)
   async function submitWithDuplicateCheck(
     reportData: { submitterName: string; reportType: string; location: string; reportDate: string; data: any; totalScore?: string | null },
     onSuccess: () => void,
     onError: (msg: string) => void,
     setSubmitting: (v: boolean) => void,
   ) {
-    setSubmitting(true);
-    try {
-      await submitPublicReport(reportData);
-      onSuccess();
-    } catch {
-      onError("Failed to submit");
-    } finally {
-      setSubmitting(false);
-    }
+    await submitWithCheck(reportData, onSuccess, onError, setSubmitting);
   }
-
-  // duplicateDialog is null - no longer needed since backend auto-overwrites
-  return { submitWithDuplicateCheck, duplicateDialog: null };
+  return { submitWithDuplicateCheck, duplicateDialog };
 }
 
 // ─── Manager Checklist Form (formerly Operations Checklist) ───

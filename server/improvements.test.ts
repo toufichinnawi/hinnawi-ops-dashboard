@@ -87,10 +87,11 @@ describe("Improvement Batch — March 5, 2026", () => {
     let createdId: number;
 
     it("should create a new report successfully", async () => {
+      // Use overwrite:true to handle any leftover data from prior runs
       const res = await fetch(`${BASE_URL}/api/public/submit-report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(testReport),
+        body: JSON.stringify({ ...testReport, overwrite: true }),
       });
       expect(res.status).toBe(200);
       const json = await res.json();
@@ -99,13 +100,25 @@ describe("Improvement Batch — March 5, 2026", () => {
       createdId = json.id;
     });
 
-    it("should auto-overwrite when duplicate exists (no 409)", async () => {
+    it("should return 409 when duplicate exists with overwrite:false", async () => {
       const res = await fetch(`${BASE_URL}/api/public/submit-report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(testReport),
+        body: JSON.stringify({ ...testReport, overwrite: false }),
       });
-      // Backend now auto-overwrites instead of returning 409
+      // Backend returns 409 when overwrite is false and duplicate exists
+      expect(res.status).toBe(409);
+      const json = await res.json();
+      expect(json.error).toBe("duplicate");
+      expect(json.existing).toBeDefined();
+    });
+
+    it("should overwrite when duplicate exists with overwrite:true", async () => {
+      const res = await fetch(`${BASE_URL}/api/public/submit-report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...testReport, overwrite: true }),
+      });
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.success).toBe(true);

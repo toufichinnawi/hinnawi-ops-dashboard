@@ -28,6 +28,21 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { PhotoUpload, type UploadedPhoto } from "@/components/PhotoUpload";
 import { calcBagelCost, calcPastryCost, calcCKCost } from "@shared/wastePricing";
+import { useDuplicateReportCheck } from "@/hooks/useDuplicateReportCheck";
+
+// Shared duplicate-check adapter — first tries overwrite:false, shows dialog on 409, then re-submits with overwrite:true
+function useDuplicateCheck() {
+  const { submitWithCheck, duplicateDialog } = useDuplicateReportCheck();
+  async function submitWithDuplicateCheck(
+    reportData: { submitterName: string; reportType: string; location: string; reportDate: string; data: any; totalScore?: string | null },
+    onSuccess: () => void,
+    onError: (msg: string) => void,
+    setSubmitting: (v: boolean) => void,
+  ) {
+    await submitWithCheck(reportData, onSuccess, onError, setSubmitting);
+  }
+  return { submitWithDuplicateCheck, duplicateDialog };
+}
 
 // ─── Checklist Data Definitions (same as ChecklistViewer) ───
 
@@ -193,22 +208,25 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
   const [tasks, setTasks] = useState(() => OPS_TASKS.map(() => ({ rating: 0, isNA: false, comment: "" })));
   const [comments, setComments] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
   const ratedTasks = tasks.filter((t) => !t.isNA && t.rating > 0);
   const avg = ratedTasks.length > 0 ? (ratedTasks.reduce((s, t) => s + t.rating, 0) / ratedTasks.length).toFixed(2) : "0.00";
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!managerName.trim() || !selectedStore) { toast.error("Please fill in your name and select a store"); return; }
     if (ratedTasks.length === 0) { toast.error("Please rate at least one item"); return; }
-    const payload = {
-      reportType: "manager-checklist", location: selectedStore, submitterName: managerName, reportDate: weekStart,
-      data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, averageScore: avg },
-      totalScore: avg,
-      overwrite: true,
-    };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    setSubmitted(true);
-    toast.success("Checklist submitted!");
+    await submitWithDuplicateCheck(
+      {
+        reportType: "manager-checklist", location: selectedStore, submitterName: managerName, reportDate: weekStart,
+        data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, averageScore: avg },
+        totalScore: avg,
+      },
+      () => { setSubmitted(true); toast.success("Checklist submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
   if (submitted) return (
@@ -260,7 +278,8 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
         <Label>Final Comments</Label>
         <Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="General comments..." rows={3} />
       </CardContent></Card>
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Checklist</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Checklist"}</Button></div>
+      {duplicateDialog}
     </div>
   );
 }
@@ -278,31 +297,33 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
   const [notes, setNotes] = useState("");
   const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog: auditDuplicateDialog } = useDuplicateCheck();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!auditorName.trim() || !selectedStore) { toast.error("Please fill in your name and select a store"); return; }
-    // Compute average score across all sections
     const allRatings = Object.values(ratings).filter(v => v > 0);
     const avg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 0;
-    // Collect photo URLs per section
     const photoUrls: Record<string, string[]> = {};
     for (const [section, photos] of Object.entries(sectionPhotos)) {
       const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
       if (urls.length > 0) photoUrls[section] = urls;
     }
-    const payload = {
-      reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate: weekStart,
-      data: {
-        dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd,
-        sections: AUDIT_SECTIONS.map(s => ({ title: s, rating: ratings[s] || 0, comment: sectionComments[s] || "", photos: photoUrls[s] || [] })),
-        notes,
-        averageScore: avg.toFixed(2),
+    await submitWithDuplicateCheck(
+      {
+        reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate: weekStart,
+        data: {
+          dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd,
+          sections: AUDIT_SECTIONS.map(s => ({ title: s, rating: ratings[s] || 0, comment: sectionComments[s] || "", photos: photoUrls[s] || [] })),
+          notes,
+          averageScore: avg.toFixed(2),
+        },
+        totalScore: avg.toFixed(2),
       },
-      totalScore: avg.toFixed(2),
-    };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, overwrite: true }) });
-    setSubmitted(true);
-    toast.success("Audit submitted!");
+      () => { setSubmitted(true); toast.success("Audit submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
   if (submitted) return (
@@ -369,7 +390,8 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
         );
       })}
       <Card><CardContent className="pt-6 space-y-3"><Label>Additional Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="General notes..." rows={3} /></CardContent></Card>
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Audit</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Audit"}</Button></div>
+      {auditDuplicateDialog}
     </div>
   );
 }
@@ -505,16 +527,20 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
   const [digital, setDigital] = useState<DigitalSectionData>({ googleReviews: "", howContribute: "" });
   const [food, setFood] = useState<ScorecardSectionData>(initScorecardSection());
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog: scorecardDuplicateDialog } = useDuplicateCheck();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!managerName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
-    const payload = {
-      reportType: "weekly-scorecard", location: selectedStore, submitterName: managerName, reportDate: weekStart,
-      data: { dateEntered, weekOf: weekOfLabel, weekOfStart: weekStart, weekOfEnd: weekEnd, sales, labour, digital, food },
-    };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, overwrite: true }) });
-    setSubmitted(true);
-    toast.success("Scorecard submitted!");
+    await submitWithDuplicateCheck(
+      {
+        reportType: "weekly-scorecard", location: selectedStore, submitterName: managerName, reportDate: weekStart,
+        data: { dateEntered, weekOf: weekOfLabel, weekOfStart: weekStart, weekOfEnd: weekEnd, sales, labour, digital, food },
+      },
+      () => { setSubmitted(true); toast.success("Scorecard submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
   if (submitted) return (
@@ -565,8 +591,9 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
 
       <div className="flex gap-3">
         <Button variant="outline" onClick={onBack}>Cancel</Button>
-        <Button onClick={handleSubmit} className="flex-1 bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]"><CheckCircle2 className="w-4 h-4 mr-2" />Submit Scorecard</Button>
+        <Button onClick={handleSubmit} disabled={submitting} className="flex-1 bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]"><CheckCircle2 className="w-4 h-4 mr-2" />{submitting ? "Submitting..." : "Submit Scorecard"}</Button>
       </div>
+      {scorecardDuplicateDialog}
     </div>
   );
 }
@@ -581,20 +608,24 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
   const [ratings, setRatings] = useState(() => EVAL_CRITERIA.map(() => ({ rating: 0, comment: "" })));
   const [overallComments, setOverallComments] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog: perfDuplicateDialog } = useDuplicateCheck();
 
   const rated = ratings.filter((r) => r.rating > 0);
   const avg = rated.length > 0 ? (rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(2) : "0.00";
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!evaluatorName.trim() || !employeeName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
-    const payload = {
-      reportType: "performance-evaluation", location: selectedStore, submitterName: evaluatorName, reportDate,
-      data: { employeeName, employeePosition, criteria: EVAL_CRITERIA.map((c, i) => ({ ...c, ...ratings[i] })), overallComments },
-      totalScore: avg,
-    };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, overwrite: true }) });
-    setSubmitted(true);
-    toast.success("Evaluation submitted!");
+    await submitWithDuplicateCheck(
+      {
+        reportType: "performance-evaluation", location: selectedStore, submitterName: evaluatorName, reportDate,
+        data: { employeeName, employeePosition, criteria: EVAL_CRITERIA.map((c, i) => ({ ...c, ...ratings[i] })), overallComments },
+        totalScore: avg,
+      },
+      () => { setSubmitted(true); toast.success("Evaluation submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
   if (submitted) return (
@@ -632,7 +663,8 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
         </Card>
       ))}
       <Card><CardContent className="pt-6 space-y-3"><Label>Overall Comments</Label><Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment and recommendations..." rows={3} /></CardContent></Card>
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Evaluation</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Evaluation"}</Button></div>
+      {perfDuplicateDialog}
     </div>
   );
 }
@@ -840,6 +872,7 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
   const [ckRows, setCkRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_CK_ITEMS, "unit"));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog: wasteDuplicateDialog } = useDuplicateCheck();
 
   // Cost calculation helper
   const calcTotalCosts = () => {
@@ -931,30 +964,19 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
   const handleSubmit = async () => {
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
     if (!selectedStore) { toast.error("Please select a store"); return; }
-    setSubmitting(true);
-    try {
-      const data = collectData();
-      const payload = {
+    const data = collectData();
+    await submitWithDuplicateCheck(
+      {
         submitterName: submitterName.trim(),
         reportType: "waste-report",
         location: selectedStore,
         reportDate,
         data,
-        overwrite: true,
-      };
-      const res = await fetch("/api/public/submit-report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Submit failed");
-      setSubmitted(true);
-      toast.success("Waste report submitted!");
-    } catch {
-      toast.error("Failed to submit report");
-    } finally {
-      setSubmitting(false);
-    }
+      },
+      () => { setSubmitted(true); toast.success("Waste report submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
   const handleSendEmail = async () => {
@@ -1077,6 +1099,7 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
           Send by Email
         </Button>
       </div>
+      {wasteDuplicateDialog}
     </div>
   );
 }
@@ -1090,19 +1113,23 @@ function EquipmentMaintenanceForm({ onBack }: { onBack: () => void }) {
   const [weekly, setWeekly] = useState(() => EQUIP_WEEKLY.map(() => ({ checked: false, initial: "" })));
   const [monthly, setMonthly] = useState(() => EQUIP_MONTHLY.map(() => ({ checked: false, initial: "" })));
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog: equipDuplicateDialog } = useDuplicateCheck();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!techName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
     const total = daily.length + weekly.length + monthly.length;
     const checked = [...daily, ...weekly, ...monthly].filter((i) => i.checked).length;
-    const payload = {
-      reportType: "equipment-maintenance", location: selectedStore, submitterName: techName, reportDate,
-      data: { daily: EQUIP_DAILY.map((e, i) => ({ ...e, ...daily[i] })), weekly: EQUIP_WEEKLY.map((e, i) => ({ ...e, ...weekly[i] })), monthly: EQUIP_MONTHLY.map((e, i) => ({ ...e, ...monthly[i] })) },
-      totalScore: `${checked}/${total}`,
-    };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, overwrite: true }) });
-    setSubmitted(true);
-    toast.success("Maintenance checklist submitted!");
+    await submitWithDuplicateCheck(
+      {
+        reportType: "equipment-maintenance", location: selectedStore, submitterName: techName, reportDate,
+        data: { daily: EQUIP_DAILY.map((e, i) => ({ ...e, ...daily[i] })), weekly: EQUIP_WEEKLY.map((e, i) => ({ ...e, ...weekly[i] })), monthly: EQUIP_MONTHLY.map((e, i) => ({ ...e, ...monthly[i] })) },
+        totalScore: `${checked}/${total}`,
+      },
+      () => { setSubmitted(true); toast.success("Maintenance checklist submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
   const renderEquipSection = (sectionTitle: string, items: { equipment: string; task: string }[], data: { checked: boolean; initial: string }[], setData: React.Dispatch<React.SetStateAction<{ checked: boolean; initial: string }[]>>) => (
@@ -1140,7 +1167,8 @@ function EquipmentMaintenanceForm({ onBack }: { onBack: () => void }) {
       {renderEquipSection("Daily Checks", EQUIP_DAILY, daily, setDaily)}
       {renderEquipSection("Weekly Checks", EQUIP_WEEKLY, weekly, setWeekly)}
       {renderEquipSection("Monthly Checks", EQUIP_MONTHLY, monthly, setMonthly)}
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Checklist</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Checklist"}</Button></div>
+      {equipDuplicateDialog}
     </div>
   );
 }
@@ -1154,20 +1182,24 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
   const [ratings, setRatings] = useState(() => TRAINING_AREAS.map((a) => a.items.map(() => ({ rating: 0, comment: "" }))));
   const [overallComments, setOverallComments] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog: trainingDuplicateDialog } = useDuplicateCheck();
 
   const allRatings = ratings.flat().filter((r) => r.rating > 0);
   const avg = allRatings.length > 0 ? (allRatings.reduce((s, r) => s + r.rating, 0) / allRatings.length).toFixed(2) : "0.00";
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!trainerName.trim() || !traineeName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
-    const payload = {
-      reportType: "training-evaluation", location: selectedStore, submitterName: trainerName, reportDate,
-      data: { traineeName, areas: TRAINING_AREAS.map((a, ai) => ({ title: a.title, items: a.items.map((item, ii) => ({ item, ...ratings[ai][ii] })) })), overallComments },
-      totalScore: avg,
-    };
-    fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, overwrite: true }) });
-    setSubmitted(true);
-    toast.success("Training evaluation submitted!");
+    await submitWithDuplicateCheck(
+      {
+        reportType: "training-evaluation", location: selectedStore, submitterName: trainerName, reportDate,
+        data: { traineeName, areas: TRAINING_AREAS.map((a, ai) => ({ title: a.title, items: a.items.map((item, ii) => ({ item, ...ratings[ai][ii] })) })), overallComments },
+        totalScore: avg,
+      },
+      () => { setSubmitted(true); toast.success("Training evaluation submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
   if (submitted) return (
@@ -1206,11 +1238,11 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
         </Card>
       ))}
       <Card><CardContent className="pt-6 space-y-3"><Label>Overall Comments</Label><Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment..." rows={3} /></CardContent></Card>
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">Submit Evaluation</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Evaluation"}</Button></div>
+      {trainingDuplicateDialog}
     </div>
   );
 }
-
 function BagelOrdersForm({ onBack }: { onBack: () => void }) {
   // Admin can select any location including Sales
   const [selectedLocation, setSelectedLocation] = useState("sales");
@@ -1222,6 +1254,7 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
   const [itemUnits, setItemUnits] = useState<Record<string, "dozen" | "unit" | "box">>(() => Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog: bagelDuplicateDialog } = useDuplicateCheck();
 
   const locationLabel = isSales ? "Sales" : (stores.find(s => s.shortName === selectedLocation)?.name || selectedLocation);
 
@@ -1232,7 +1265,6 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
       ...(isSales ? { clientName: clientName.trim() } : {}),
       orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: itemUnits[type] || "dozen" })),
     },
-    overwrite: false,
   });
 
   const handleSubmit = async () => {
@@ -1240,14 +1272,12 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
     if (!ordererName.trim()) { toast.error("Please enter your name"); return; }
     if (isSales && !clientName.trim()) { toast.error("Please enter the client name"); return; }
     if (!orderForDate) { toast.error("Please select the order date"); return; }
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload()) });
-      if (!res.ok) throw new Error("Submit failed");
-      setSubmitted(true);
-      toast.success(`Bagel order submitted for ${locationLabel}${isSales ? ` — ${clientName}` : ""}!`);
-    } catch { toast.error("Failed to submit"); }
-    finally { setSubmitting(false); }
+    await submitWithDuplicateCheck(
+      buildPayload(),
+      () => { setSubmitted(true); toast.success(`Bagel order submitted for ${locationLabel}${isSales ? ` — ${clientName}` : ""}!`); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
   if (submitted) return (
@@ -1332,7 +1362,7 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
         </div>
       </CardContent></Card>
       <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Order"}</Button></div>
-
+      {bagelDuplicateDialog}
     </div>
   );
 }
@@ -1346,6 +1376,7 @@ function PastryOrdersForm({ onBack }: { onBack: () => void }) {
   const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(PASTRY_ITEMS.map(t => [t, ""])));
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog: pastryDuplicateDialog } = useDuplicateCheck();
 
   const locationLabel = stores.find(s => s.shortName === selectedLocation)?.name || selectedLocation;
 
@@ -1355,21 +1386,18 @@ function PastryOrdersForm({ onBack }: { onBack: () => void }) {
       orderForDate,
       orders: PASTRY_ITEMS.map(type => ({ type, quantity: quantities[type] || "0", unit: "unit" })),
     },
-    overwrite: false,
   });
 
   const handleSubmit = async () => {
     if (!selectedLocation) { toast.error("Please select a location"); return; }
     if (!ordererName.trim()) { toast.error("Please enter your name"); return; }
     if (!orderForDate) { toast.error("Please select the order date"); return; }
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/public/submit-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildPayload()) });
-      if (!res.ok) throw new Error("Submit failed");
-      setSubmitted(true);
-      toast.success(`Pastry order submitted for ${locationLabel}!`);
-    } catch { toast.error("Failed to submit"); }
-    finally { setSubmitting(false); }
+    await submitWithDuplicateCheck(
+      buildPayload(),
+      () => { setSubmitted(true); toast.success(`Pastry order submitted for ${locationLabel}!`); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
   };
 
   if (submitted) return (
@@ -1431,6 +1459,7 @@ function PastryOrdersForm({ onBack }: { onBack: () => void }) {
         </div>
       </CardContent></Card>
       <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-rose-500 text-white hover:bg-rose-600">{submitting ? "Submitting..." : "Submit Order"}</Button></div>
+      {pastryDuplicateDialog}
     </div>
   );
 }
