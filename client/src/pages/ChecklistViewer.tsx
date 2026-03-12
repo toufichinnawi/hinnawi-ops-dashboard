@@ -1103,7 +1103,7 @@ function WasteTable({ title, items, rows, onChange, qtyTypes, costFn }: {
   let sectionWasteCost = 0;
   items.forEach((item) => {
     const row = rows[item];
-    if (!row || !row.enabled) return;
+    if (!row) return;
     const lQty = parseFloat(row.leftover) || 0;
     const wQty = parseFloat(row.waste) || 0;
     if (lQty > 0) sectionLeftoverCost += costFn(item, lQty, row.leftoverQty);
@@ -1141,33 +1141,18 @@ function WasteTable({ title, items, rows, onChange, qtyTypes, costFn }: {
               if (!row) return null;
               const lQty = parseFloat(row.leftover) || 0;
               const wQty = parseFloat(row.waste) || 0;
-              const leftoverCost = row.enabled && lQty > 0 ? costFn(item, lQty, row.leftoverQty) : 0;
-              const wasteCost = row.enabled && wQty > 0 ? costFn(item, wQty, row.wasteQty) : 0;
+              const leftoverCost = lQty > 0 ? costFn(item, lQty, row.leftoverQty) : 0;
+              const wasteCost = wQty > 0 ? costFn(item, wQty, row.wasteQty) : 0;
               return (
-                <tr key={item} className={cn("border-b border-border/30 last:border-0", !row.enabled && "opacity-40")}>
+                <tr key={item} className="border-b border-border/30 last:border-0">
                   <td className="py-2 pr-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => updateRow(item, "enabled", !row.enabled)}
-                        className={cn(
-                          "w-8 h-5 rounded-full transition-colors relative flex-shrink-0",
-                          row.enabled ? "bg-[#D4A853]" : "bg-muted"
-                        )}
-                      >
-                        <span className={cn(
-                          "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
-                          row.enabled ? "translate-x-3.5" : "translate-x-0.5"
-                        )} />
-                      </button>
-                      <span className="text-sm font-medium truncate">{item}</span>
-                    </div>
+                    <span className="text-sm font-medium truncate">{item}</span>
                   </td>
                   <td className="py-2 px-2">
-                    <Input type="number" min="0" step="0.1" value={row.leftover} onChange={(e) => updateRow(item, "leftover", e.target.value)} disabled={!row.enabled} className="h-8 w-[60px] text-sm" />
+                    <Input type="number" min="0" step="0.1" value={row.leftover} onChange={(e) => updateRow(item, "leftover", e.target.value)} className="h-8 w-[60px] text-sm" />
                   </td>
                   <td className="py-2 px-2">
-                    <select value={row.leftoverQty} onChange={(e) => updateRow(item, "leftoverQty", e.target.value)} disabled={!row.enabled} className="h-8 w-[75px] text-sm rounded-md border border-border bg-background px-1.5">
+                    <select value={row.leftoverQty} onChange={(e) => updateRow(item, "leftoverQty", e.target.value)} className="h-8 w-[75px] text-sm rounded-md border border-border bg-background px-1.5">
                       {qtyTypes.map((q: string) => <option key={q} value={q}>{q}</option>)}
                     </select>
                   </td>
@@ -1179,10 +1164,10 @@ function WasteTable({ title, items, rows, onChange, qtyTypes, costFn }: {
                     )}
                   </td>
                   <td className="py-2 px-2">
-                    <Input type="number" min="0" step="0.1" value={row.waste} onChange={(e) => updateRow(item, "waste", e.target.value)} disabled={!row.enabled} className="h-8 w-[60px] text-sm" />
+                    <Input type="number" min="0" step="0.1" value={row.waste} onChange={(e) => updateRow(item, "waste", e.target.value)} className="h-8 w-[60px] text-sm" />
                   </td>
                   <td className="py-2 px-2">
-                    <select value={row.wasteQty} onChange={(e) => updateRow(item, "wasteQty", e.target.value)} disabled={!row.enabled} className="h-8 w-[75px] text-sm rounded-md border border-border bg-background px-1.5">
+                    <select value={row.wasteQty} onChange={(e) => updateRow(item, "wasteQty", e.target.value)} className="h-8 w-[75px] text-sm rounded-md border border-border bg-background px-1.5">
                       {qtyTypes.map((q: string) => <option key={q} value={q}>{q}</option>)}
                     </select>
                   </td>
@@ -1194,7 +1179,7 @@ function WasteTable({ title, items, rows, onChange, qtyTypes, costFn }: {
                     )}
                   </td>
                   <td className="py-2 pl-2">
-                    <Input value={row.comment} onChange={(e) => updateRow(item, "comment", e.target.value)} disabled={!row.enabled} className="h-8 text-sm" placeholder="..." />
+                    <Input value={row.comment} onChange={(e) => updateRow(item, "comment", e.target.value)} className="h-8 text-sm" placeholder="..." />
                   </td>
                 </tr>
               );
@@ -1221,21 +1206,18 @@ function WasteReportForm({ storeCode: initialStoreCode, storeName: _sn3, positio
     let leftoverTotal = 0;
     let wasteTotal = 0;
     Object.entries(bagelRows).forEach(([, r]) => {
-      if (!r.enabled) return;
       const lQ = parseFloat(r.leftover) || 0;
       const wQ = parseFloat(r.waste) || 0;
       if (lQ > 0) leftoverTotal += calcBagelCost(lQ, r.leftoverQty);
       if (wQ > 0) wasteTotal += calcBagelCost(wQ, r.wasteQty);
     });
     Object.entries(pastryRows).forEach(([item, r]) => {
-      if (!r.enabled) return;
       const lQ = parseFloat(r.leftover) || 0;
       const wQ = parseFloat(r.waste) || 0;
       if (lQ > 0) leftoverTotal += calcPastryCost(item, lQ);
       if (wQ > 0) wasteTotal += calcPastryCost(item, wQ);
     });
     Object.entries(ckRows).forEach(([item, r]) => {
-      if (!r.enabled) return;
       const lQ = parseFloat(r.leftover) || 0;
       const wQ = parseFloat(r.waste) || 0;
       if (lQ > 0) leftoverTotal += calcCKCost(item, lQ, r.leftoverQty);
@@ -1249,7 +1231,7 @@ function WasteReportForm({ storeCode: initialStoreCode, storeName: _sn3, positio
   const collectData = () => {
     const collect = (rows: Record<string, WasteRow>) =>
       Object.entries(rows)
-        .filter(([, r]) => r.enabled && (r.leftover || r.waste))
+        .filter(([, r]) => r.leftover || r.waste)
         .map(([item, r]) => ({
           item,
           leftover: r.leftover ? `${r.leftover} ${r.leftoverQty}` : "",

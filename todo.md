@@ -1327,3 +1327,10 @@
 - [x] Skipped the "valid input" test that actually sends real emails via MS Graph to toufic@bagelandcafe.com
 - [x] Kept input validation tests (missing subject, missing body, empty input) — these fail at tRPC validation before any email is sent
 - [x] Verified: 3 tests pass, 1 skipped, no real emails sent (was 1 failed due to timeout + 1 real email sent)
+
+# Remove Toggle Switches from Leftovers & Waste Report
+- [x] Removed orange toggle switches from all items in PositionChecklists.tsx (public portal waste form)
+- [x] Removed orange toggle switches from all items in ChecklistViewer.tsx (admin dashboard waste form)
+- [x] Removed all `disabled={!row.enabled}` from input fields in both files
+- [x] Removed `row.enabled` checks from cost calculations and data collection
+- [x] All items now always visible and editable — no toggle needed
