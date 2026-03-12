@@ -248,7 +248,7 @@ const WASTE_BAGEL_TYPES = [
 ];
 const PASTRY_TYPES = [
   "Banana Bread with Nuts", "Croissant", "Croissant aux Amandes", "Chocolatine",
-  "Chocolate Chips Cookie", "Muffin a L'Erabe", "Muffin Bleuets", "Muffin Pistaches",
+  "Chocolate Chips Cookie", "Muffin a L'Erable", "Muffin Bleuets", "Muffin Pistaches",
   "Muffin Chocolat", "Yogurt Granola", "Fresh orange juice", "Gateau aux Carottes",
   "Granola bag", "Bagel Chips Bags", "Maple Pecan Bar", "Pudding",
 ];
@@ -873,13 +873,14 @@ function initWasteRows(items: string[], defaultQty = "bag"): Record<string, Wast
   return rows;
 }
 
-function WasteItemTable({ title, items, rows, onChange, qtyTypes, costFn }: {
+function WasteItemTable({ title, items, rows, onChange, qtyTypes, costFn, hideCosts = false }: {
   title: string;
   items: string[];
   rows: Record<string, WasteItemRow>;
   onChange: (rows: Record<string, WasteItemRow>) => void;
   qtyTypes: string[];
   costFn: (item: string, qty: number, qtyType: string) => number;
+  hideCosts?: boolean;
 }) {
   const updateRow = (item: string, field: keyof WasteItemRow, value: string | boolean) => {
     onChange({ ...rows, [item]: { ...rows[item], [field]: value } });
@@ -902,7 +903,7 @@ function WasteItemTable({ title, items, rows, onChange, qtyTypes, costFn }: {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">{title}</CardTitle>
-          {sectionTotal > 0 && (
+          {!hideCosts && sectionTotal > 0 && (
             <span className="text-sm font-mono font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-lg border border-red-200/50">
               ${sectionTotal.toFixed(2)}
             </span>
@@ -917,10 +918,10 @@ function WasteItemTable({ title, items, rows, onChange, qtyTypes, costFn }: {
                 <th className="text-left py-2 pr-2 font-medium text-muted-foreground w-[180px]">Item</th>
                 <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[70px]">Leftover</th>
                 <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[90px]">Qty Type</th>
-                <th className="text-right py-2 px-1 font-medium text-blue-600 w-[55px]">L.Cost</th>
+                {!hideCosts && <th className="text-right py-2 px-1 font-medium text-blue-600 w-[55px]">L.Cost</th>}
                 <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[70px]">Waste</th>
                 <th className="text-left py-2 px-2 font-medium text-muted-foreground w-[90px]">Qty Type</th>
-                <th className="text-right py-2 px-1 font-medium text-orange-600 w-[55px]">W.Cost</th>
+                {!hideCosts && <th className="text-right py-2 px-1 font-medium text-orange-600 w-[55px]">W.Cost</th>}
                 <th className="text-left py-2 pl-2 font-medium text-muted-foreground">Comment</th>
               </tr>
             </thead>
@@ -972,13 +973,13 @@ function WasteItemTable({ title, items, rows, onChange, qtyTypes, costFn }: {
                         {qtyTypes.map((q: string) => <option key={q} value={q}>{q}</option>)}
                       </select>
                     </td>
-                    <td className="py-2 px-1 text-right">
+                    {!hideCosts && <td className="py-2 px-1 text-right">
                       {leftoverCost > 0 ? (
                         <span className="text-xs font-mono text-blue-600">${leftoverCost.toFixed(2)}</span>
                       ) : (
                         <span className="text-xs text-muted-foreground/40">—</span>
                       )}
-                    </td>
+                    </td>}
                     <td className="py-2 px-2">
                       <Input
                         type="number" min="0" step="0.1"
@@ -999,13 +1000,13 @@ function WasteItemTable({ title, items, rows, onChange, qtyTypes, costFn }: {
                         {qtyTypes.map((q: string) => <option key={q} value={q}>{q}</option>)}
                       </select>
                     </td>
-                    <td className="py-2 px-1 text-right">
+                    {!hideCosts && <td className="py-2 px-1 text-right">
                       {wasteCost > 0 ? (
                         <span className="text-xs font-mono text-orange-600">${wasteCost.toFixed(2)}</span>
                       ) : (
                         <span className="text-xs text-muted-foreground/40">—</span>
                       )}
-                    </td>
+                    </td>}
                     <td className="py-2 pl-2">
                       <Input
                         value={row.comment}
@@ -1108,32 +1109,11 @@ function WasteReportForm({ storeCode, storeName, positionLabel, onBack }: { stor
         <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="space-y-2"><Label>Date</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
       </CardContent></Card>
-      <WasteItemTable title="Bagels" items={WASTE_BAGEL_TYPES} rows={bagelRows} onChange={setBagelRows} qtyTypes={QTY_TYPES_BAGEL} costFn={(_item, qty, qtyType) => calcBagelCost(qty, qtyType)} />
-      <WasteItemTable title="Pastries" items={PASTRY_TYPES} rows={pastryRows} onChange={setPastryRows} qtyTypes={QTY_TYPES_PASTRY} costFn={(item, qty, _qtyType) => calcPastryCost(item, qty)} />
-      <WasteItemTable title="CK Items" items={CK_ITEMS} rows={ckRows} onChange={setCkRows} qtyTypes={QTY_TYPES_CK} costFn={(item, qty, qtyType) => calcCKCost(item, qty, qtyType)} />
+      <WasteItemTable title="Bagels" items={WASTE_BAGEL_TYPES} rows={bagelRows} onChange={setBagelRows} qtyTypes={QTY_TYPES_BAGEL} costFn={(_item, qty, qtyType) => calcBagelCost(qty, qtyType)} hideCosts />
+      <WasteItemTable title="Pastries" items={PASTRY_TYPES} rows={pastryRows} onChange={setPastryRows} qtyTypes={QTY_TYPES_PASTRY} costFn={(item, qty, _qtyType) => calcPastryCost(item, qty)} hideCosts />
+      <WasteItemTable title="CK Items" items={CK_ITEMS} rows={ckRows} onChange={setCkRows} qtyTypes={QTY_TYPES_CK} costFn={(item, qty, qtyType) => calcCKCost(item, qty, qtyType)} hideCosts />
 
-      {/* Total Cost Summary */}
-      {costs.grandTotal > 0 && (
-        <Card className="border-red-200 bg-red-50/50">
-          <CardContent className="pt-5 pb-4">
-            <h3 className="font-semibold mb-3 text-red-800">Waste & Leftover Cost Summary</h3>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center p-3 rounded-lg bg-blue-50 border border-blue-200">
-                <p className="text-xs text-blue-600 font-medium mb-1">Leftover</p>
-                <p className="text-lg font-mono font-bold text-blue-700">${costs.leftoverTotal.toFixed(2)}</p>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-orange-50 border border-orange-200">
-                <p className="text-xs text-orange-600 font-medium mb-1">Waste</p>
-                <p className="text-lg font-mono font-bold text-orange-700">${costs.wasteTotal.toFixed(2)}</p>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-red-50 border border-red-300">
-                <p className="text-xs text-red-600 font-medium mb-1">Total</p>
-                <p className="text-lg font-mono font-bold text-red-700">${costs.grandTotal.toFixed(2)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Total Cost Summary — HIDDEN on portal to prevent cheating. Costs only visible on admin dashboard. */}
 
       <div className="flex flex-col gap-3">
         <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Waste Report"}</Button>

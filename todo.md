@@ -1233,3 +1233,35 @@
 - [x] Fix applies to all positions — PortalReportsPage filtering is shared
 - [x] LOCKED: 11 regression tests in portalReportFiltering.test.ts covering all 4 stores, full names, mixed case, Ops Manager (no filter), wrong-store rejection, and live API validation
 - [x] All 223 tests passing across 26 test files (only Koomi external API failures remain)
+
+# Hide Waste Costs from Portal (Anti-Cheat)
+- [x] Hidden cost columns, section totals, and grand total card from WasteItemTable in PositionChecklists.tsx (portal form)
+- [x] Added hideCosts prop to ReportDetailRenderer and WasteReportDetail — passed hideCosts from Portal.tsx
+- [x] Admin dashboard (DirectChecklist.tsx, ChecklistViewer.tsx) still shows all costs
+- [x] Portal report detail view (ReportDetailDialog) hides cost summary
+
+# Fix Bagel Waste Costing
+- [x] 1 bag = 6 units → bag cost = $3.00 (was treating bag as 1 unit = $0.50)
+- [x] 1 dozen = 12 units → dozen cost = $6.00 (unchanged)
+- [x] 1 unit = 1 unit → unit cost = $0.50 (unchanged)
+- [x] Updated calcBagelCost and getBagelUnitPrice functions
+
+# Update Pastry Unit Costs
+- [x] Banana Bread with Nuts: $0.64
+- [x] Chocolate Chips Cookie: $0.96
+- [x] Muffin a L'Erable: $0.40
+- [x] Muffin Bleuets: $0.95
+- [x] Muffin Pistaches: $1.36
+- [x] Muffin Chocolat: $1.27
+- [x] Yogurt Granola: $1.77
+- [x] Fresh orange juice: $0 (Missing)
+- [x] Gâteau aux Carottes: $0 (Missing)
+- [x] Granola bag: $0 (Missing)
+- [x] Bagel Chips Bags: $0 (Missing)
+- [x] Maple Pecan Bar: $0 (Missing)
+- [x] Pudding: $1.21
+- [x] Changed PASTRY_DEFAULT_PRICE from $2.00 to $0 for unlisted items
+- [x] Fixed typo: "Muffin a L'Erabe" → "Muffin a L'Erable" in all 3 form files
+- [x] Added old misspelling as fallback in pricing map for existing reports
+- [x] LOCKED: 25 regression tests in wastePricing.test.ts covering bag/dozen/unit costing, all pastry prices, missing items at $0
+- [x] All 231 tests passing across 26 test files (only Koomi external API failures remain)

@@ -360,7 +360,7 @@ function WeeklyScorecardDetail({ data }: { data: any }) {
 }
 
 // ─── Waste Report ────────────────────────────────────────────────
-function WasteReportDetail({ data }: { data: any }) {
+function WasteReportDetail({ data, hideCosts = false }: { data: any; hideCosts?: boolean }) {
   const costs = data.costs;
 
   const renderWasteSection = (title: string, items: any[]) => {
@@ -399,8 +399,8 @@ function WasteReportDetail({ data }: { data: any }) {
 
   return (
     <div className="space-y-4">
-      {/* Cost Summary */}
-      {costs && costs.grandTotal > 0 && (
+      {/* Cost Summary — hidden on portal to prevent cheating */}
+      {!hideCosts && costs && costs.grandTotal > 0 && (
         <div className="rounded-lg border border-red-200 bg-red-50/50 p-4">
           <p className="text-xs font-semibold text-red-800 uppercase tracking-wider mb-3">Cost Summary</p>
           <div className="grid grid-cols-3 gap-3">
@@ -746,7 +746,7 @@ function normalizeType(reportType: string): string {
   return REPORT_TYPE_NORMALIZE[reportType] || reportType;
 }
 
-export function ReportDetailRenderer({ reportType, data }: { reportType: string; data: any }) {
+export function ReportDetailRenderer({ reportType, data, hideCosts = false }: { reportType: string; data: any; hideCosts?: boolean }) {
   if (!data) return <p className="text-sm text-muted-foreground">No detailed data available</p>;
 
   const payload = typeof data === "string" ? (() => { try { return JSON.parse(data); } catch { return null; } })() : data;
@@ -764,7 +764,7 @@ export function ReportDetailRenderer({ reportType, data }: { reportType: string;
       case "weekly-scorecard":
         return <WeeklyScorecardDetail data={payload} />;
       case "waste-report":
-        return <WasteReportDetail data={payload} />;
+        return <WasteReportDetail data={payload} hideCosts={hideCosts} />;
       case "equipment-maintenance":
         return <EquipmentMaintenanceDetail data={payload} />;
       case "training-evaluation":

@@ -1055,7 +1055,7 @@ const WASTE_BAGELS_PUB = [
 ];
 const WASTE_PASTRIES_PUB = [
   "Banana Bread with Nuts", "Croissant", "Croissant aux Amandes", "Chocolatine",
-  "Chocolate Chips Cookie", "Muffin a L'Erabe", "Muffin Bleuets", "Muffin Pistaches",
+  "Chocolate Chips Cookie", "Muffin a L'Erable", "Muffin Bleuets", "Muffin Pistaches",
   "Muffin Chocolat", "Yogurt Granola", "Fresh orange juice", "Gateau aux Carottes",
   "Granola bag", "Bagel Chips Bags", "Maple Pecan Bar", "Pudding",
 ];

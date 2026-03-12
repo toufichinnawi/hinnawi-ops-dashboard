@@ -1672,7 +1672,7 @@ function PortalCompletedChecklists({
 
             {/* Detailed Data — proper template rendering */}
             <div className="mt-4">
-              <ReportDetailRenderer reportType={selectedReport.reportType} data={selectedReport.data} />
+              <ReportDetailRenderer reportType={selectedReport.reportType} data={selectedReport.data} hideCosts />
             </div>
 
             {/* Close button */}
@@ -2622,7 +2622,7 @@ function ReportDetailDialog({
 
         {/* Detailed Data */}
         <div className="mt-4">
-          <ReportDetailRenderer reportType={report.reportType} data={report.data} />
+          <ReportDetailRenderer reportType={report.reportType} data={report.data} hideCosts />
         </div>
 
         {/* Notes Section */}

@@ -8,18 +8,40 @@
 // ─── Bagels ─────────────────────────────────────────────────────
 // All bagels have the same unit cost
 export const BAGEL_UNIT_COST = 0.50;
-export const BAGEL_DOZEN_COST = BAGEL_UNIT_COST * 12; // $6.00 per dozen
+// 1 bag = 6 units, 1 dozen = 12 units
+export const BAGEL_BAG_UNITS = 6;
+export const BAGEL_DOZEN_UNITS = 12;
+export const BAGEL_BAG_COST = BAGEL_UNIT_COST * BAGEL_BAG_UNITS; // $3.00 per bag
+export const BAGEL_DOZEN_COST = BAGEL_UNIT_COST * BAGEL_DOZEN_UNITS; // $6.00 per dozen
 
 // ─── Pastries ───────────────────────────────────────────────────
 // Per-unit cost
 export const PASTRY_PRICES: Record<string, number> = {
+  // Standard pastries
   "Croissant": 2.19,
   "Chocolatine": 2.39,
   "Croissant aux Amandes": 2.79, // Almond Croissant
+  // In-house pastries (from COSTING sheet)
+  "Banana Bread with Nuts": 0.64,
+  "Chocolate Chips Cookie": 0.96,
+  "Muffin a L'Erable": 0.40,
+  "Muffin a L'Erabe": 0.40, // old misspelling fallback for existing reports
+  "Muffin \u00e0 l'\u00c9rable": 0.40, // alternate spelling with accents
+  "Muffin Bleuets": 0.95,
+  "Muffin Pistaches": 1.36,
+  "Muffin Chocolat": 1.27,
+  "Yogurt Granola": 1.77,
+  "Fresh orange juice": 0, // Missing from costing sheet
+  "G\u00e2teau aux Carottes": 0, // Missing from costing sheet
+  "Gateau aux Carottes": 0, // alternate spelling without accents
+  "Granola bag": 0, // Missing from costing sheet
+  "Bagel Chips Bags": 0, // Missing from costing sheet
+  "Maple Pecan Bar": 0, // Missing from costing sheet
+  "Pudding": 1.21,
 };
 
 // Default pastry price for items not explicitly listed
-export const PASTRY_DEFAULT_PRICE = 2.00;
+export const PASTRY_DEFAULT_PRICE = 0;
 
 // ─── CK Preps ───────────────────────────────────────────────────
 // Each CK item has a unit cost and a container cost
@@ -57,13 +79,14 @@ export const CK_PREP_PRICES: Record<string, CKPrepPrice> = {
 
 /**
  * Calculate the cost of a bagel waste/leftover entry.
- * @param qty - Number of items
- * @param qtyType - "bag" (treated as unit), "unit", or "dozen"
+ * @param qty - Number of items (bags, dozens, or individual units)
+ * @param qtyType - "bag" (1 bag = 6 units), "dozen" (1 dozen = 12 units), or "unit" (1 unit)
  */
 export function calcBagelCost(qty: number, qtyType: string): number {
   if (!qty || qty <= 0) return 0;
   if (qtyType === "dozen") return qty * BAGEL_DOZEN_COST;
-  // "bag" and "unit" are per-unit
+  if (qtyType === "bag") return qty * BAGEL_BAG_COST;
+  // "unit" — per individual bagel
   return qty * BAGEL_UNIT_COST;
 }
 
@@ -95,7 +118,9 @@ export function calcCKCost(itemName: string, qty: number, qtyType: string): numb
  * Get the unit price for display purposes.
  */
 export function getBagelUnitPrice(_itemName: string, qtyType: string): number {
-  return qtyType === "dozen" ? BAGEL_DOZEN_COST : BAGEL_UNIT_COST;
+  if (qtyType === "dozen") return BAGEL_DOZEN_COST;
+  if (qtyType === "bag") return BAGEL_BAG_COST;
+  return BAGEL_UNIT_COST;
 }
 
 export function getPastryUnitPrice(itemName: string): number {
