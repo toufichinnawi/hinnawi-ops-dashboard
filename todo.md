@@ -1192,3 +1192,13 @@
 - [x] Fix 2: Added month navigation arrows (prev/next) to the custom calendar so users can browse previous months
 - [x] Tested: 15 reports visible on load, calendar navigates to Feb 2026, report detail views work for both Bagel Orders and Waste Reports
 - [x] All 207 tests passing
+
+# Bug Fix: Bagel/Pastry Orders on Store Manager portal showing all locations
+- [x] Auto-lock location: mapped storeCode (ontario/pk/mk/tunnel) to shortName (ON/PK/MK/TN) in BagelOrdersForm
+- [x] Shows locked location with lock icon when valid store, hides full selector grid
+- [x] Applied same fix to PastryOrdersForm in PositionChecklists.tsx
+- [x] Also fixed ChecklistViewer.tsx BagelOrdersForm and PastryOrdersForm with same lock logic
+- [x] Added pastry-orders case to ChecklistForm switch + Pastry Orders to Pastry Kitchen sidebar
+- [x] Ops Manager: bagel-orders defaults to "sales" (full selector), pastry-orders shows full selector
+- [x] Tested: Store Manager Ontario → Bagel Orders shows "ON — Ontario" locked, no selector grid
+- [x] All 205 tests passing

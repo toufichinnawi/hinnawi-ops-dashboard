@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/StarRating";
-import { CheckCircle2, ClipboardCheck, ArrowLeft, ChevronRight, Save, Camera } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, ArrowLeft, ChevronRight, Save, Camera, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -395,6 +395,8 @@ export function ChecklistForm({ type, storeCode, storeName, positionLabel, onBac
       return <TrainingEvaluationForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
     case "bagel-orders":
       return <BagelOrdersForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
+    case "pastry-orders":
+      return <PastryOrdersForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
     case "performance-evaluation":
       return <PerformanceEvaluationForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} />;
     default:
@@ -1494,8 +1496,19 @@ function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack }:
 // ─── Bagel Orders Form ───
 
 function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
-  // Operations Manager can select Sales or any store location
-  const [selectedLocation, setSelectedLocation] = useState(storeCode || "sales");
+  // Map portal storeCode (e.g. "ontario") to shortName (e.g. "ON") if needed
+  const resolvedStoreCode = (() => {
+    if (!storeCode || storeCode === "sales") return storeCode || "sales";
+    // Check if storeCode is already a shortName (e.g. "ON")
+    if (stores.find(s => s.shortName === storeCode)) return storeCode;
+    // Map from store id (e.g. "ontario") to shortName (e.g. "ON")
+    const mapped = stores.find(s => s.id === storeCode);
+    if (mapped) return mapped.shortName;
+    return storeCode;
+  })();
+  // Lock location when a specific store is assigned (not sales, not empty)
+  const isLocationLocked = resolvedStoreCode !== "sales" && resolvedStoreCode !== "" && stores.some(s => s.shortName === resolvedStoreCode);
+  const [selectedLocation, setSelectedLocation] = useState(resolvedStoreCode);
   const isSales = selectedLocation === "sales";
   const resolvedStoreName = isSales ? "Sales" : (stores.find(s => s.shortName === selectedLocation)?.name || storeName);
 
@@ -1537,47 +1550,59 @@ function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: { stor
 
   return (
     <PublicFormLayout title="Bagel Orders" subtitle={`${positionLabel} — ${resolvedStoreName}`} onBack={onBack}>
-      {/* Location Selector — Sales + all stores */}
-      <Card><CardContent className="pt-6">
-        <Label className="text-sm font-medium">Location</Label>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-2">
-          <button
-            type="button"
-            onClick={() => setSelectedLocation("sales")}
-            className={cn(
-              "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
-              selectedLocation === "sales"
-                ? "border-purple-500 bg-purple-50 text-purple-700"
-                : "border-gray-200 bg-white hover:border-purple-400 text-gray-500 hover:text-gray-700"
-            )}
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-purple-500" />
-              <span>Sales</span>
-            </div>
-            <p className="text-[10px] text-gray-400 mt-0.5">Client Orders</p>
-          </button>
-          {stores.map((store) => (
+      {/* Location Selector — locked for store managers, full selector for ops manager */}
+      {isLocationLocked ? (
+        <Card><CardContent className="pt-6">
+          <Label className="text-sm font-medium">Location</Label>
+          <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg border border-[#faa600] bg-[#faa600]/10">
+            <div className="w-2 h-2 rounded-full" style={{ background: stores.find(s => s.shortName === selectedLocation)?.color || "#faa600" }} />
+            <span className="text-sm font-medium text-[#e09500]">{selectedLocation}</span>
+            <span className="text-xs text-muted-foreground">— {resolvedStoreName}</span>
+            <Lock className="w-3 h-3 text-muted-foreground ml-auto" />
+          </div>
+        </CardContent></Card>
+      ) : (
+        <Card><CardContent className="pt-6">
+          <Label className="text-sm font-medium">Location</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-2">
             <button
-              key={store.id}
               type="button"
-              onClick={() => setSelectedLocation(store.shortName)}
+              onClick={() => setSelectedLocation("sales")}
               className={cn(
                 "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
-                selectedLocation === store.shortName
-                  ? "border-[#faa600] bg-[#faa600]/10 text-[#e09500]"
-                  : "border-gray-200 bg-white hover:border-[#faa600]/40 text-gray-500 hover:text-gray-700"
+                selectedLocation === "sales"
+                  ? "border-purple-500 bg-purple-50 text-purple-700"
+                  : "border-gray-200 bg-white hover:border-purple-400 text-gray-500 hover:text-gray-700"
               )}
             >
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
-                <span>{store.shortName}</span>
+                <div className="w-2 h-2 rounded-full bg-purple-500" />
+                <span>Sales</span>
               </div>
-              <p className="text-[10px] text-gray-400 mt-0.5 truncate">{store.name}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">Client Orders</p>
             </button>
-          ))}
-        </div>
-      </CardContent></Card>
+            {stores.map((store) => (
+              <button
+                key={store.id}
+                type="button"
+                onClick={() => setSelectedLocation(store.shortName)}
+                className={cn(
+                  "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+                  selectedLocation === store.shortName
+                    ? "border-[#faa600] bg-[#faa600]/10 text-[#e09500]"
+                    : "border-gray-200 bg-white hover:border-[#faa600]/40 text-gray-500 hover:text-gray-700"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
+                  <span>{store.shortName}</span>
+                </div>
+                <p className="text-[10px] text-gray-400 mt-0.5 truncate">{store.name}</p>
+              </button>
+            ))}
+          </div>
+        </CardContent></Card>
+      )}
 
       <Card><CardContent className="pt-6 space-y-4">
         {isSales && (
@@ -1612,6 +1637,133 @@ function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack }: { stor
       </Card>
       <div className="flex flex-col gap-3">
         <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Bagel Orders"}</Button>
+        {draftButton}
+      </div>
+      {duplicateDialog}
+    </PublicFormLayout>
+  );
+}
+
+// ─── Pastry Orders Form ───
+
+const PASTRY_ORDER_ITEMS = [
+  "Banana Bread with Nuts", "Croissant", "Croissant aux Amandes", "Chocolatine",
+  "Chocolate Chips Cookie", "Muffin a L'Erable", "Muffin Bleuets", "Muffin Pistaches",
+  "Muffin Chocolat", "Yogurt Granola", "Fresh orange juice", "Gateau aux Carottes",
+  "Granola bag", "Bagel Chips Bags", "Maple Pecan Bar", "Pudding",
+];
+
+function PastryOrdersForm({ storeCode, storeName, positionLabel, onBack }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void }) {
+  // Map portal storeCode (e.g. "ontario") to shortName (e.g. "ON") if needed
+  const resolvedStoreCode = (() => {
+    if (!storeCode) return "";
+    if (stores.find(s => s.shortName === storeCode)) return storeCode;
+    const mapped = stores.find(s => s.id === storeCode);
+    if (mapped) return mapped.shortName;
+    return storeCode;
+  })();
+  const isLocationLocked = resolvedStoreCode !== "" && stores.some(s => s.shortName === resolvedStoreCode);
+  const [selectedLocation, setSelectedLocation] = useState(resolvedStoreCode || stores[0]?.shortName || "PK");
+  const resolvedStoreName = stores.find(s => s.shortName === selectedLocation)?.name || storeName;
+
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `pastry-orders-v1-${selectedLocation}`,
+    { name: "", orderForDate: new Date().toISOString().split("T")[0], quantities: Object.fromEntries(PASTRY_ORDER_ITEMS.map(t => [t, ""])) }
+  );
+  const { name, orderForDate, quantities } = draft;
+  const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
+  const setOrderForDate = (v: string) => setDraft((d) => ({ ...d, orderForDate: v }));
+  const setQuantity = (type: string, val: string) => setDraft((d) => ({ ...d, quantities: { ...d.quantities, [type]: val } }));
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
+
+  const handleSubmit = async () => {
+    if (!name.trim()) { toast.error("Please enter your name"); return; }
+    if (!orderForDate) { toast.error("Please select the order date"); return; }
+    await submitWithDuplicateCheck(
+      {
+        submitterName: name.trim(), reportType: "Pastry Orders", location: selectedLocation, reportDate: orderForDate,
+        data: {
+          orderForDate,
+          orders: PASTRY_ORDER_ITEMS.map(type => ({ type, quantity: quantities[type] || "0", unit: "unit" })),
+          submittedVia: `Public - ${positionLabel}`,
+        },
+      },
+      () => { setSubmitted(true); clearDraft(); toast.success(`Pastry order submitted for ${resolvedStoreName}!`); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
+  };
+
+  if (submitted) return <SuccessScreen message={`Pastry order for ${resolvedStoreName} submitted.`} onNew={() => { setSubmitted(false); setDraft((d) => ({ ...d, quantities: Object.fromEntries(PASTRY_ORDER_ITEMS.map(t => [t, ""])) })); }} onBack={onBack} />;
+
+  return (
+    <PublicFormLayout title="Pastry Orders" subtitle={`${positionLabel} — ${resolvedStoreName}`} onBack={onBack}>
+      {/* Location Selector — locked for store managers, full selector otherwise */}
+      {isLocationLocked ? (
+        <Card><CardContent className="pt-6">
+          <Label className="text-sm font-medium">Location</Label>
+          <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg border border-rose-400 bg-rose-50">
+            <div className="w-2 h-2 rounded-full" style={{ background: stores.find(s => s.shortName === selectedLocation)?.color || "#f43f5e" }} />
+            <span className="text-sm font-medium text-rose-700">{selectedLocation}</span>
+            <span className="text-xs text-muted-foreground">— {resolvedStoreName}</span>
+            <Lock className="w-3 h-3 text-muted-foreground ml-auto" />
+          </div>
+        </CardContent></Card>
+      ) : (
+        <Card><CardContent className="pt-6">
+          <Label className="text-sm font-medium">Location</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+            {stores.map((store) => (
+              <button
+                key={store.id}
+                type="button"
+                onClick={() => setSelectedLocation(store.shortName)}
+                className={cn(
+                  "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+                  selectedLocation === store.shortName
+                    ? "border-rose-400 bg-rose-50 text-rose-700"
+                    : "border-gray-200 bg-white hover:border-rose-300 text-gray-500 hover:text-gray-700"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
+                  <span>{store.shortName}</span>
+                </div>
+                <p className="text-[10px] text-gray-400 mt-0.5 truncate">{store.name}</p>
+              </button>
+            ))}
+          </div>
+        </CardContent></Card>
+      )}
+
+      <Card><CardContent className="pt-6 space-y-4">
+        <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
+        <div className="space-y-2"><Label>Order for Date *</Label><Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} /></div>
+      </CardContent></Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Order Quantities</CardTitle>
+          <p className="text-sm text-rose-600 font-medium bg-rose-50 border border-rose-200 rounded-md px-3 py-1.5">Enter quantity per item (units).</p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {PASTRY_ORDER_ITEMS.map((type) => (
+              <div key={type} className="flex items-center justify-between gap-4 py-1.5 border-b last:border-0">
+                <span className="text-sm">{type}</span>
+                <div className="flex items-center gap-2">
+                  <Input type="number" placeholder="0" min="0" className="w-20 text-center" value={quantities[type] || ""} onChange={(e) => setQuantity(type, e.target.value)} />
+                  <span className="text-xs text-muted-foreground w-10">unit</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      <div className="flex flex-col gap-3">
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-rose-500 hover:bg-rose-600 text-white">{submitting ? "Submitting..." : "Submit Pastry Orders"}</Button>
         {draftButton}
       </div>
       {duplicateDialog}

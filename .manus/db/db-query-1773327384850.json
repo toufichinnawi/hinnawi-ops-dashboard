@@ -1,0 +1,35 @@
+{
+  "query": "SELECT positionSlug, positionLabel, pin FROM position_pins;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT positionSlug, positionLabel, pin FROM position_pins;",
+  "rows": [
+    {
+      "positionSlug": "operations-manager",
+      "positionLabel": "Operations Manager",
+      "pin": "4821"
+    },
+    {
+      "positionSlug": "store-manager",
+      "positionLabel": "Store Manager",
+      "pin": "3597"
+    },
+    {
+      "positionSlug": "assistant-manager",
+      "positionLabel": "Assistant Manager",
+      "pin": "6143"
+    },
+    {
+      "positionSlug": "staff",
+      "positionLabel": "Staff",
+      "pin": "1234"
+    },
+    {
+      "positionSlug": "bagel-factory",
+      "positionLabel": "Bagel Factory",
+      "pin": "7256"
+    }
+  ],
+  "messages": [],
+  "stdout": "positionSlug\tpositionLabel\tpin\noperations-manager\tOperations Manager\t4821\nstore-manager\tStore Manager\t3597\nassistant-manager\tAssistant Manager\t6143\nstaff\tStaff\t1234\nbagel-factory\tBagel Factory\t7256\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

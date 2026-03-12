@@ -191,6 +191,7 @@ const POSITIONS: PositionDef[] = [
     requiresPin: true,
     requiresStore: false,
     sidebarItems: [
+      si("pastry-orders", "Pastry Orders", CakeSlice, "checklist", { checklistType: "pastry-orders" }),
       si("pastry-production", "Pastry Production", CakeSlice, "info", { infoContent: "pastry-production" }),
     ],
   },
@@ -812,6 +813,16 @@ function PortalContent({
         <PortalChecklistPage
           checklistType={item.checklistType}
           store={{ storeCode: "sales", storeName: "Sales" }}
+          positionLabel={position.label}
+        />
+      );
+    }
+    // Pastry Orders from ops manager — show full selector (no locked store)
+    if (item.checklistType === "pastry-orders" && !store && position.slug === "operations-manager") {
+      return (
+        <PortalChecklistPage
+          checklistType={item.checklistType}
+          store={{ storeCode: "", storeName: "" }}
           positionLabel={position.label}
         />
       );

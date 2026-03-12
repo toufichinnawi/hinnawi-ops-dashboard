@@ -1832,7 +1832,8 @@ function TrainingEvaluationForm({ storeCode: initialStoreCode, storeName: _sn6, 
 // ─── Bagel Orders ───
 
 function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positionLabel, onBack }: FormProps) {
-  // Admin can select any location including Sales
+  // If a valid store code is provided (not empty, not "sales"), lock to that store
+  const isStoreLocked = !!initialStoreCode && initialStoreCode !== "sales" && initialStoreCode !== "" && stores.some(s => s.shortName === initialStoreCode);
   const [selectedLocation, setSelectedLocation] = useState(initialStoreCode || "sales");
   const isSales = selectedLocation === "sales";
   const [submitterName, setSubmitterName] = useState("");
@@ -1879,47 +1880,61 @@ function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positio
     <div>
       <FormHeader title="Bagel Orders" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
-        {/* Location Selector — includes Sales + all stores */}
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Location</Label>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-1.5">
-            <button
-              type="button"
-              onClick={() => setSelectedLocation("sales")}
-              className={cn(
-                "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
-                selectedLocation === "sales"
-                  ? "border-purple-500 bg-purple-50 text-purple-700"
-                  : "border-border/60 bg-background hover:border-purple-400 text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-purple-500" />
-                <span>Sales</span>
+        {/* Location Selector — locked when accessed from a specific store portal */}
+        {isStoreLocked ? (
+          <div className="bg-card rounded-xl border border-[#D4A853]/30 p-5">
+            <Label className="text-sm font-medium">Location</Label>
+            <div className="mt-1.5 flex items-center gap-3 px-4 py-3 rounded-lg border border-[#D4A853] bg-[#D4A853]/10">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: stores.find(s => s.shortName === initialStoreCode)?.color }} />
+              <div>
+                <span className="text-sm font-semibold text-[#D4A853]">{initialStoreCode}</span>
+                <span className="text-sm text-muted-foreground ml-2">{stores.find(s => s.shortName === initialStoreCode)?.name}</span>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Client Orders</p>
-            </button>
-            {stores.map((store) => (
+              <span className="ml-auto text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded">Auto-assigned</span>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-card rounded-xl border border-border/60 p-5">
+            <Label className="text-sm font-medium">Location</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-1.5">
               <button
-                key={store.id}
                 type="button"
-                onClick={() => setSelectedLocation(store.shortName)}
+                onClick={() => setSelectedLocation("sales")}
                 className={cn(
                   "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
-                  selectedLocation === store.shortName
-                    ? "border-[#D4A853] bg-[#D4A853]/10 text-[#D4A853]"
-                    : "border-border/60 bg-background hover:border-[#D4A853]/40 text-muted-foreground hover:text-foreground"
+                  selectedLocation === "sales"
+                    ? "border-purple-500 bg-purple-50 text-purple-700"
+                    : "border-border/60 bg-background hover:border-purple-400 text-muted-foreground hover:text-foreground"
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
-                  <span>{store.shortName}</span>
+                  <div className="w-2 h-2 rounded-full bg-purple-500" />
+                  <span>Sales</span>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{store.name}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Client Orders</p>
               </button>
-            ))}
+              {stores.map((store) => (
+                <button
+                  key={store.id}
+                  type="button"
+                  onClick={() => setSelectedLocation(store.shortName)}
+                  className={cn(
+                    "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+                    selectedLocation === store.shortName
+                      ? "border-[#D4A853] bg-[#D4A853]/10 text-[#D4A853]"
+                      : "border-border/60 bg-background hover:border-[#D4A853]/40 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
+                    <span>{store.shortName}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{store.name}</p>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
           {isSales && (
@@ -1969,6 +1984,8 @@ function BagelOrdersForm({ storeCode: initialStoreCode, storeName: _sn7, positio
 // ─── Pastry Orders (Portal) ───
 
 function PastryOrdersForm({ storeCode: initialStoreCode, storeName: _sn9, positionLabel, onBack }: FormProps) {
+  // If a valid store code is provided, lock to that store
+  const isStoreLocked = !!initialStoreCode && initialStoreCode !== "" && stores.some(s => s.shortName === initialStoreCode);
   const [selectedLocation, setSelectedLocation] = useState(initialStoreCode || stores[0]?.shortName || "");
   const [submitterName, setSubmitterName] = useState("");
   const [orderForDate, setOrderForDate] = useState("");
@@ -2010,31 +2027,45 @@ function PastryOrdersForm({ storeCode: initialStoreCode, storeName: _sn9, positi
     <div>
       <FormHeader title="Pastry Orders" subtitle={`${positionLabel}`} onBack={onBack} />
       <div className="space-y-4">
-        {/* Location Selector — stores only (no Sales for pastry) */}
-        <div className="bg-card rounded-xl border border-border/60 p-5">
-          <Label className="text-sm font-medium">Location</Label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5">
-            {stores.map((store) => (
-              <button
-                key={store.id}
-                type="button"
-                onClick={() => setSelectedLocation(store.shortName)}
-                className={cn(
-                  "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
-                  selectedLocation === store.shortName
-                    ? "border-rose-500 bg-rose-50 text-rose-700"
-                    : "border-border/60 bg-background hover:border-rose-400 text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
-                  <span>{store.shortName}</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{store.name}</p>
-              </button>
-            ))}
+        {/* Location Selector — locked when accessed from a specific store portal */}
+        {isStoreLocked ? (
+          <div className="bg-card rounded-xl border border-rose-300/30 p-5">
+            <Label className="text-sm font-medium">Location</Label>
+            <div className="mt-1.5 flex items-center gap-3 px-4 py-3 rounded-lg border border-rose-500 bg-rose-50">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: stores.find(s => s.shortName === initialStoreCode)?.color }} />
+              <div>
+                <span className="text-sm font-semibold text-rose-700">{initialStoreCode}</span>
+                <span className="text-sm text-muted-foreground ml-2">{stores.find(s => s.shortName === initialStoreCode)?.name}</span>
+              </div>
+              <span className="ml-auto text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded">Auto-assigned</span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-card rounded-xl border border-border/60 p-5">
+            <Label className="text-sm font-medium">Location</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5">
+              {stores.map((store) => (
+                <button
+                  key={store.id}
+                  type="button"
+                  onClick={() => setSelectedLocation(store.shortName)}
+                  className={cn(
+                    "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+                    selectedLocation === store.shortName
+                      ? "border-rose-500 bg-rose-50 text-rose-700"
+                      : "border-border/60 bg-background hover:border-rose-400 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
+                    <span>{store.shortName}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{store.name}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
           <div>
