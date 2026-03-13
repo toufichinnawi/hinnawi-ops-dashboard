@@ -267,50 +267,72 @@ function WeeklyScorecardDetail({ data }: { data: any }) {
   const weekOf = data.weekOf || "";
   const dateEntered = data.dateEntered || "";
 
-  const renderSection = (title: string, section: any) => {
+  const renderSection = (title: string, section: any, unit?: string) => {
     if (!section) return null;
     const goal = section.thisWeekGoal || "";
     const actual = section.thisWeekActual || "";
-    const lastWeek = section.lastWeekActual || "";
-    const lastMonth = section.lastMonthActual || "";
+    const prevGoal = section.prevWeekGoal || section.lastWeekActual || "";
+    const prevActual = section.prevWeekActual || "";
+    const lastMonthGoal = section.lastMonthGoal || "";
+    const lastMonthActual = section.lastMonthActual || "";
+    const waste = section.wasteThisWeek || "";
     const contribute = section.howContribute || "";
 
     const goalNum = parseFloat(goal);
     const actualNum = parseFloat(actual);
-    const isOnTarget = !isNaN(goalNum) && !isNaN(actualNum) && actualNum >= goalNum;
+    const lowerIsBetter = title.includes("Labour") || title.includes("Food");
+    const isOnTarget = !isNaN(goalNum) && !isNaN(actualNum) ? (lowerIsBetter ? actualNum <= goalNum : actualNum >= goalNum) : null;
+    const pfx = unit === "$" ? "$" : "";
+    const sfx = unit === "%" ? "%" : "";
 
     return (
       <div className="border rounded-lg p-3 space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold">{title}</p>
-          {!isNaN(goalNum) && !isNaN(actualNum) && (
+          {isOnTarget !== null && (
             <Badge variant={isOnTarget ? "default" : "destructive"} className="text-xs">
               {isOnTarget ? "On Target" : "Below Target"}
             </Badge>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="bg-muted/50 rounded p-2">
-            <p className="text-muted-foreground">Goal</p>
-            <p className="font-mono font-semibold text-sm">{goal || "—"}</p>
-          </div>
-          <div className="bg-muted/50 rounded p-2">
-            <p className="text-muted-foreground">Actual</p>
-            <p className="font-mono font-semibold text-sm">{actual || "—"}</p>
-          </div>
-          {lastWeek && (
-            <div className="bg-muted/50 rounded p-2">
-              <p className="text-muted-foreground">Last Week</p>
-              <p className="font-mono text-sm">{lastWeek}</p>
-            </div>
-          )}
-          {lastMonth && (
-            <div className="bg-muted/50 rounded p-2">
-              <p className="text-muted-foreground">Last Month</p>
-              <p className="font-mono text-sm">{lastMonth}</p>
-            </div>
-          )}
-        </div>
+        {/* Table layout: Goal | Actual */}
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-muted-foreground">
+              <th className="text-left p-1 font-medium"></th>
+              <th className="text-center p-1 font-medium">Goal</th>
+              <th className="text-center p-1 font-medium">Actual</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="bg-muted/30">
+              <td className="p-1.5 font-medium">This Week</td>
+              <td className="p-1.5 text-center font-mono">{goal ? `${pfx}${goal}${sfx}` : "\u2014"}</td>
+              <td className="p-1.5 text-center font-mono font-semibold">{actual ? `${pfx}${actual}${sfx}` : "\u2014"}</td>
+            </tr>
+            {(prevGoal || prevActual) && (
+              <tr>
+                <td className="p-1.5 font-medium">Previous Week</td>
+                <td className="p-1.5 text-center font-mono">{prevGoal ? `${pfx}${prevGoal}${sfx}` : "\u2014"}</td>
+                <td className="p-1.5 text-center font-mono">{prevActual ? `${pfx}${prevActual}${sfx}` : "\u2014"}</td>
+              </tr>
+            )}
+            {(lastMonthGoal || lastMonthActual) && (
+              <tr className="bg-muted/30">
+                <td className="p-1.5 font-medium">Last Month</td>
+                <td className="p-1.5 text-center font-mono">{lastMonthGoal ? `${pfx}${lastMonthGoal}${sfx}` : "\u2014"}</td>
+                <td className="p-1.5 text-center font-mono">{lastMonthActual ? `${pfx}${lastMonthActual}${sfx}` : "\u2014"}</td>
+              </tr>
+            )}
+            {waste && (
+              <tr>
+                <td className="p-1.5 font-medium">Waste (this week)</td>
+                <td className="p-1.5"></td>
+                <td className="p-1.5 text-center font-mono font-semibold text-red-600">${waste}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
         {contribute && (
           <div className="bg-blue-50 border border-blue-100 rounded p-2">
             <p className="text-xs text-blue-700 font-medium mb-0.5">How Do I Contribute?</p>
@@ -335,8 +357,8 @@ function WeeklyScorecardDetail({ data }: { data: any }) {
           )}
         </div>
       )}
-      {renderSection("Sales ($)", data.sales)}
-      {renderSection("Labour (%)", data.labour)}
+      {renderSection("Sales", data.sales, "$")}
+      {renderSection("Labour", data.labour, "%")}
       {data.digital && (
         <div className="border rounded-lg p-3 space-y-2">
           <p className="text-sm font-semibold">Digital / Reviews</p>
@@ -354,7 +376,13 @@ function WeeklyScorecardDetail({ data }: { data: any }) {
           )}
         </div>
       )}
-      {renderSection("Food Cost (%)", data.food)}
+      {renderSection("Food Cost / Purchases", data.food, "%")}
+      {data.generalNotes && (
+        <div className="border rounded-lg p-3 space-y-1">
+          <p className="text-sm font-semibold">Notes</p>
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{data.generalNotes}</p>
+        </div>
+      )}
     </div>
   );
 }

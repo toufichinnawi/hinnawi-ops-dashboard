@@ -424,13 +424,23 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
 interface ScorecardSectionData {
   thisWeekGoal: string;
   thisWeekActual: string;
-  lastWeekActual: string;
-  lastMonthActual: string;
+  prevWeekGoal: string;
+  prevWeekActual: string;
   howContribute: string;
 }
 
-function initScorecardSection(): ScorecardSectionData {
-  return { thisWeekGoal: "", thisWeekActual: "", lastWeekActual: "", lastMonthActual: "", howContribute: "" };
+interface FoodSectionData extends ScorecardSectionData {
+  lastMonthGoal: string;
+  lastMonthActual: string;
+  wasteThisWeek: string;
+}
+
+function initScorecardSection(defaultGoal?: string): ScorecardSectionData {
+  return { thisWeekGoal: defaultGoal || "", thisWeekActual: "", prevWeekGoal: defaultGoal || "", prevWeekActual: "", howContribute: "" };
+}
+
+function initFoodSection(): FoodSectionData {
+  return { thisWeekGoal: "30", thisWeekActual: "", prevWeekGoal: "", prevWeekActual: "", lastMonthGoal: "30", lastMonthActual: "", wasteThisWeek: "", howContribute: "" };
 }
 
 interface DigitalSectionData {
@@ -439,20 +449,17 @@ interface DigitalSectionData {
 }
 
 function ScorecardSectionCard({
-  title, icon: Icon, color, unit, goalLabel, data, onChange,
+  title, icon: Icon, color, unit, data, onChange, prevLabel,
 }: {
-  title: string; icon: React.ElementType; color: string; unit: "%" | "$" | "" | "stars";
-  goalLabel?: string; data: ScorecardSectionData; onChange: (d: ScorecardSectionData) => void;
+  title: string; icon: React.ElementType; color: string; unit: "%" | "$";
+  data: ScorecardSectionData; onChange: (d: ScorecardSectionData) => void; prevLabel?: string;
 }) {
   const update = (field: keyof ScorecardSectionData, value: string) => onChange({ ...data, [field]: value });
   const goal = parseFloat(data.thisWeekGoal);
   const actual = parseFloat(data.thisWeekActual);
   const hasComparison = !isNaN(goal) && !isNaN(actual) && goal > 0;
-  const lowerIsBetter = title === "Labour" || title === "Food Cost";
+  const lowerIsBetter = title === "Labour" || title.includes("Food");
   const isOnTarget = hasComparison ? (lowerIsBetter ? actual <= goal : actual >= goal) : null;
-  const variance = hasComparison ? (unit === "%" ? (actual - goal).toFixed(1) : (actual - goal).toFixed(2)) : null;
-  const prefix = unit === "$" ? "$" : "";
-  const suffix = unit === "%" ? "%" : unit === "stars" ? " \u2605" : "";
 
   return (
     <Card className="overflow-hidden">
@@ -468,54 +475,101 @@ function ScorecardSectionCard({
         )}
       </div>
       <CardContent className="pt-5 space-y-4">
+        {/* Table header */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{goalLabel || "Goal"}</Label>
-            <div className="relative">
-              {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
-              <Input type="number" min="0" step={unit === "%" ? "0.1" : "0.01"} value={data.thisWeekGoal} onChange={(e) => update("thisWeekGoal", e.target.value)} placeholder="0" className={cn("h-10 text-sm font-mono", unit === "$" && "pl-7")} />
-              {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
-            </div>
+          <div />
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-center">Goal</Label>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-center">Actual</Label>
+        </div>
+        {/* This Week */}
+        <div className="grid grid-cols-3 gap-3 items-center">
+          <Label className="text-sm font-medium">This Week (Mon-Sun)</Label>
+          <div className="relative">
+            {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
+            <Input type="number" min="0" step={unit === "%" ? "0.1" : "0.01"} value={data.thisWeekGoal} onChange={(e) => update("thisWeekGoal", e.target.value)} placeholder="0" className={cn("h-10 text-sm font-mono", unit === "$" && "pl-7")} />
+            {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">This Week</Label>
-            <div className="relative">
-              {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
-              <Input type="number" min="0" step={unit === "%" ? "0.1" : "0.01"} value={data.thisWeekActual} onChange={(e) => update("thisWeekActual", e.target.value)} placeholder="0" className={cn("h-10 text-sm font-mono", unit === "$" && "pl-7")} />
-              {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Variance</Label>
-            <div className={cn("h-10 rounded-md border flex items-center justify-center text-sm font-mono font-medium",
-              isOnTarget === null ? "border-border/60 text-muted-foreground bg-muted/30" :
-              isOnTarget ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-red-200 text-red-700 bg-red-50"
-            )}>
-              {variance !== null ? <span>{parseFloat(variance) > 0 ? "+" : ""}{prefix}{variance}{suffix}</span> : <span className="text-muted-foreground">\u2014</span>}
-            </div>
+          <div className="relative">
+            {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
+            <Input type="number" min="0" step={unit === "%" ? "0.1" : "0.01"} value={data.thisWeekActual} onChange={(e) => update("thisWeekActual", e.target.value)} placeholder="0" className={cn("h-10 text-sm font-mono", unit === "$" && "pl-7")} />
+            {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Week</Label>
-            <div className="relative">
-              {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
-              <Input type="number" min="0" step={unit === "%" ? "0.1" : "0.01"} value={data.lastWeekActual} onChange={(e) => update("lastWeekActual", e.target.value)} placeholder="0" className={cn("h-9 text-sm font-mono bg-muted/20", unit === "$" && "pl-7")} />
-              {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
-            </div>
+        {/* Previous Week */}
+        <div className="grid grid-cols-3 gap-3 items-center">
+          <Label className="text-sm font-medium">{prevLabel || "Previous Week (Mon-Sun)"}</Label>
+          <div className="relative">
+            {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
+            <Input type="number" min="0" step={unit === "%" ? "0.1" : "0.01"} value={data.prevWeekGoal} onChange={(e) => update("prevWeekGoal", e.target.value)} placeholder="0" className={cn("h-9 text-sm font-mono bg-muted/20", unit === "$" && "pl-7")} />
+            {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Month</Label>
-            <div className="relative">
-              {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
-              <Input type="number" min="0" step={unit === "%" ? "0.1" : "0.01"} value={data.lastMonthActual} onChange={(e) => update("lastMonthActual", e.target.value)} placeholder="0" className={cn("h-9 text-sm font-mono bg-muted/20", unit === "$" && "pl-7")} />
-              {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
-            </div>
+          <div className="relative">
+            {unit === "$" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>}
+            <Input type="number" min="0" step={unit === "%" ? "0.1" : "0.01"} value={data.prevWeekActual} onChange={(e) => update("prevWeekActual", e.target.value)} placeholder="0" className={cn("h-9 text-sm font-mono bg-muted/20", unit === "$" && "pl-7")} />
+            {unit === "%" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>}
+          </div>
+        </div>
+        {/* How Do I Contribute? */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-amber-700 uppercase tracking-wider">How Do I Contribute?</Label>
+          <Textarea value={data.howContribute} onChange={(e) => update("howContribute", e.target.value)} placeholder="Describe specific actions you take to impact this area..." rows={3} className="text-sm resize-none" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FoodCostSectionCard({
+  data, onChange,
+}: {
+  data: FoodSectionData; onChange: (d: FoodSectionData) => void;
+}) {
+  const update = (field: keyof FoodSectionData, value: string) => onChange({ ...data, [field]: value });
+  return (
+    <Card className="overflow-hidden">
+      <div className="px-5 py-3 flex items-center gap-3" style={{ background: "#F97316" }}>
+        <Utensils className="w-5 h-5 text-white" />
+        <h3 className="font-serif text-lg font-semibold text-white">Food Cost / Purchases</h3>
+      </div>
+      <CardContent className="pt-5 space-y-4">
+        <div className="grid grid-cols-3 gap-3">
+          <div />
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-center">Goal</Label>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-center">Actual</Label>
+        </div>
+        <div className="grid grid-cols-3 gap-3 items-center">
+          <Label className="text-sm font-medium">This Week</Label>
+          <div className="relative">
+            <Input type="number" min="0" step="0.1" value={data.thisWeekGoal} onChange={(e) => update("thisWeekGoal", e.target.value)} placeholder="30" className="h-10 text-sm font-mono" />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+          </div>
+          <div className="relative">
+            <Input type="number" min="0" step="0.1" value={data.thisWeekActual} onChange={(e) => update("thisWeekActual", e.target.value)} placeholder="0" className="h-10 text-sm font-mono" />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3 items-center">
+          <Label className="text-sm font-medium">Last Month</Label>
+          <div className="relative">
+            <Input type="number" min="0" step="0.1" value={data.lastMonthGoal} onChange={(e) => update("lastMonthGoal", e.target.value)} placeholder="30" className="h-9 text-sm font-mono bg-muted/20" />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+          </div>
+          <div className="relative">
+            <Input type="number" min="0" step="0.1" value={data.lastMonthActual} onChange={(e) => update("lastMonthActual", e.target.value)} placeholder="0" className="h-9 text-sm font-mono bg-muted/20" />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3 items-center">
+          <Label className="text-sm font-medium">Waste (this week)</Label>
+          <div />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+            <Input type="number" min="0" step="0.01" value={data.wasteThisWeek} onChange={(e) => update("wasteThisWeek", e.target.value)} placeholder="0.00" className="h-10 text-sm font-mono pl-7" />
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">How Do I Contribute?</Label>
-          <Textarea value={data.howContribute} onChange={(e) => update("howContribute", e.target.value)} placeholder="Describe specific actions you take to impact this area..." rows={3} className="text-sm resize-none" />
+          <Label className="text-xs font-medium text-amber-700 uppercase tracking-wider">How Do I Contribute?</Label>
+          <Textarea value={data.howContribute} onChange={(e) => update("howContribute", e.target.value)} placeholder="Describe specific actions you take to reduce food costs and waste..." rows={3} className="text-sm resize-none" />
         </div>
       </CardContent>
     </Card>
@@ -546,9 +600,10 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
     return weekStart && weekEnd ? `${fmt(weekStart)} - ${fmt(weekEnd)}` : "";
   }, [weekStart, weekEnd]);
   const [sales, setSales] = useState<ScorecardSectionData>(initScorecardSection());
-  const [labour, setLabour] = useState<ScorecardSectionData>(initScorecardSection());
+  const [labour, setLabour] = useState<ScorecardSectionData>(initScorecardSection("18"));
   const [digital, setDigital] = useState<DigitalSectionData>({ googleReviews: "", howContribute: "" });
-  const [food, setFood] = useState<ScorecardSectionData>(initScorecardSection());
+  const [food, setFood] = useState<FoodSectionData>(initFoodSection());
+  const [generalNotes, setGeneralNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog: scorecardDuplicateDialog } = useDuplicateCheck();
@@ -558,7 +613,7 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
     await submitWithDuplicateCheck(
       {
         reportType: "weekly-scorecard", location: selectedStore, submitterName: managerName, reportDate: weekStart,
-        data: { dateEntered, weekOf: weekOfLabel, weekOfStart: weekStart, weekOfEnd: weekEnd, sales, labour, digital, food },
+        data: { dateEntered, weekOf: weekOfLabel, weekOfStart: weekStart, weekOfEnd: weekEnd, sales, labour, digital, food, generalNotes },
       },
       () => { setSubmitted(true); toast.success("Scorecard submitted!"); },
       (msg) => toast.error(msg),
@@ -571,7 +626,7 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
       <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" /><h3 className="text-xl font-serif">Scorecard Submitted</h3>
       <p className="text-muted-foreground">Weekly Scorecard for {currentStoreName}</p>
       <div className="flex gap-3 justify-center">
-        <Button onClick={() => { setSales(initScorecardSection()); setLabour(initScorecardSection()); setDigital({ googleReviews: "", howContribute: "" }); setFood(initScorecardSection()); setManagerName(""); setSubmitted(false); }} variant="outline">New Report</Button>
+        <Button onClick={() => { setSales(initScorecardSection()); setLabour(initScorecardSection("18")); setDigital({ googleReviews: "", howContribute: "" }); setFood(initFoodSection()); setGeneralNotes(""); setManagerName(""); setSubmitted(false); }} variant="outline">New Report</Button>
         <Button onClick={onBack} variant="outline">Back</Button>
       </div>
     </motion.div>
@@ -589,8 +644,11 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
         </div>
       </CardContent></Card>
 
-      <ScorecardSectionCard title="Sales" icon={DollarSign} color="#D4A853" unit="$" goalLabel="Weekly Goal" data={sales} onChange={setSales} />
-      <ScorecardSectionCard title="Labour" icon={Users2} color="#3B82F6" unit="%" goalLabel="Target %" data={labour} onChange={setLabour} />
+      <ScorecardSectionCard title="Sales" icon={DollarSign} color="#D4A853" unit="$" data={sales} onChange={setSales} />
+      <ScorecardSectionCard title="Labour" icon={Users2} color="#3B82F6" unit="%" data={labour} onChange={setLabour} />
+
+      {/* Food Cost / Purchases Section */}
+      <FoodCostSectionCard data={food} onChange={setFood} />
 
       {/* Digital Section */}
       <Card className="overflow-hidden">
@@ -610,7 +668,16 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
         </CardContent>
       </Card>
 
-      <ScorecardSectionCard title="Food Cost" icon={Utensils} color="#F97316" unit="%" goalLabel="Target %" data={food} onChange={setFood} />
+      {/* General Notes */}
+      <Card className="overflow-hidden">
+        <div className="px-5 py-3 flex items-center gap-3" style={{ background: "#6B7280" }}>
+          <MessageSquare className="w-5 h-5 text-white" />
+          <h3 className="font-serif text-lg font-semibold text-white">Notes</h3>
+        </div>
+        <CardContent className="pt-5">
+          <Textarea value={generalNotes} onChange={(e) => setGeneralNotes(e.target.value)} placeholder="Any additional notes, observations, or comments for this week..." rows={4} className="text-sm resize-none" />
+        </CardContent>
+      </Card>
 
       <div className="flex gap-3">
         <Button variant="outline" onClick={onBack}>Cancel</Button>

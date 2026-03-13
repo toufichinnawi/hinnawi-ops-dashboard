@@ -1400,3 +1400,15 @@
 - [x] Fix: Added si("deep-clean", "Weekly Deep Clean", Sparkles, "checklist", { checklistType: "deep-clean" }) to store-manager sidebarItems in Portal.tsx
 - [x] Positioned below Weekly Scorecard in the sidebar
 - [x] All 242 tests passing
+
+# Redesign Weekly Scorecard to match new template (WeeklyScorecardCleaned.docx)
+- [x] Redesign scorecard form with 4 sections: Sales, Labour, Food Cost/Purchases, Digital
+- [x] Sales: This Week + Previous Week with Goal ($) and Actual ($) + "How do I contribute?" note
+- [x] Labour: This Week + Previous Week with Goal (18%) and Actual (%) + "How do I contribute?" note
+- [x] Food Cost/Purchases: This Week + Last Month with Goal (30%) and Actual (%) + Waste ($) + "How do I contribute?" note
+- [x] Digital: Google Reviews (Last Week) note + "How do I contribute?" note
+- [x] General Notes section at the bottom
+- [x] Header: Date, Store, Manager, Start Date, End Date
+- [x] Update admin dashboard ReportDetailRenderer for new scorecard format (table layout, backward compatible)
+- [x] Updated both ChecklistViewer.tsx (portal) and DirectChecklist.tsx (admin) forms
+- [x] All 242 tests passing (241 pass + 1 skipped)
