@@ -1384,3 +1384,13 @@
 - [x] Add route for /checklists/deep-clean (handled by existing :type route)
 - [x] Add DirectChecklist support for deep-clean report type (SLUG_TO_CHECKLIST, SLUG_TO_LABEL, DeepCleanForm)
 - [x] All 242 tests passing
+
+# Store Performance: Default Date Filter to "Today"
+- [x] Verified: Store Performance already defaults to "Today" (uses getDefaultDateFilter which returns PRESETS[0] = Today)
+
+# Manager Portal: Weekly Deep Clean Schedule
+- [x] Deep clean already in Manager's Portal (store-manager position, DeepCleanChecklistForm wired)
+- [x] Added schedule metadata to ChecklistInfo interface (frequency, dueDay, dueTime, label)
+- [x] Set schedule: weekly, Wednesday, 8:00 AM ("Every Wednesday by 8:00 AM")
+- [x] Schedule badge displayed on checklist card in portal (Clock icon + amber pill)
+- [x] All 242 tests passing

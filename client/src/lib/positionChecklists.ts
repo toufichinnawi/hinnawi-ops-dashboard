@@ -22,6 +22,16 @@ export interface ChecklistInfo {
   label: string;
   description: string;
   icon: string;
+  /** Schedule requirement for this checklist */
+  schedule?: {
+    frequency: "daily" | "weekly";
+    /** Day of week (0=Sun, 1=Mon, ..., 3=Wed, ..., 6=Sat) */
+    dueDay?: number;
+    /** Time in HH:mm format */
+    dueTime?: string;
+    /** Human-readable schedule label */
+    label: string;
+  };
 }
 
 export const ALL_CHECKLISTS: Record<ChecklistType, ChecklistInfo> = {
@@ -98,6 +108,12 @@ export const ALL_CHECKLISTS: Record<ChecklistType, ChecklistInfo> = {
     description:
       "Weekly deep cleaning checklist with manager verification",
     icon: "🧹",
+    schedule: {
+      frequency: "weekly",
+      dueDay: 3, // Wednesday
+      dueTime: "08:00",
+      label: "Every Wednesday by 8:00 AM",
+    },
   },
 };
 

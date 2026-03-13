@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/StarRating";
-import { CheckCircle2, ClipboardCheck, ArrowLeft, ChevronRight, Save, Camera, Lock } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, ArrowLeft, ChevronRight, Save, Camera, Lock, Clock } from "lucide-react";
 import { useDuplicateReportCheck, updateReport } from "@/hooks/useDuplicateReportCheck";
 import { toast } from "sonner";
 import { useMemo } from "react";
@@ -356,6 +356,14 @@ export default function PositionChecklists() {
                   <div className="flex-1">
                     <h3 className="font-semibold">{info.label}</h3>
                     <p className="text-sm text-muted-foreground">{info.description}</p>
+                    {info.schedule && (
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <Clock className="h-3.5 w-3.5 text-amber-600" />
+                        <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                          {info.schedule.label}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </CardContent>
