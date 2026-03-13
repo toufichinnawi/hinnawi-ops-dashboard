@@ -1999,7 +1999,7 @@ function PortalReportsPage({
   const [reportFlags, setReportFlags] = useState<Record<number, string>>({});
   const [exporting, setExporting] = useState(false);
 
-  const canEditDelete = position.slug === "ops-manager" || position.slug === "store-manager";
+  const canEditDelete = position.slug === "operations-manager" || position.slug === "store-manager";
   const showStoreFilter = !store;
 
   const positionChecklists = useMemo(() => {

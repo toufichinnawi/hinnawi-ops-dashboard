@@ -13,7 +13,7 @@ import ChecklistViewer from "./ChecklistViewer";
 // We need to import the form component directly, so let's create a wrapper
 // that renders the form for a given checklist type
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { stores } from "@/lib/data";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,7 +28,20 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { PhotoUpload, type UploadedPhoto } from "@/components/PhotoUpload";
 import { calcBagelCost, calcPastryCost, calcCKCost } from "@shared/wastePricing";
-import { useDuplicateReportCheck } from "@/hooks/useDuplicateReportCheck";
+import { useDuplicateReportCheck, updateReport } from "@/hooks/useDuplicateReportCheck";
+
+// Edit mode props passed from main component
+type EditProps = { editReportId?: number; editData?: any; editStore?: string };
+
+// Edit mode banner shown at top of form when editing
+function EditBanner({ reportId }: { reportId: number }) {
+  return (
+    <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm mb-4">
+      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+      <span>Editing report #{reportId} — changes will overwrite the existing submission.</span>
+    </div>
+  );
+}
 
 // Shared duplicate-check adapter — first tries overwrite:false, shows dialog on 409, then re-submits with overwrite:true
 function useDuplicateCheck() {
@@ -220,7 +233,8 @@ const SLUG_TO_LABEL: Record<string, string> = {
 
 // ─── Form Components ───
 
-function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
+function ManagerChecklistForm({ onBack, editReportId, editData, editStore }: { onBack: () => void } & EditProps) {
+  const isEdit = !!editReportId;
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [managerName, setManagerName] = useState("");
@@ -234,16 +248,46 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedStore(editStore);
+    if (d.dateOfSubmission) setDateOfSubmission(d.dateOfSubmission);
+    if (d.weekOfStart) setWeekStart(d.weekOfStart);
+    if (d.weekOfEnd) setWeekEnd(d.weekOfEnd);
+    if (d.comments) setComments(d.comments);
+    if (d.managerName) setManagerName(d.managerName);
+    if (d.submitterName) setManagerName(d.submitterName);
+    if (d.tasks && Array.isArray(d.tasks)) {
+      setTasks(OPS_TASKS.map((_, i) => ({
+        rating: d.tasks[i]?.rating || 0,
+        isNA: d.tasks[i]?.isNA || false,
+        comment: d.tasks[i]?.comment || "",
+      })));
+    }
+  }, [editData, editStore]);
+
   const ratedTasks = tasks.filter((t) => !t.isNA && t.rating > 0);
   const avg = ratedTasks.length > 0 ? (ratedTasks.reduce((s, t) => s + t.rating, 0) / ratedTasks.length).toFixed(2) : "0.00";
 
   const handleSubmit = async () => {
     if (!managerName.trim() || !selectedStore) { toast.error("Please fill in your name and select a store"); return; }
     if (ratedTasks.length === 0) { toast.error("Please rate at least one item"); return; }
+    const reportData = { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, averageScore: avg };
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId!, { data: reportData, totalScore: avg, status: "submitted" });
+        setSubmitted(true); toast.success("Report updated!");
+      } catch { toast.error("Failed to update report"); }
+      finally { setSubmitting(false); }
+      return;
+    }
     await submitWithDuplicateCheck(
       {
         reportType: "manager-checklist", location: selectedStore, submitterName: managerName, reportDate: weekStart,
-        data: { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, averageScore: avg },
+        data: reportData,
         totalScore: avg,
       },
       () => { setSubmitted(true); toast.success("Checklist submitted!"); },
@@ -263,6 +307,7 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="space-y-6">
+      {isEdit && <EditBanner reportId={editReportId!} />}
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Your Name</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" /></div>
@@ -301,13 +346,14 @@ function ManagerChecklistForm({ onBack }: { onBack: () => void }) {
         <Label>Final Comments</Label>
         <Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="General comments..." rows={3} />
       </CardContent></Card>
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Checklist"}</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : isEdit ? "Update Checklist" : "Submit Checklist"}</Button></div>
       {duplicateDialog}
     </div>
   );
 }
 
-function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
+function WeeklyAuditForm({ onBack, editReportId, editData, editStore }: { onBack: () => void } & EditProps) {
+  const isEdit = !!editReportId;
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [auditorName, setAuditorName] = useState("");
@@ -319,7 +365,21 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
   const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { submitWithDuplicateCheck, duplicateDialog: auditDuplicateDialog } = useDuplicateCheck();
+   const { submitWithDuplicateCheck, duplicateDialog: auditDuplicateDialog } = useDuplicateCheck();
+
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedStore(editStore);
+    if (d.dateOfSubmission) setDateOfSubmission(d.dateOfSubmission);
+    if (d.auditorName) setAuditorName(d.auditorName);
+    if (d.submitterName) setAuditorName(d.submitterName);
+    if (d.ratings) setRatings(d.ratings);
+    if (d.sectionComments) setSectionComments(d.sectionComments);
+    if (d.notes) setNotes(d.notes);
+    if (d.sectionPhotos) setSectionPhotos(d.sectionPhotos);
+  }, [editData, editStore]);
 
   const handleSubmit = async () => {
     if (!auditorName.trim() || !selectedStore) { toast.error("Please fill in your name and select a store"); return; }
@@ -329,6 +389,15 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
     for (const [section, photos] of Object.entries(sectionPhotos)) {
       const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
       if (urls.length > 0) photoUrls[section] = urls;
+    }
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId, { data: { dateOfSubmission, ratings, sectionComments, notes, sectionPhotos: photoUrls, averageScore: avg.toFixed(2) }, totalScore: avg.toFixed(2), status: "submitted" });
+        setSubmitted(true); toast.success("Report updated!");
+      } catch { toast.error("Failed to update report"); }
+      finally { setSubmitting(false); }
+      return;
     }
     await submitWithDuplicateCheck(
       {
@@ -358,6 +427,7 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="space-y-6">
+      {isEdit && <EditBanner reportId={editReportId!} />}
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Auditor Name</Label><Input value={auditorName} onChange={(e) => setAuditorName(e.target.value)} placeholder="Enter your name" /></div>
@@ -407,7 +477,7 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
         );
       })}
       <Card><CardContent className="pt-6 space-y-3"><Label>Additional Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="General notes..." rows={3} /></CardContent></Card>
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Audit"}</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : isEdit ? "Update Audit" : "Submit Audit"}</Button></div>
       {auditDuplicateDialog}
     </div>
   );
@@ -581,11 +651,22 @@ function getDefaultWeekRange(): { start: string; end: string } {
   return { start: iso(prevMon), end: iso(prevSun) };
 }
 
-function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
+function WeeklyScorecardForm({ onBack, editReportId, editData, editStore }: { onBack: () => void } & EditProps) {
+  const isEdit = !!editReportId;
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [managerName, setManagerName] = useState("");
   const [dateEntered, setDateEntered] = useState(() => new Date().toISOString().split("T")[0]);
+
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedStore(editStore);
+    if (d.dateEntered) setDateEntered(d.dateEntered);
+    if (d.managerName) setManagerName(d.managerName);
+    if (d.submitterName) setManagerName(d.submitterName);
+  }, [editData, editStore]);
   const defaultWeek = useMemo(() => getDefaultWeekRange(), []);
   const [weekStart, setWeekStart] = useState(defaultWeek.start);
   const [weekEnd, setWeekEnd] = useState(defaultWeek.end);
@@ -604,6 +685,15 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
 
   const handleSubmit = async () => {
     if (!managerName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId!, { data: { dateEntered, weekOf: weekOfLabel, weekOfStart: weekStart, weekOfEnd: weekEnd, sales, labour, digital, food, generalNotes }, status: "submitted" });
+        setSubmitted(true); toast.success("Report updated!");
+      } catch { toast.error("Failed to update report"); }
+      finally { setSubmitting(false); }
+      return;
+    }
     await submitWithDuplicateCheck(
       {
         reportType: "weekly-scorecard", location: selectedStore, submitterName: managerName, reportDate: weekStart,
@@ -631,7 +721,8 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
       <Card><CardContent className="pt-6 space-y-4">
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="space-y-1.5"><Label>Name *</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" /></div>
+          <div className="space-y-1.5"><Label>Name *</Label>{isEdit && <EditBanner reportId={editReportId!} />}
+      <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" /></div>
           <div className="space-y-1.5"><Label>Date Completed</Label><Input type="date" value={dateEntered} onChange={(e) => setDateEntered(e.target.value)} /></div>
           <div className="space-y-1.5"><Label>Week Of — Start *</Label><Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} /></div>
           <div className="space-y-1.5"><Label>Week Of — End *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
@@ -675,18 +766,29 @@ function WeeklyScorecardForm({ onBack }: { onBack: () => void }) {
 
       <div className="flex gap-3">
         <Button variant="outline" onClick={onBack}>Cancel</Button>
-        <Button onClick={handleSubmit} disabled={submitting} className="flex-1 bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]"><CheckCircle2 className="w-4 h-4 mr-2" />{submitting ? "Submitting..." : "Submit Scorecard"}</Button>
+        <Button onClick={handleSubmit} disabled={submitting} className="flex-1 bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]"><CheckCircle2 className="w-4 h-4 mr-2" />{submitting ? "Submitting..." : isEdit ? "Update Scorecard" : "Submit Scorecard"}</Button>
       </div>
       {scorecardDuplicateDialog}
     </div>
   );
 }
 
-function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
+function PerformanceEvaluationForm({ onBack, editReportId, editData, editStore }: { onBack: () => void } & EditProps) {
+  const isEdit = !!editReportId;
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [evaluatorName, setEvaluatorName] = useState("");
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
+
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedStore(editStore);
+    if (d.reportDate || d.dateOfSubmission) setReportDate(d.reportDate || d.dateOfSubmission);
+    if (d.evaluatorName) setEvaluatorName(d.evaluatorName);
+    if (d.submitterName) setEvaluatorName(d.submitterName);
+  }, [editData, editStore]);
   const [employeeName, setEmployeeName] = useState("");
   const [employeePosition, setEmployeePosition] = useState("");
   const [ratings, setRatings] = useState(() => EVAL_CRITERIA.map(() => ({ rating: 0, comment: "" })));
@@ -700,6 +802,15 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
 
   const handleSubmit = async () => {
     if (!evaluatorName.trim() || !employeeName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId, { data: { employeeName, employeePosition, criteria: EVAL_CRITERIA.map((c, i) => ({ ...c, ...ratings[i] })), overallComments }, totalScore: avg, status: "submitted" });
+        setSubmitted(true); toast.success("Report updated!");
+      } catch { toast.error("Failed to update report"); }
+      finally { setSubmitting(false); }
+      return;
+    }
     await submitWithDuplicateCheck(
       {
         reportType: "performance-evaluation", location: selectedStore, submitterName: evaluatorName, reportDate,
@@ -731,6 +842,7 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
         </div>
         <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
       </CardContent></Card>
+      {isEdit && <EditBanner reportId={editReportId!} />}
       <div className="flex items-center gap-2">
         <span className="text-lg font-serif font-semibold border border-[#D4A853] text-[#D4A853] rounded-md px-4 py-2">Average: {avg} / 5</span>
       </div>
@@ -747,7 +859,7 @@ function PerformanceEvaluationForm({ onBack }: { onBack: () => void }) {
         </Card>
       ))}
       <Card><CardContent className="pt-6 space-y-3"><Label>Overall Comments</Label><Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment and recommendations..." rows={3} /></CardContent></Card>
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Evaluation"}</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : isEdit ? "Update Evaluation" : "Submit Evaluation"}</Button></div>
       {perfDuplicateDialog}
     </div>
   );
@@ -946,11 +1058,21 @@ function WasteItemTable({ title, items, rows, onChange, qtyTypes, costFn }: {
   );
 }
 
-function WasteReportForm({ onBack }: { onBack: () => void }) {
+function WasteReportForm({ onBack, editReportId, editData, editStore }: { onBack: () => void } & EditProps) {
+  const isEdit = !!editReportId;
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [submitterName, setSubmitterName] = useState("");
+
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedStore(editStore);
+    if (d.reportDate || d.dateOfSubmission) setReportDate(d.reportDate || d.dateOfSubmission);
+    if (d.submitterName) setSubmitterName(d.submitterName);
+  }, [editData, editStore]);
   const [bagelRows, setBagelRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_BAGELS, "bag"));
   const [pastryRows, setPastryRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_PASTRIES, "unit"));
   const [ckRows, setCkRows] = useState<Record<string, WasteItemRow>>(() => initRows(WASTE_CK_ITEMS, "unit"));
@@ -1049,6 +1171,15 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
     if (!selectedStore) { toast.error("Please select a store"); return; }
     const data = collectData();
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId!, { data, status: "submitted" });
+        setSubmitted(true); toast.success("Report updated!");
+      } catch { toast.error("Failed to update report"); }
+      finally { setSubmitting(false); }
+      return;
+    }
     await submitWithDuplicateCheck(
       {
         submitterName: submitterName.trim(),
@@ -1115,7 +1246,8 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="space-y-5">
-      {/* Header row: Date + Location */}
+      {/* Header row: Date + Location */}{isEdit && <EditBanner reportId={editReportId!} />}
+      
       <Card>
         <CardContent className="pt-5 pb-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1172,7 +1304,7 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
           className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48] h-11"
         >
           <CheckCircle2 className="w-4 h-4 mr-2" />
-          {submitting ? "Submitting..." : "Submit Report"}
+          {submitting ? "Submitting..." : isEdit ? "Update Report" : "Submit Report"}
         </Button>
         <Button
           onClick={handleSendEmail}
@@ -1188,11 +1320,22 @@ function WasteReportForm({ onBack }: { onBack: () => void }) {
   );
 }
 
-function EquipmentMaintenanceForm({ onBack }: { onBack: () => void }) {
+function EquipmentMaintenanceForm({ onBack, editReportId, editData, editStore }: { onBack: () => void } & EditProps) {
+  const isEdit = !!editReportId;
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [techName, setTechName] = useState("");
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
+
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedStore(editStore);
+    if (d.reportDate || d.dateOfSubmission) setReportDate(d.reportDate || d.dateOfSubmission);
+    if (d.techName) setTechName(d.techName);
+    if (d.submitterName) setTechName(d.submitterName);
+  }, [editData, editStore]);
   const [daily, setDaily] = useState(() => EQUIP_DAILY.map(() => ({ checked: false, initial: "" })));
   const [weekly, setWeekly] = useState(() => EQUIP_WEEKLY.map(() => ({ checked: false, initial: "" })));
   const [monthly, setMonthly] = useState(() => EQUIP_MONTHLY.map(() => ({ checked: false, initial: "" })));
@@ -1204,6 +1347,15 @@ function EquipmentMaintenanceForm({ onBack }: { onBack: () => void }) {
     if (!techName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
     const total = daily.length + weekly.length + monthly.length;
     const checked = [...daily, ...weekly, ...monthly].filter((i) => i.checked).length;
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId, { data: { daily: EQUIP_DAILY.map((e, i) => ({ ...e, ...daily[i] })), weekly: EQUIP_WEEKLY.map((e, i) => ({ ...e, ...weekly[i] })), monthly: EQUIP_MONTHLY.map((e, i) => ({ ...e, ...monthly[i] })) }, totalScore: `${checked}/${total}`, status: "submitted" });
+        setSubmitted(true); toast.success("Report updated!");
+      } catch { toast.error("Failed to update report"); }
+      finally { setSubmitting(false); }
+      return;
+    }
     await submitWithDuplicateCheck(
       {
         reportType: "equipment-maintenance", location: selectedStore, submitterName: techName, reportDate,
@@ -1248,20 +1400,32 @@ function EquipmentMaintenanceForm({ onBack }: { onBack: () => void }) {
         <div className="space-y-1.5"><Label>Your Name</Label><Input value={techName} onChange={(e) => setTechName(e.target.value)} placeholder="Enter your name" /></div>
         <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
       </CardContent></Card>
+      {isEdit && <EditBanner reportId={editReportId!} />}
       {renderEquipSection("Daily Checks", EQUIP_DAILY, daily, setDaily)}
       {renderEquipSection("Weekly Checks", EQUIP_WEEKLY, weekly, setWeekly)}
       {renderEquipSection("Monthly Checks", EQUIP_MONTHLY, monthly, setMonthly)}
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Checklist"}</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : isEdit ? "Update Checklist" : "Submit Checklist"}</Button></div>
       {equipDuplicateDialog}
     </div>
   );
 }
 
-function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
+function TrainingEvaluationForm({ onBack, editReportId, editData, editStore }: { onBack: () => void } & EditProps) {
+  const isEdit = !!editReportId;
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [trainerName, setTrainerName] = useState("");
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
+
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedStore(editStore);
+    if (d.reportDate || d.dateOfSubmission) setReportDate(d.reportDate || d.dateOfSubmission);
+    if (d.trainerName) setTrainerName(d.trainerName);
+    if (d.submitterName) setTrainerName(d.submitterName);
+  }, [editData, editStore]);
   const [traineeName, setTraineeName] = useState("");
   const [ratings, setRatings] = useState(() => TRAINING_AREAS.map((a) => a.items.map(() => ({ rating: 0, comment: "" }))));
   const [overallComments, setOverallComments] = useState("");
@@ -1274,6 +1438,15 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
 
   const handleSubmit = async () => {
     if (!trainerName.trim() || !traineeName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId, { data: { traineeName, areas: TRAINING_AREAS.map((a, ai) => ({ title: a.title, items: a.items.map((item, ii) => ({ item, ...ratings[ai][ii] })) })), overallComments }, totalScore: avg, status: "submitted" });
+        setSubmitted(true); toast.success("Report updated!");
+      } catch { toast.error("Failed to update report"); }
+      finally { setSubmitting(false); }
+      return;
+    }
     await submitWithDuplicateCheck(
       {
         reportType: "training-evaluation", location: selectedStore, submitterName: trainerName, reportDate,
@@ -1302,6 +1475,7 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
         <div className="space-y-1.5"><Label>Trainee Name</Label><Input value={traineeName} onChange={(e) => setTraineeName(e.target.value)} placeholder="Trainee name" /></div>
         <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
       </CardContent></Card>
+      {isEdit && <EditBanner reportId={editReportId!} />}
       <div className="flex items-center gap-2">
         <span className="text-lg font-serif font-semibold border border-[#D4A853] text-[#D4A853] rounded-md px-4 py-2">Average: {avg} / 5</span>
       </div>
@@ -1322,14 +1496,23 @@ function TrainingEvaluationForm({ onBack }: { onBack: () => void }) {
         </Card>
       ))}
       <Card><CardContent className="pt-6 space-y-3"><Label>Overall Comments</Label><Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment..." rows={3} /></CardContent></Card>
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Evaluation"}</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : isEdit ? "Update Evaluation" : "Submit Evaluation"}</Button></div>
       {trainingDuplicateDialog}
     </div>
   );
 }
-function BagelOrdersForm({ onBack }: { onBack: () => void }) {
+function BagelOrdersForm({ onBack, editReportId, editData, editStore }: { onBack: () => void } & EditProps) {
+  const isEdit = !!editReportId;
   // Admin can select any location including Sales
   const [selectedLocation, setSelectedLocation] = useState("sales");
+
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedLocation(editStore);
+    if (d.location) setSelectedLocation(d.location);
+  }, [editData, editStore]);
   const isSales = selectedLocation === "sales";
   const [ordererName, setOrdererName] = useState("");
   const [clientName, setClientName] = useState("");
@@ -1356,6 +1539,16 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
     if (!ordererName.trim()) { toast.error("Please enter your name"); return; }
     if (isSales && !clientName.trim()) { toast.error("Please enter the client name"); return; }
     if (!orderForDate) { toast.error("Please select the order date"); return; }
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        const payload = buildPayload();
+        await updateReport(editReportId!, { data: payload.data, status: "submitted" });
+        setSubmitted(true); toast.success("Report updated!");
+      } catch { toast.error("Failed to update report"); }
+      finally { setSubmitting(false); }
+      return;
+    }
     await submitWithDuplicateCheck(
       buildPayload(),
       () => { setSubmitted(true); toast.success(`Bagel order submitted for ${locationLabel}${isSales ? ` — ${clientName}` : ""}!`); },
@@ -1374,7 +1567,8 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="space-y-6">
-      {/* Location Selector — Sales + all stores */}
+      {/* Location Selector — Sales + all stores */}{isEdit && <EditBanner reportId={editReportId!} />}
+      
       <Card><CardContent className="pt-6">
         <Label className="text-sm font-medium">Location</Label>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-2">
@@ -1445,7 +1639,7 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
           ))}
         </div>
       </CardContent></Card>
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Order"}</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : isEdit ? "Update Order" : "Submit Order"}</Button></div>
       {bagelDuplicateDialog}
     </div>
   );
@@ -1453,8 +1647,17 @@ function BagelOrdersForm({ onBack }: { onBack: () => void }) {
 
 // ─── Pastry Orders Form (Admin) ───
 
-function PastryOrdersForm({ onBack }: { onBack: () => void }) {
+function PastryOrdersForm({ onBack, editReportId, editData, editStore }: { onBack: () => void } & EditProps) {
+  const isEdit = !!editReportId;
   const [selectedLocation, setSelectedLocation] = useState(stores[0]?.shortName || "");
+
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedLocation(editStore);
+    if (d.location) setSelectedLocation(d.location);
+  }, [editData, editStore]);
   const [ordererName, setOrdererName] = useState("");
   const [orderForDate, setOrderForDate] = useState("");
   const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(PASTRY_ITEMS.map(t => [t, ""])));
@@ -1476,6 +1679,16 @@ function PastryOrdersForm({ onBack }: { onBack: () => void }) {
     if (!selectedLocation) { toast.error("Please select a location"); return; }
     if (!ordererName.trim()) { toast.error("Please enter your name"); return; }
     if (!orderForDate) { toast.error("Please select the order date"); return; }
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        const payload = buildPayload();
+        await updateReport(editReportId!, { data: payload.data, status: "submitted" });
+        setSubmitted(true); toast.success("Report updated!");
+      } catch { toast.error("Failed to update report"); }
+      finally { setSubmitting(false); }
+      return;
+    }
     await submitWithDuplicateCheck(
       buildPayload(),
       () => { setSubmitted(true); toast.success(`Pastry order submitted for ${locationLabel}!`); },
@@ -1494,7 +1707,8 @@ function PastryOrdersForm({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="space-y-6">
-      {/* Location Selector — stores only (no Sales for pastry) */}
+      {/* Location Selector — stores only (no Sales for pastry) */}{isEdit && <EditBanner reportId={editReportId!} />}
+      
       <Card><CardContent className="pt-6">
         <Label className="text-sm font-medium">Location</Label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
@@ -1542,7 +1756,7 @@ function PastryOrdersForm({ onBack }: { onBack: () => void }) {
           ))}
         </div>
       </CardContent></Card>
-      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-rose-500 text-white hover:bg-rose-600">{submitting ? "Submitting..." : "Submit Order"}</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-rose-500 text-white hover:bg-rose-600">{submitting ? "Submitting..." : isEdit ? "Update Order" : "Submit Order"}</Button></div>
       {pastryDuplicateDialog}
     </div>
   );
@@ -1687,7 +1901,8 @@ const DEEP_CLEAN_SECTIONS = [
   },
 ];
 
-function DeepCleanForm({ onBack }: { onBack: () => void }) {
+function DeepCleanForm({ onBack, editReportId, editData, editStore }: { onBack: () => void } & EditProps) {
+  const isEdit = !!editReportId;
   const [selectedStore, setSelectedStore] = useState("");
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [managerName, setManagerName] = useState("");
@@ -1696,6 +1911,17 @@ function DeepCleanForm({ onBack }: { onBack: () => void }) {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog: deepCleanDuplicateDialog } = useDuplicateCheck();
+
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedStore(editStore);
+    if (d.dateOfSubmission) setDateOfSubmission(d.dateOfSubmission);
+    if (d.managerName) setManagerName(d.managerName);
+    if (d.submitterName) setManagerName(d.submitterName);
+    if (d.overallComments) setOverallComments(d.overallComments);
+  }, [editData, editStore]);
 
   type DeepCleanItemState = { rating: number; na: boolean; comment: string };
   const initItems = (): Record<string, DeepCleanItemState[]> => {
@@ -1721,6 +1947,29 @@ function DeepCleanForm({ onBack }: { onBack: () => void }) {
 
   const handleSubmit = async () => {
     if (!managerName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
+    const deepCleanData = {
+      dateOfSubmission,
+      sections: DEEP_CLEAN_SECTIONS.map((s) => ({
+        title: s.title,
+        items: s.items.map((itemText, idx) => ({
+          task: itemText,
+          rating: items[s.title]?.[idx]?.rating || 0,
+          na: items[s.title]?.[idx]?.na || false,
+          comment: items[s.title]?.[idx]?.comment || "",
+        })),
+      })),
+      overallComments,
+      averageScore: avg,
+    };
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId!, { data: deepCleanData, totalScore: avg, status: "submitted" });
+        setSubmitted(true); toast.success("Report updated!");
+      } catch { toast.error("Failed to update report"); }
+      finally { setSubmitting(false); }
+      return;
+    }
     await submitWithDuplicateCheck(
       {
         submitterName: managerName.trim(),
@@ -1728,18 +1977,7 @@ function DeepCleanForm({ onBack }: { onBack: () => void }) {
         location: selectedStore,
         reportDate: dateOfSubmission,
         data: {
-          dateOfSubmission,
-          sections: DEEP_CLEAN_SECTIONS.map((s) => ({
-            title: s.title,
-            items: s.items.map((itemText, idx) => ({
-              task: itemText,
-              rating: items[s.title]?.[idx]?.rating || 0,
-              na: items[s.title]?.[idx]?.na || false,
-              comment: items[s.title]?.[idx]?.comment || "",
-            })),
-          })),
-          overallComments,
-          averageScore: avg,
+          ...deepCleanData,
           submittedVia: "Admin Dashboard",
           submitterName: managerName.trim(),
         },
@@ -1767,7 +2005,7 @@ function DeepCleanForm({ onBack }: { onBack: () => void }) {
         <div className="space-y-1.5"><Label>Manager Name *</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Your name" /></div>
         <div className="space-y-1.5"><Label>Date of Verification</Label><Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} /></div>
       </CardContent></Card>
-
+      {isEdit && <EditBanner reportId={editReportId!} />}
       <div className="flex items-center gap-2">
         <span className="text-lg font-serif font-semibold border border-[#D4A853] text-[#D4A853] rounded-md px-4 py-2">Average: {avg} / 5</span>
       </div>
@@ -1819,7 +2057,7 @@ function DeepCleanForm({ onBack }: { onBack: () => void }) {
       <Card><CardContent className="pt-6"><Label>Overall Comments / Areas for Improvement</Label><Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment, areas for improvement, follow-up actions..." rows={4} /></CardContent></Card>
 
       <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#D4A853] hover:bg-[#c49843] text-white">
-        {submitting ? "Submitting..." : "Submit Checklist"}
+        {submitting ? "Submitting..." : isEdit ? "Update Checklist" : "Submit Checklist"}
       </Button>
       {deepCleanDuplicateDialog}
     </div>
@@ -1834,6 +2072,37 @@ export default function DirectChecklist() {
   const slug = params.type || "";
   const checklistType = SLUG_TO_CHECKLIST[slug];
   const label = SLUG_TO_LABEL[slug] || "Checklist";
+
+  // Edit mode: read editId from URL query params
+  const searchParams = new URLSearchParams(window.location.search);
+  const editIdParam = searchParams.get("editId");
+  const editId = editIdParam ? parseInt(editIdParam, 10) : undefined;
+
+  const [editReport, setEditReport] = useState<any>(null);
+  const [editLoading, setEditLoading] = useState(!!editId);
+
+  useEffect(() => {
+    if (!editId) return;
+    setEditLoading(true);
+    fetch(`/api/public/reports`)
+      .then(r => r.json())
+      .then((reports: any[]) => {
+        const found = reports.find((r: any) => r.id === editId);
+        if (found) {
+          setEditReport(found);
+        } else {
+          toast.error("Report not found");
+        }
+      })
+      .catch(() => toast.error("Failed to load report for editing"))
+      .finally(() => setEditLoading(false));
+  }, [editId]);
+
+  const editProps: EditProps = editReport ? {
+    editReportId: editReport.id,
+    editData: typeof editReport.data === "string" ? JSON.parse(editReport.data) : editReport.data,
+    editStore: editReport.location,
+  } : {};
 
   if (!checklistType) {
     return (
@@ -1856,17 +2125,19 @@ export default function DirectChecklist() {
     );
   }
 
+  const goBack = () => editId ? navigate("/reports/history") : navigate("/");
+
   const formMap: Record<string, React.ReactNode> = {
-    "operations": <ManagerChecklistForm onBack={() => navigate("/")} />,
-    "weekly-audit": <WeeklyAuditForm onBack={() => navigate("/")} />,
-    "weekly-scorecard": <WeeklyScorecardForm onBack={() => navigate("/")} />,
-    "performance": <PerformanceEvaluationForm onBack={() => navigate("/")} />,
-    "waste": <WasteReportForm onBack={() => navigate("/")} />,
-    "equipment": <EquipmentMaintenanceForm onBack={() => navigate("/")} />,
-    "training": <TrainingEvaluationForm onBack={() => navigate("/")} />,
-    "bagel-orders": <BagelOrdersForm onBack={() => navigate("/")} />,
-    "pastry-orders": <PastryOrdersForm onBack={() => navigate("/")} />,
-    "deep-clean": <DeepCleanForm onBack={() => navigate("/")} />,
+    "operations": <ManagerChecklistForm onBack={goBack} {...editProps} />,
+    "weekly-audit": <WeeklyAuditForm onBack={goBack} {...editProps} />,
+    "weekly-scorecard": <WeeklyScorecardForm onBack={goBack} {...editProps} />,
+    "performance": <PerformanceEvaluationForm onBack={goBack} {...editProps} />,
+    "waste": <WasteReportForm onBack={goBack} {...editProps} />,
+    "equipment": <EquipmentMaintenanceForm onBack={goBack} {...editProps} />,
+    "training": <TrainingEvaluationForm onBack={goBack} {...editProps} />,
+    "bagel-orders": <BagelOrdersForm onBack={goBack} {...editProps} />,
+    "pastry-orders": <PastryOrdersForm onBack={goBack} {...editProps} />,
+    "deep-clean": <DeepCleanForm onBack={goBack} {...editProps} />,
   };
 
   return (
@@ -1885,7 +2156,12 @@ export default function DirectChecklist() {
           <CopyChecklistLink slug={slug} label={label} />
         </div>
 
-        {formMap[slug]}
+        {editLoading ? (
+          <div className="text-center py-16 space-y-4">
+            <div className="w-8 h-8 border-2 border-[#D4A853] border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-muted-foreground">Loading report for editing...</p>
+          </div>
+        ) : formMap[slug]}
       </div>
     </DashboardLayout>
   );

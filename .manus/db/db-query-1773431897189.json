@@ -1,0 +1,60 @@
+{
+  "query": "SELECT * FROM position_pins ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT * FROM position_pins ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "positionSlug": "operations-manager",
+      "positionLabel": "Operations Manager",
+      "pin": "4821",
+      "isActive": "yes",
+      "updatedBy": "NULL",
+      "createdAt": "2026-03-03 22:13:38",
+      "updatedAt": "2026-03-03 22:13:38"
+    },
+    {
+      "id": "2",
+      "positionSlug": "store-manager",
+      "positionLabel": "Store Manager",
+      "pin": "3597",
+      "isActive": "yes",
+      "updatedBy": "NULL",
+      "createdAt": "2026-03-03 22:13:38",
+      "updatedAt": "2026-03-03 22:44:38"
+    },
+    {
+      "id": "3",
+      "positionSlug": "assistant-manager",
+      "positionLabel": "Assistant Manager",
+      "pin": "6143",
+      "isActive": "yes",
+      "updatedBy": "NULL",
+      "createdAt": "2026-03-03 22:13:38",
+      "updatedAt": "2026-03-03 22:44:38"
+    },
+    {
+      "id": "4",
+      "positionSlug": "staff",
+      "positionLabel": "Staff",
+      "pin": "1234",
+      "isActive": "yes",
+      "updatedBy": "NULL",
+      "createdAt": "2026-03-03 22:13:38",
+      "updatedAt": "2026-03-03 22:13:38"
+    },
+    {
+      "id": "30001",
+      "positionSlug": "bagel-factory",
+      "positionLabel": "Bagel Factory",
+      "pin": "7256",
+      "isActive": "yes",
+      "updatedBy": "NULL",
+      "createdAt": "2026-03-06 23:32:07",
+      "updatedAt": "2026-03-06 23:32:07"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tpositionSlug\tpositionLabel\tpin\tisActive\tupdatedBy\tcreatedAt\tupdatedAt\n1\toperations-manager\tOperations Manager\t4821\tyes\tNULL\t2026-03-03 22:13:38\t2026-03-03 22:13:38\n2\tstore-manager\tStore Manager\t3597\tyes\tNULL\t2026-03-03 22:13:38\t2026-03-03 22:44:38\n3\tassistant-manager\tAssistant Manager\t6143\tyes\tNULL\t2026-03-03 22:13:38\t2026-03-03 22:44:38\n4\tstaff\tStaff\t1234\tyes\tNULL\t2026-03-03 22:13:38\t2026-03-03 22:13:38\n30001\tbagel-factory\tBagel Factory\t7256\tyes\tNULL\t2026-03-06 23:32:07\t2026-03-06 23:32:07\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

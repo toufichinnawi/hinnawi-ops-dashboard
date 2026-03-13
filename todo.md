@@ -1424,3 +1424,17 @@
 - [x] Remove Start Date and End Date from Operations Manager Portal (PositionChecklists.tsx - SimpleAuditFormPublic)
 - [x] Keep only "Date of Submission" field — reportDate now uses dateOfSubmission
 - [x] All 242 tests passing
+
+# Feature: Add Edit Reports functionality
+- [x] Fixed canEditDelete slug mismatch in Portal.tsx (ops-manager → operations-manager)
+- [x] Added Edit button to Admin Dashboard ReportHistory detail dialog
+- [x] Updated DirectChecklist main component to read editId from URL and fetch report data
+- [x] Added EditProps (editReportId, editData, editStore) to all 10 form components
+- [x] Added pre-fill useEffect to all 10 forms (loads existing data in edit mode)
+- [x] Added edit-mode submit (updateReport) to all 10 forms
+- [x] Added EditBanner component to all 10 forms
+- [x] Updated submit button text to show "Update" in edit mode for all 10 forms
+
+# Feature: Generate PIN for Staff position
+- [x] Generated new random PIN for Staff: 6037 (replaced default 1234)
+- [x] Staff position is PIN-protected (isActive = yes)

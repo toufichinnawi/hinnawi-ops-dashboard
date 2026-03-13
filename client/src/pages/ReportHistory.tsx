@@ -48,6 +48,7 @@ import {
 } from "@/lib/positionChecklists";
 import { stores } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { useLocation } from "wouter";
 import type { DateRange } from "react-day-picker";
 
 // ─── Constants ──────────────────────────────────────────────────
@@ -282,7 +283,52 @@ function ReportsDateFilter({
 }
 
 // ─── Main Component ─────────────────────────────────────────────
+// Reverse map: normalized reportType → DirectChecklist slug
+const REPORT_TYPE_TO_SLUG: Record<string, string> = {
+  "manager-checklist": "operations",
+  "ops-manager-checklist": "weekly-audit",
+  "weekly-scorecard": "weekly-scorecard",
+  "performance-evaluation": "performance",
+  "waste-report": "waste",
+  "equipment-maintenance": "equipment",
+  "training-evaluation": "training",
+  "bagel-orders": "bagel-orders",
+  "pastry-orders": "pastry-orders",
+  "deep-clean": "deep-clean",
+  "assistant-manager-checklist": "operations",
+};
+
+// Also map from display names
+const DISPLAY_NAME_TO_SLUG: Record<string, string> = {
+  "Manager Checklist": "operations",
+  "Store Weekly Checklist": "operations",
+  "Store Mgr Daily Checklist": "operations",
+  "Operations Manager Checklist (Weekly Audit)": "weekly-audit",
+  "Ops. Mgr Weekly Audit": "weekly-audit",
+  "Store Manager Weekly Audit": "weekly-audit",
+  "Store Weekly Audit": "weekly-audit",
+  "Weekly Store Audit": "weekly-audit",
+  "Assistant Manager Checklist": "operations",
+  "Leftovers & Waste Report": "waste",
+  "Leftovers & Waste": "waste",
+  "Equipment & Maintenance": "equipment",
+  "Equipment Maintenance": "equipment",
+  "Weekly Scorecard": "weekly-scorecard",
+  "Training Evaluation": "training",
+  "Bagel Orders": "bagel-orders",
+  "Performance Evaluation": "performance",
+  "Weekly Deep Clean Checklist": "deep-clean",
+  "Deep Clean Checklist": "deep-clean",
+  "Weekly Deep Clean": "deep-clean",
+  "Pastry Orders": "pastry-orders",
+};
+
+function getSlugForReport(reportType: string): string | null {
+  return DISPLAY_NAME_TO_SLUG[reportType] || REPORT_TYPE_TO_SLUG[reportType] || null;
+}
+
 export default function ReportHistory() {
+  const [, navigate] = useLocation();
   const [filterStore, setFilterStore] = useState<string>("all");
   const [filterPosition, setFilterPosition] =
     useState<string>("all");
@@ -862,8 +908,26 @@ export default function ReportHistory() {
                   </div>
                   <ReportDetailRenderer reportType={selectedReport.reportType} data={selectedReport.data} />
                 </div>
-                {/* Delete button in detail view */}
-                <div className="flex justify-end gap-2 pt-3 border-t">
+                {/* Edit & Delete buttons in detail view */}
+                <div className="flex justify-between gap-2 pt-3 border-t">
+                  {(() => {
+                    const slug = getSlugForReport(selectedReport.reportType);
+                    if (!slug) return <div />;
+                    return (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-amber-700 border-amber-200 hover:bg-amber-50"
+                        onClick={() => {
+                          setSelectedReport(null);
+                          navigate(`/checklists/${slug}?editId=${selectedReport.id}`);
+                        }}
+                      >
+                        <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                        Edit Report
+                      </Button>
+                    );
+                  })()}
                   <Button
                     variant="outline"
                     size="sm"
