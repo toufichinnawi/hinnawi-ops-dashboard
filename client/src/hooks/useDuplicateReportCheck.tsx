@@ -23,6 +23,19 @@ type DuplicateInfo = {
 };
 
 /**
+ * Update an existing report via PUT.
+ */
+export async function updateReport(reportId: number, data: { data: any; totalScore?: string | null; status?: string }) {
+  const res = await fetch(`/api/public/reports/${reportId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update report");
+  return res.json();
+}
+
+/**
  * Submit a report to the public endpoint.
  * When overwrite is false and a duplicate exists, the server returns 409.
  * When overwrite is true, it replaces the existing report.

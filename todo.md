@@ -1334,3 +1334,11 @@
 - [x] Removed all `disabled={!row.enabled}` from input fields in both files
 - [x] Removed `row.enabled` checks from cost calculations and data collection
 - [x] All items now always visible and editable — no toggle needed
+
+# Report Editing Feature — Operations Manager
+- [ ] Add server-side tRPC endpoint to update an existing report's data
+- [ ] Add Edit button to the Operations Manager's report list/detail view in Portal
+- [ ] When Edit is clicked, reopen the checklist form pre-filled with original submitted data
+- [ ] On save, update the existing report (not create a new one)
+- [ ] Support editing for all checklist types (Manager Checklist, Waste Report, etc.)
+- [ ] Write tests for the update endpoint
