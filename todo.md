@@ -1358,3 +1358,10 @@
 - [x] Store resolution: Maps normalized location (PK/MK/ON/TN) back to storeCode/storeName for edit form
 - [x] Written reportEdit.test.ts (4 tests: create, update, verify persistence, non-existent)
 - [x] All 234 tests passing
+
+# Bug Fix: Store Weekly Checklist — Admin Dashboard Has Wrong Items
+- [x] Root cause: DirectChecklist.tsx had an outdated 20-item OPS_TASKS list; Manager Portal (PositionChecklists.tsx) had the correct 41-item list
+- [x] Fixed: Updated DirectChecklist.tsx OPS_TASKS to match the full 41-item list
+- [x] ChecklistViewer.tsx already had the correct list (no changes needed)
+- [x] Verified in browser: all 41 items now display correctly on the Admin Dashboard
+- [x] All 234 tests passing
