@@ -541,7 +541,7 @@ function ManagerChecklistForm({ storeCode, storeName, positionLabel, onBack, edi
         submitterName: name.trim(),
         reportType: "Manager Checklist",
         location: storeName,
-        reportDate: weekStart,
+        reportDate: dateOfSubmission,
         data: reportData,
         totalScore: avg,
       },
@@ -560,10 +560,6 @@ function ManagerChecklistForm({ storeCode, storeName, positionLabel, onBack, edi
         <CardContent className="pt-6 space-y-4">
           <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div className="space-y-2"><Label>Date of Submission</Label><Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2"><Label>Start Date *</Label><Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} /></div>
-            <div className="space-y-2"><Label>End Date *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
-          </div>
         </CardContent>
       </Card>
       <Badge variant="outline" className="text-lg px-4 py-2 border-[#faa600] text-[#faa600]">Average: {avg} / 5</Badge>
@@ -839,7 +835,7 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
         submitterName: name.trim(),
         reportType,
         location: storeName,
-        reportDate: isWeekly ? weekStart : dateOfSubmission,
+        reportDate: dateOfSubmission,
         data: reportData,
         totalScore,
       },
@@ -858,12 +854,6 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
         <CardContent className="pt-6 space-y-4">
           <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div className="space-y-2"><Label>{isWeekly ? "Date of Submission" : "Date"}</Label><Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} /></div>
-          {isWeekly && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Start Date *</Label><Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} /></div>
-              <div className="space-y-2"><Label>End Date *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
-            </div>
-          )}
         </CardContent>
       </Card>
       <Badge variant="outline" className="text-lg px-4 py-2 border-[#faa600] text-[#faa600]">Score: {totalScore}{useRating ? " / 5" : ""}</Badge>

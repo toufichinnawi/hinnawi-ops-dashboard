@@ -286,7 +286,7 @@ function ManagerChecklistForm({ onBack, editReportId, editData, editStore }: { o
     }
     await submitWithDuplicateCheck(
       {
-        reportType: "manager-checklist", location: selectedStore, submitterName: managerName, reportDate: weekStart,
+        reportType: "manager-checklist", location: selectedStore, submitterName: managerName, reportDate: dateOfSubmission,
         data: reportData,
         totalScore: avg,
       },
@@ -312,10 +312,6 @@ function ManagerChecklistForm({ onBack, editReportId, editData, editStore }: { o
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Your Name</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter your name" /></div>
         <div className="space-y-1.5"><Label>Date of Submission</Label><Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} /></div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5"><Label>Start Date *</Label><Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>End Date *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
-        </div>
       </CardContent></Card>
       <div className="flex items-center gap-2">
         <span className="text-lg font-serif font-semibold border border-[#D4A853] text-[#D4A853] rounded-md px-4 py-2">Average: {avg} / 5</span>

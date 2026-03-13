@@ -1444,3 +1444,8 @@
 - [x] Updated DEEP_CLEAN_SECTIONS in PositionChecklists.tsx (portal form)
 - [x] Updated DEEP_CLEAN_SECTIONS in DirectChecklist.tsx (admin form)
 - [x] All 242 tests passing (241 pass + 1 skipped)
+
+# Remove Start Date and End Date from Store Weekly Checklist
+- [x] Remove Start/End Date from portal form (PositionChecklists.tsx)
+- [x] Remove Start/End Date from admin dashboard form (DirectChecklist.tsx)
+- [x] Verified: 239 passed, 1 skipped, 2 Koomi timeout (unrelated)
