@@ -1394,3 +1394,9 @@
 - [x] Set schedule: weekly, Wednesday, 8:00 AM ("Every Wednesday by 8:00 AM")
 - [x] Schedule badge displayed on checklist card in portal (Clock icon + amber pill)
 - [x] All 242 tests passing
+
+# Bug: Weekly Deep Clean not visible in Manager's Portal
+- [x] Root cause: Portal.tsx has its own sidebar items list separate from positionChecklists.ts
+- [x] Fix: Added si("deep-clean", "Weekly Deep Clean", Sparkles, "checklist", { checklistType: "deep-clean" }) to store-manager sidebarItems in Portal.tsx
+- [x] Positioned below Weekly Scorecard in the sidebar
+- [x] All 242 tests passing

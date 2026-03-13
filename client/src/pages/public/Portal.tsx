@@ -17,6 +17,7 @@ import {
   FileText, DollarSign, Percent, Clock, CheckCircle2,
   Pencil, Receipt, CalendarIcon, Filter,
   Download, Flag, MessageSquare, Send, AlertTriangle, Loader2,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -124,6 +125,7 @@ const POSITIONS: PositionDef[] = [
       si("reports", "Reports", FileText, "info", { infoContent: "reports" }),
       si("daily-checklist", "Store Weekly Checklist", ClipboardCheck, "checklist", { checklistType: "manager-checklist" }),
       si("weekly-scorecard", "Weekly Scorecard", BarChart3, "checklist", { checklistType: "weekly-scorecard" }),
+      si("deep-clean", "Weekly Deep Clean", Sparkles, "checklist", { checklistType: "deep-clean" }),
       si("performance-eval", "Performance Evaluation", Star, "checklist", { checklistType: "performance-evaluation" }),
       si("waste-report", "Leftovers & Waste", Trash2, "checklist", { checklistType: "waste-report" }),
       si("equipment", "Equipment & Maintenance", Wrench, "checklist", { checklistType: "equipment-maintenance" }),
