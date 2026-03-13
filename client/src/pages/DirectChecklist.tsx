@@ -1884,19 +1884,13 @@ const DEEP_CLEAN_SECTIONS = [
     ],
   },
   {
-    title: "8. General Maintenance & Tunnel Area (If Applicable)",
+    title: "8. General Maintenance",
     description: "Miscellaneous tasks and specific back-of-house areas that require weekly attention.",
     items: [
       "General: Clean garbage cans (interior/exterior) and sanitize frequently. Empty trash bins.",
       "General: Scrub and clean mop bucket regularly; empty dirty water.",
       "General: Clean TV screens, the wall behind them, and the music display box.",
-      "General: Clean the metal grill between the two doors, coffee shelves, under the sink, and heater.",
-      "Tunnel: Ensure mixer is clean from inside and all around.",
-      "Tunnel: Verify boiler is clean and walls are clean.",
-      "Tunnel: Clean oven from all sides and the front door.",
-      "Tunnel: Scrape and clean tables for rolling. Clean containers under tables and wipe flour.",
-      "Tunnel: Ensure flour storage section is cleaned and organized.",
-      "Tunnel: Clean fridge, freezer, storage area, trays, tray shelves, and the shelf for trays.",
+      "General: Clean the cabinets shelves, under the sink, under the equipments.",
     ],
   },
 ];

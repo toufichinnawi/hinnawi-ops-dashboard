@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, store_id, report_type, report_date, submitted_at, position FROM report_submissions WHERE report_type LIKE '%audit%' AND position = 'operations-manager' AND report_date = '2026-03-02' ORDER BY submitted_at DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, store_id, report_type, report_date, submitted_at, position FROM report_submissions WHERE report_type LIKE '%audit%' AND position = 'operations-manager' AND report_date = '2026-03-02' ORDER BY submitted_at DESC;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'report_type' in 'where clause'"
+  ]
+}

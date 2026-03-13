@@ -1438,3 +1438,9 @@
 # Feature: Generate PIN for Staff position
 - [x] Generated new random PIN for Staff: 6037 (replaced default 1234)
 - [x] Staff position is PIN-protected (isActive = yes)
+
+# Update Weekly Deep Clean Checklist items to match new document
+- [x] Updated Section 8: removed Tunnel-specific items, renamed to "General Maintenance", updated 4th item
+- [x] Updated DEEP_CLEAN_SECTIONS in PositionChecklists.tsx (portal form)
+- [x] Updated DEEP_CLEAN_SECTIONS in DirectChecklist.tsx (admin form)
+- [x] All 242 tests passing (241 pass + 1 skipped)

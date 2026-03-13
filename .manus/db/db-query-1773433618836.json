@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, location, reportType, reportDate, createdAt FROM report_submissions WHERE reportType LIKE '%audit%' OR reportType LIKE '%checklist%' ORDER BY createdAt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, location, reportType, reportDate, createdAt FROM report_submissions WHERE reportType LIKE '%audit%' OR reportType LIKE '%checklist%' ORDER BY createdAt DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "330442",
+      "location": "MK",
+      "reportType": "manager-checklist",
+      "reportDate": "2026-03-03",
+      "createdAt": "2026-03-13 20:01:30"
+    },
+    {
+      "id": "330087",
+      "location": "MK",
+      "reportType": "manager-checklist",
+      "reportDate": "2098-12-02",
+      "createdAt": "2026-03-13 14:56:08"
+    },
+    {
+      "id": "300342",
+      "location": "MK",
+      "reportType": "ops-manager-checklist",
+      "reportDate": "2019-07-01",
+      "createdAt": "2026-03-12 19:25:25"
+    },
+    {
+      "id": "300209",
+      "location": "ON",
+      "reportType": "ops-manager-checklist",
+      "reportDate": "2026-03-02",
+      "createdAt": "2026-03-12 16:43:57"
+    },
+    {
+      "id": "300038",
+      "location": "MK",
+      "reportType": "ops-manager-checklist",
+      "reportDate": "2026-03-02",
+      "createdAt": "2026-03-12 15:28:48"
+    },
+    {
+      "id": "270143",
+      "location": "TN",
+      "reportType": "manager-checklist",
+      "reportDate": "2026-03-02",
+      "createdAt": "2026-03-10 19:43:02"
+    },
+    {
+      "id": "270001",
+      "location": "PK",
+      "reportType": "ops-manager-checklist",
+      "reportDate": "2026-03-02",
+      "createdAt": "2026-03-10 13:22:01"
+    },
+    {
+      "id": "240001",
+      "location": "Cathcart (Tunnel)",
+      "reportType": "ops-manager-checklist",
+      "reportDate": "2026-03-02",
+      "createdAt": "2026-03-10 12:05:27"
+    },
+    {
+      "id": "180044",
+      "location": "ON",
+      "reportType": "manager-checklist",
+      "reportDate": "2026-03-02",
+      "createdAt": "2026-03-09 20:24:39"
+    },
+    {
+      "id": "30029",
+      "location": "PK",
+      "reportType": "manager-checklist",
+      "reportDate": "2026-03-05",
+      "createdAt": "2026-03-05 03:00:36"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tlocation\treportType\treportDate\tcreatedAt\n330442\tMK\tmanager-checklist\t2026-03-03\t2026-03-13 20:01:30\n330087\tMK\tmanager-checklist\t2098-12-02\t2026-03-13 14:56:08\n300342\tMK\tops-manager-checklist\t2019-07-01\t2026-03-12 19:25:25\n300209\tON\tops-manager-checklist\t2026-03-02\t2026-03-12 16:43:57\n300038\tMK\tops-manager-checklist\t2026-03-02\t2026-03-12 15:28:48\n270143\tTN\tmanager-checklist\t2026-03-02\t2026-03-10 19:43:02\n270001\tPK\tops-manager-checklist\t2026-03-02\t2026-03-10 13:22:01\n240001\tCathcart (Tunnel)\tops-manager-checklist\t2026-03-02\t2026-03-10 12:05:27\n180044\tON\tmanager-checklist\t2026-03-02\t2026-03-09 20:24:39\n30029\tPK\tmanager-checklist\t2026-03-05\t2026-03-05 03:00:36\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

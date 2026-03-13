@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, store_id, report_type, report_date, submitted_at, position FROM reports WHERE report_type LIKE '%audit%' AND position = 'operations-manager' AND report_date = '2026-03-02' ORDER BY submitted_at DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, store_id, report_type, report_date, submitted_at, position FROM reports WHERE report_type LIKE '%audit%' AND position = 'operations-manager' AND report_date = '2026-03-02' ORDER BY submitted_at DESC;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'i5zcri4cvdstbbckdwtavk.reports' doesn't exist"
+  ]
+}
