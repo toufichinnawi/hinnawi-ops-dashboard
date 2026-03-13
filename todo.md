@@ -1378,3 +1378,9 @@
 - [x] Support duplicate detection for deep clean reports
 - [x] Written deepClean.test.ts with 8 tests (normalization, submit/retrieve, edit, draft, position config)
 - [x] All 242 tests passing (241 pass + 1 skipped)
+
+# Admin Dashboard: Add Weekly Deep Clean Checklist Sidebar Entry
+- [x] Add sidebar entry below Weekly Scorecard in DashboardLayout/App.tsx (Sparkles icon)
+- [x] Add route for /checklists/deep-clean (handled by existing :type route)
+- [x] Add DirectChecklist support for deep-clean report type (SLUG_TO_CHECKLIST, SLUG_TO_LABEL, DeepCleanForm)
+- [x] All 242 tests passing

@@ -202,6 +202,7 @@ const SLUG_TO_CHECKLIST: Record<string, ChecklistType> = {
   "training": "training-evaluation",
   "bagel-orders": "bagel-orders",
   "pastry-orders": "pastry-orders",
+  "deep-clean": "deep-clean",
 };
 
 const SLUG_TO_LABEL: Record<string, string> = {
@@ -214,6 +215,7 @@ const SLUG_TO_LABEL: Record<string, string> = {
   "training": "Training Evaluation",
   "bagel-orders": "Bagel Orders",
   "pastry-orders": "Pastry Orders",
+  "deep-clean": "Weekly Deep Clean Checklist",
 };
 
 // ─── Form Components ───
@@ -1537,6 +1539,232 @@ function CopyChecklistLink({ slug, label }: { slug: string; label: string }) {
   );
 }
 
+// ─── Deep Clean Checklist Data ───
+
+const DEEP_CLEAN_SECTIONS = [
+  {
+    title: "1. Outside and Entrance",
+    description: "The exterior sets the first impression for clients. Ensure the entrance is inviting, clean, and safe.",
+    items: [
+      "Sweep and clean the floor outside the main entrance.",
+      "Clean all window frames, from both inside and outside.",
+      "Clean all exterior signs (Monthly deep clean).",
+    ],
+  },
+  {
+    title: "2. Front Display & Pastry Section",
+    description: "The display area must be cleaned to showcase products effectively and maintain food safety standards.",
+    items: [
+      "Clean and sanitize the entire front display and pastry section.",
+      "Ensure pastry glass is completely clean and transparent.",
+    ],
+  },
+  {
+    title: "3. Cafe & Sitting Area",
+    description: "The dining area must provide a comfortable, spotless environment for guests.",
+    items: [
+      "Clean the legs of tables and the edges of all benches.",
+      "Check that tables do not have any sticky stains or spots.",
+      "Verify walls are clean and free of spots or splashes.",
+      "Deep clean all tiles and edges of the walls, ensuring no stains or dust remain.",
+      "Move benches to vacuum behind them and clean the floor underneath.",
+      "Move bench cushions to clean and vacuum inside the seating structures.",
+    ],
+  },
+  {
+    title: "4. Espresso & Filter Coffee Machines",
+    description: "Proper maintenance of coffee equipment is crucial for beverage quality and machine longevity.",
+    items: [
+      "Espresso: Backflush with cleaner, then backflush thoroughly with water.",
+      "Espresso: Clean drip tray, grate, and wipe the machine exterior. Descale if applicable.",
+      "Filter: Descale internal system and clean the thermos with designated cleaning product.",
+    ],
+  },
+  {
+    title: "5. Kitchen & Food Prep Areas",
+    description: "The kitchen requires the most rigorous deep cleaning to adhere to health and safety regulations.",
+    items: [
+      "Clean under and behind the big cutting board located on the fridge.",
+      "Deep clean the grill, including the surrounding wall, underneath, grease container, and all sides.",
+      "Clean the hood, the top of the hood, and ensure filters are clean.",
+      "Clean the interior shelves and handles of all fridges and freezers. Ensure they are organized.",
+      "Clean floors, especially under all kitchen equipment.",
+    ],
+  },
+  {
+    title: "6. Dishwasher & Ice Machine",
+    description: "Sanitation equipment must be kept clean to function effectively.",
+    items: [
+      "Dishwasher: Drain machine, shut down, open/clean filters, clean door edges (inside/out).",
+      "Dishwasher: Start machine again, let it wash itself, and drain one more time.",
+      "Ice Machine: Clean the filter (shut down, empty, then clean).",
+      "Ice Machine: Clean and sanitize interior, especially the ice deflector to prevent mold.",
+    ],
+  },
+  {
+    title: "7. Bathroom",
+    description: "Restrooms must be meticulously maintained to ensure customer comfort and hygiene.",
+    items: [
+      "Deep clean and thoroughly disinfect the entire bathroom.",
+    ],
+  },
+  {
+    title: "8. General Maintenance & Tunnel Area (If Applicable)",
+    description: "Miscellaneous tasks and specific back-of-house areas that require weekly attention.",
+    items: [
+      "General: Clean garbage cans (interior/exterior) and sanitize frequently. Empty trash bins.",
+      "General: Scrub and clean mop bucket regularly; empty dirty water.",
+      "General: Clean TV screens, the wall behind them, and the music display box.",
+      "General: Clean the metal grill between the two doors, coffee shelves, under the sink, and heater.",
+      "Tunnel: Ensure mixer is clean from inside and all around.",
+      "Tunnel: Verify boiler is clean and walls are clean.",
+      "Tunnel: Clean oven from all sides and the front door.",
+      "Tunnel: Scrape and clean tables for rolling. Clean containers under tables and wipe flour.",
+      "Tunnel: Ensure flour storage section is cleaned and organized.",
+      "Tunnel: Clean fridge, freezer, storage area, trays, tray shelves, and the shelf for trays.",
+    ],
+  },
+];
+
+function DeepCleanForm({ onBack }: { onBack: () => void }) {
+  const [selectedStore, setSelectedStore] = useState("");
+  const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
+  const [managerName, setManagerName] = useState("");
+  const [dateOfSubmission, setDateOfSubmission] = useState(() => new Date().toISOString().split("T")[0]);
+  const [overallComments, setOverallComments] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog: deepCleanDuplicateDialog } = useDuplicateCheck();
+
+  type DeepCleanItemState = { rating: number; na: boolean; comment: string };
+  const initItems = (): Record<string, DeepCleanItemState[]> => {
+    const result: Record<string, DeepCleanItemState[]> = {};
+    DEEP_CLEAN_SECTIONS.forEach((s) => {
+      result[s.title] = s.items.map(() => ({ rating: 0, na: false, comment: "" }));
+    });
+    return result;
+  };
+  const [items, setItems] = useState<Record<string, DeepCleanItemState[]>>(initItems);
+
+  const updateItem = (sectionTitle: string, itemIdx: number, update: Partial<DeepCleanItemState>) => {
+    setItems((prev) => ({
+      ...prev,
+      [sectionTitle]: prev[sectionTitle].map((item, i) =>
+        i === itemIdx ? { ...item, ...update } : item
+      ),
+    }));
+  };
+
+  const allRatings = Object.values(items).flat().filter((item) => !item.na && item.rating > 0);
+  const avg = allRatings.length > 0 ? (allRatings.reduce((a, b) => a + b.rating, 0) / allRatings.length).toFixed(2) : "0.00";
+
+  const handleSubmit = async () => {
+    if (!managerName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
+    await submitWithDuplicateCheck(
+      {
+        submitterName: managerName.trim(),
+        reportType: "Weekly Deep Clean Checklist",
+        location: selectedStore,
+        reportDate: dateOfSubmission,
+        data: {
+          dateOfSubmission,
+          sections: DEEP_CLEAN_SECTIONS.map((s) => ({
+            title: s.title,
+            items: s.items.map((itemText, idx) => ({
+              task: itemText,
+              rating: items[s.title]?.[idx]?.rating || 0,
+              na: items[s.title]?.[idx]?.na || false,
+              comment: items[s.title]?.[idx]?.comment || "",
+            })),
+          })),
+          overallComments,
+          averageScore: avg,
+          submittedVia: "Admin Dashboard",
+          submitterName: managerName.trim(),
+        },
+        totalScore: avg,
+      },
+      () => { setSubmitted(true); toast.success("Weekly Deep Clean Checklist submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
+  };
+
+  if (submitted) return (
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
+      <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
+      <h3 className="text-xl font-serif">Deep Clean Checklist Submitted</h3>
+      <p className="text-muted-foreground">Weekly Deep Clean for {currentStoreName} — Average: {avg}/5</p>
+      <Button onClick={onBack} variant="outline">Back</Button>
+    </motion.div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <Card><CardContent className="pt-6 space-y-4">
+        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
+        <div className="space-y-1.5"><Label>Manager Name *</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Your name" /></div>
+        <div className="space-y-1.5"><Label>Date of Verification</Label><Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} /></div>
+      </CardContent></Card>
+
+      <div className="flex items-center gap-2">
+        <span className="text-lg font-serif font-semibold border border-[#D4A853] text-[#D4A853] rounded-md px-4 py-2">Average: {avg} / 5</span>
+      </div>
+
+      {DEEP_CLEAN_SECTIONS.map((section) => (
+        <Card key={section.title}>
+          <CardContent className="pt-4 pb-4 space-y-3">
+            <div>
+              <p className="font-medium text-sm">{section.title}</p>
+              <p className="text-xs text-muted-foreground">{section.description}</p>
+            </div>
+            {/* Table header */}
+            <div className="hidden sm:grid grid-cols-[1fr_120px_40px_1fr] gap-2 text-xs text-muted-foreground font-medium px-1">
+              <span>Task</span>
+              <span className="text-center">Rating (1-5)</span>
+              <span className="text-center">N/A</span>
+              <span>Comments</span>
+            </div>
+            {section.items.map((itemText, idx) => {
+              const itemState = items[section.title]?.[idx] || { rating: 0, na: false, comment: "" };
+              return (
+                <div key={idx} className="border rounded-lg p-3 space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_120px_40px_1fr] sm:gap-2 sm:items-center">
+                  <p className="text-sm">{itemText}</p>
+                  <div className="flex justify-center">
+                    <StarRating value={itemState.na ? 0 : itemState.rating} onChange={(v) => updateItem(section.title, idx, { rating: v, na: false })} size="sm" />
+                  </div>
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => updateItem(section.title, idx, { na: !itemState.na, rating: itemState.na ? itemState.rating : 0 })}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded text-xs font-medium border transition-colors",
+                        itemState.na
+                          ? "bg-gray-200 border-gray-400 text-gray-700"
+                          : "bg-white border-gray-200 text-gray-400 hover:border-gray-300"
+                      )}
+                    >
+                      N/A
+                    </button>
+                  </div>
+                  <Input placeholder="Comment..." value={itemState.comment} onChange={(e) => updateItem(section.title, idx, { comment: e.target.value })} className="h-8 text-sm" />
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      ))}
+
+      <Card><CardContent className="pt-6"><Label>Overall Comments / Areas for Improvement</Label><Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment, areas for improvement, follow-up actions..." rows={4} /></CardContent></Card>
+
+      <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#D4A853] hover:bg-[#c49843] text-white">
+        {submitting ? "Submitting..." : "Submit Checklist"}
+      </Button>
+      {deepCleanDuplicateDialog}
+    </div>
+  );
+}
+
 // ─── Main Component ───
 
 export default function DirectChecklist() {
@@ -1577,6 +1805,7 @@ export default function DirectChecklist() {
     "training": <TrainingEvaluationForm onBack={() => navigate("/")} />,
     "bagel-orders": <BagelOrdersForm onBack={() => navigate("/")} />,
     "pastry-orders": <PastryOrdersForm onBack={() => navigate("/")} />,
+    "deep-clean": <DeepCleanForm onBack={() => navigate("/")} />,
   };
 
   return (

@@ -36,6 +36,7 @@ import {
   Wheat,
   CakeSlice,
   ChefHat,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useData } from "@/contexts/DataContext";
@@ -96,6 +97,7 @@ const navSections: NavSection[] = [
       { path: "/checklists/operations", label: "Store Weekly Checklist", icon: ClipboardCheck },
       { path: "/checklists/weekly-audit", label: "Store Weekly Audit", icon: ClipboardCheck },
       { path: "/checklists/weekly-scorecard", label: "Weekly Scorecard", icon: BarChart3 },
+      { path: "/checklists/deep-clean", label: "Weekly Deep Clean", icon: Sparkles },
       { path: "/checklists/performance", label: "Performance Evaluation", icon: Star },
       { path: "/checklists/waste", label: "Leftovers & Waste", icon: Trash2 },
       { path: "/checklists/equipment", label: "Equipment & Maintenance", icon: Wrench },
