@@ -126,6 +126,9 @@ async function startServer() {
         "Bagel Orders": "bagel-orders",
         "Pastry Orders": "pastry-orders",
         "Performance Evaluation": "performance-evaluation",
+        "Weekly Deep Clean Checklist": "deep-clean",
+        "Deep Clean Checklist": "deep-clean",
+        "Weekly Deep Clean": "deep-clean",
       };
       const normLoc = LOCATION_MAP[location] || location;
       const normType = REPORT_TYPE_MAP[reportType] || reportType;
@@ -174,6 +177,9 @@ async function startServer() {
         "Bagel Orders": "bagel-orders",
         "Pastry Orders": "pastry-orders",
         "Performance Evaluation": "performance-evaluation",
+        "Weekly Deep Clean Checklist": "deep-clean",
+        "Deep Clean Checklist": "deep-clean",
+        "Weekly Deep Clean": "deep-clean",
       };
       const normalizedReportType = REPORT_TYPE_MAP[reportType] || reportType;
 
@@ -378,6 +384,9 @@ async function startServer() {
         "Bagel Orders": "bagel-orders",
         "Pastry Orders": "pastry-orders",
         "Performance Evaluation": "performance-evaluation",
+        "Weekly Deep Clean Checklist": "deep-clean",
+        "Deep Clean Checklist": "deep-clean",
+        "Weekly Deep Clean": "deep-clean",
       };
       const normalizedReportType = REPORT_TYPE_MAP[reportType] || reportType;
 
@@ -422,6 +431,8 @@ async function startServer() {
         "Store Weekly Audit": "ops-manager-checklist",
         "ops-manager-checklist": "ops-manager-checklist",
         "manager-checklist": "manager-checklist",
+        "Weekly Deep Clean Checklist": "deep-clean",
+        "deep-clean": "deep-clean",
       };
       const normalizedReportType = REPORT_TYPE_MAP[reportType] || reportType;
 

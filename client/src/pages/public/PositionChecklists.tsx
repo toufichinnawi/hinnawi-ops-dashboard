@@ -403,6 +403,8 @@ export function ChecklistForm({ type, storeCode, storeName, positionLabel, onBac
       return <PastryOrdersForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} {...editProps} />;
     case "performance-evaluation":
       return <PerformanceEvaluationForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} {...editProps} />;
+    case "deep-clean":
+      return <DeepCleanChecklistForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} {...editProps} />;
     default:
       return <div>Unknown checklist type</div>;
   }
@@ -2106,6 +2108,353 @@ function PerformanceEvaluationForm({ storeCode, storeName, positionLabel, onBack
       <Card><CardContent className="pt-6"><Label>Overall Comments</Label><Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment and recommendations..." /></CardContent></Card>
       <div className="flex flex-col gap-3">
         <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white">{submitting ? "Submitting..." : "Submit Evaluation"}</Button>
+        {draftButton}
+      </div>
+      {duplicateDialog}
+    </PublicFormLayout>
+  );
+}
+
+
+// ─── Deep Clean Checklist Data ───
+
+const DEEP_CLEAN_SECTIONS = [
+  {
+    title: "1. Outside and Entrance",
+    description: "The exterior sets the first impression for clients. Ensure the entrance is inviting, clean, and safe.",
+    items: [
+      "Sweep and clean the floor outside the main entrance.",
+      "Clean all window frames, from both inside and outside.",
+      "Clean all exterior signs (Monthly deep clean).",
+    ],
+  },
+  {
+    title: "2. Front Display & Pastry Section",
+    description: "The display area must be cleaned to showcase products effectively and maintain food safety standards.",
+    items: [
+      "Clean and sanitize the entire front display and pastry section.",
+      "Ensure pastry glass is completely clean and transparent.",
+    ],
+  },
+  {
+    title: "3. Cafe & Sitting Area",
+    description: "The dining area must provide a comfortable, spotless environment for guests.",
+    items: [
+      "Clean the legs of tables and the edges of all benches.",
+      "Check that tables do not have any sticky stains or spots.",
+      "Verify walls are clean and free of spots or splashes.",
+      "Deep clean all tiles and edges of the walls, ensuring no stains or dust remain.",
+      "Move benches to vacuum behind them and clean the floor underneath.",
+      "Move bench cushions to clean and vacuum inside the seating structures.",
+    ],
+  },
+  {
+    title: "4. Espresso & Filter Coffee Machines",
+    description: "Proper maintenance of coffee equipment is crucial for beverage quality and machine longevity.",
+    items: [
+      "Espresso: Backflush with cleaner, then backflush thoroughly with water.",
+      "Espresso: Clean drip tray, grate, and wipe the machine exterior. Descale if applicable.",
+      "Filter: Descale internal system and clean the thermos with designated cleaning product.",
+    ],
+  },
+  {
+    title: "5. Kitchen & Food Prep Areas",
+    description: "The kitchen requires the most rigorous deep cleaning to adhere to health and safety regulations.",
+    items: [
+      "Clean under and behind the big cutting board located on the fridge.",
+      "Deep clean the grill, including the surrounding wall, underneath, grease container, and all sides.",
+      "Clean the hood, the top of the hood, and ensure filters are clean.",
+      "Clean the interior shelves and handles of all fridges and freezers. Ensure they are organized.",
+      "Clean floors, especially under all kitchen equipment.",
+    ],
+  },
+  {
+    title: "6. Dishwasher & Ice Machine",
+    description: "Sanitation equipment must be kept clean to function effectively.",
+    items: [
+      "Dishwasher: Drain machine, shut down, open/clean filters, clean door edges (inside/out).",
+      "Dishwasher: Start machine again, let it wash itself, and drain one more time.",
+      "Ice Machine: Clean the filter (shut down, empty, then clean).",
+      "Ice Machine: Clean and sanitize interior, especially the ice deflector to prevent mold.",
+    ],
+  },
+  {
+    title: "7. Bathroom",
+    description: "Restrooms must be meticulously maintained to ensure customer comfort and hygiene.",
+    items: [
+      "Deep clean and thoroughly disinfect the entire bathroom.",
+    ],
+  },
+  {
+    title: "8. General Maintenance & Tunnel Area (If Applicable)",
+    description: "Miscellaneous tasks and specific back-of-house areas that require weekly attention.",
+    items: [
+      "General: Clean garbage cans (interior/exterior) and sanitize frequently. Empty trash bins.",
+      "General: Scrub and clean mop bucket regularly; empty dirty water.",
+      "General: Clean TV screens, the wall behind them, and the music display box.",
+      "General: Clean the metal grill between the two doors, coffee shelves, under the sink, and heater.",
+      "Tunnel: Ensure mixer is clean from inside and all around.",
+      "Tunnel: Verify boiler is clean and walls are clean.",
+      "Tunnel: Clean oven from all sides and the front door.",
+      "Tunnel: Scrape and clean tables for rolling. Clean containers under tables and wipe flour.",
+      "Tunnel: Ensure flour storage section is cleaned and organized.",
+      "Tunnel: Clean fridge, freezer, storage area, trays, tray shelves, and the shelf for trays.",
+    ],
+  },
+];
+
+// ─── Deep Clean Checklist Form ───
+
+interface DeepCleanItemState {
+  rating: number;
+  na: boolean;
+  comment: string;
+}
+
+function DeepCleanChecklistForm({ storeCode, storeName, positionLabel, onBack, editReportId, editData }: {
+  storeCode: string; storeName: string; positionLabel: string; onBack: () => void; editReportId?: number; editData?: any;
+}) {
+  const isEdit = !!editReportId;
+  const defaultWeek = useMemo(() => getDefaultWeekRange(), []);
+
+  const initItems = (): Record<string, DeepCleanItemState[]> => {
+    const result: Record<string, DeepCleanItemState[]> = {};
+    DEEP_CLEAN_SECTIONS.forEach((s) => {
+      result[s.title] = s.items.map(() => ({ rating: 0, na: false, comment: "" }));
+    });
+    return result;
+  };
+
+  const draftServerConfig = useMemo(() => ({
+    reportType: "deep-clean",
+    location: storeCode,
+    reportDate: defaultWeek.start,
+  }), [storeCode, defaultWeek.start]);
+
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `deep-clean-${storeCode}`,
+    {
+      name: "",
+      dateOfSubmission: new Date().toISOString().split("T")[0],
+      items: initItems(),
+      overallComments: "",
+    },
+    draftServerConfig
+  );
+
+  const { name, dateOfSubmission, items, overallComments } = draft;
+  const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
+  const setDateOfSubmission = (v: string) => setDraft((d) => ({ ...d, dateOfSubmission: v }));
+  const setOverallComments = (v: string) => setDraft((d) => ({ ...d, overallComments: v }));
+
+  const updateItem = (sectionTitle: string, itemIdx: number, update: Partial<DeepCleanItemState>) => {
+    setDraft((d) => ({
+      ...d,
+      items: {
+        ...d.items,
+        [sectionTitle]: d.items[sectionTitle].map((item, i) =>
+          i === itemIdx ? { ...item, ...update } : item
+        ),
+      },
+    }));
+  };
+
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
+
+  // Calculate average score (excluding N/A items)
+  const allRatings = Object.values(items).flat().filter((item) => !item.na && item.rating > 0);
+  const avg = allRatings.length > 0 ? (allRatings.reduce((a, b) => a + b.rating, 0) / allRatings.length).toFixed(2) : "0.00";
+
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = typeof editData === "string" ? JSON.parse(editData) : editData;
+    const newItems = initItems();
+    if (d.sections) {
+      d.sections.forEach((sec: any) => {
+        if (newItems[sec.title] && sec.items) {
+          sec.items.forEach((item: any, idx: number) => {
+            if (newItems[sec.title][idx]) {
+              newItems[sec.title][idx] = {
+                rating: item.rating || 0,
+                na: item.na || false,
+                comment: item.comment || "",
+              };
+            }
+          });
+        }
+      });
+    }
+    setDraft((prev) => ({
+      ...prev,
+      name: d.submitterName || prev.name,
+      dateOfSubmission: d.dateOfSubmission || prev.dateOfSubmission,
+      items: newItems,
+      overallComments: d.overallComments || "",
+    }));
+  }, [editData]);
+
+  const handleSubmit = async () => {
+    if (!name.trim()) { toast.error("Please enter your name"); return; }
+
+    const reportData = {
+      dateOfSubmission,
+      sections: DEEP_CLEAN_SECTIONS.map((s) => ({
+        title: s.title,
+        items: s.items.map((itemText, idx) => ({
+          task: itemText,
+          rating: items[s.title]?.[idx]?.rating || 0,
+          na: items[s.title]?.[idx]?.na || false,
+          comment: items[s.title]?.[idx]?.comment || "",
+        })),
+      })),
+      overallComments,
+      averageScore: avg,
+      submittedVia: `Public - ${positionLabel}`,
+      submitterName: name.trim(),
+    };
+
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId!, { data: reportData, totalScore: avg, status: "submitted" });
+        setSubmitted(true);
+        toast.success("Deep Clean Checklist updated!");
+      } catch { toast.error("Failed to update"); }
+      setSubmitting(false);
+      return;
+    }
+
+    await submitWithDuplicateCheck(
+      {
+        submitterName: name.trim(),
+        reportType: "Weekly Deep Clean Checklist",
+        location: storeName,
+        reportDate: dateOfSubmission,
+        data: reportData,
+        totalScore: avg,
+      },
+      () => { setSubmitted(true); clearDraft(); toast.success("Weekly Deep Clean Checklist submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
+  };
+
+  if (submitted) {
+    return (
+      <SuccessScreen
+        message={`Weekly Deep Clean Checklist for ${storeName} ${isEdit ? "updated" : "submitted"}. Score: ${avg}/5`}
+        onNew={isEdit ? undefined : () => { setSubmitted(false); setDraft((d) => ({ ...d, items: initItems(), overallComments: "" })); }}
+        onBack={onBack}
+      />
+    );
+  }
+
+  return (
+    <PublicFormLayout title={isEdit ? "Edit Weekly Deep Clean Checklist" : "Weekly Deep Clean Checklist"} subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
+      {isEdit && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+          <span className="font-medium">Editing mode</span> — Changes will update the existing report
+        </div>
+      )}
+
+      {/* Header Fields */}
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <div className="space-y-2">
+            <Label>Submitting Manager Name *</Label>
+            <Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Date of Verification</Label>
+            <Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Average Score Badge */}
+      <Badge variant="outline" className="text-lg px-4 py-2 border-[#faa600] text-[#faa600]">
+        Average: {avg} / 5
+      </Badge>
+
+      {/* Sections */}
+      {DEEP_CLEAN_SECTIONS.map((section) => (
+        <Card key={section.title}>
+          <CardHeader>
+            <CardTitle className="text-base font-bold">{section.title}</CardTitle>
+            <p className="text-xs text-muted-foreground">{section.description}</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Table header */}
+            <div className="hidden sm:grid grid-cols-[1fr_120px_40px_1fr] gap-2 text-xs text-muted-foreground font-medium px-1">
+              <span>Task</span>
+              <span className="text-center">Rating (1-5)</span>
+              <span className="text-center">N/A</span>
+              <span>Manager Comments / Corrective Action</span>
+            </div>
+            {section.items.map((itemText, idx) => {
+              const itemState = items[section.title]?.[idx] || { rating: 0, na: false, comment: "" };
+              return (
+                <div key={idx} className="border rounded-lg p-3 space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_120px_40px_1fr] sm:gap-2 sm:items-center">
+                  <p className="text-sm font-medium">{itemText}</p>
+                  <div className="flex justify-center">
+                    <StarRating
+                      value={itemState.na ? 0 : itemState.rating}
+                      onChange={(v) => updateItem(section.title, idx, { rating: v, na: false })}
+                      size="sm"
+                    />
+                  </div>
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => updateItem(section.title, idx, { na: !itemState.na, rating: itemState.na ? itemState.rating : 0 })}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded text-xs font-medium border transition-colors",
+                        itemState.na
+                          ? "bg-gray-200 border-gray-400 text-gray-700"
+                          : "bg-white border-gray-200 text-gray-400 hover:border-gray-300"
+                      )}
+                    >
+                      N/A
+                    </button>
+                  </div>
+                  <Input
+                    placeholder="Comment..."
+                    value={itemState.comment}
+                    onChange={(e) => updateItem(section.title, idx, { comment: e.target.value })}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      ))}
+
+      {/* Overall Comments */}
+      <Card>
+        <CardContent className="pt-6">
+          <Label>Overall Comments / Areas for Improvement</Label>
+          <Textarea
+            value={overallComments}
+            onChange={(e) => setOverallComments(e.target.value)}
+            placeholder="Overall assessment, areas for improvement, follow-up actions..."
+            rows={4}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Submit */}
+      <div className="flex flex-col gap-3">
+        <Button
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white"
+        >
+          {submitting ? "Submitting..." : isEdit ? "Update Checklist" : "Submit Checklist"}
+        </Button>
         {draftButton}
       </div>
       {duplicateDialog}

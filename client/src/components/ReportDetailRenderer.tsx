@@ -635,6 +635,58 @@ function PerformanceEvaluationDetail({ data }: { data: any }) {
   );
 }
 
+// ─── Deep Clean Checklist Detail ─────────────────────────────────
+function DeepCleanDetail({ data }: { data: any }) {
+  const sections = data.sections || [];
+  const overallComments = data.overallComments || "";
+  const avgScore = data.averageScore || "0.00";
+  const dateOfSubmission = data.dateOfSubmission || "";
+
+  return (
+    <div className="space-y-3">
+      <NotesBanner notes={overallComments} label="Overall Comments / Areas for Improvement" />
+      {dateOfSubmission && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+          <div className="flex items-center gap-4 text-sm">
+            <div>
+              <span className="text-xs text-blue-600 font-medium">Date of Verification: </span>
+              <span className="font-medium text-blue-900">{dateOfSubmission}</span>
+            </div>
+            <div>
+              <span className="text-xs text-blue-600 font-medium">Average Score: </span>
+              <span className="font-medium text-blue-900">{avgScore}/5</span>
+            </div>
+          </div>
+        </div>
+      )}
+      {sections.map((section: any, si: number) => (
+        <div key={si}>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{section.title}</p>
+          <div className="space-y-1.5">
+            {(section.items || []).map((item: any, ii: number) => (
+              <div key={ii} className="p-2.5 rounded-lg border bg-card">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{item.task || `Item ${ii + 1}`}</p>
+                  </div>
+                  {item.na ? (
+                    <Badge variant="secondary" className="text-xs">N/A</Badge>
+                  ) : (
+                    <Stars rating={item.rating || 0} />
+                  )}
+                </div>
+                {item.comment && (
+                  <p className="text-xs text-muted-foreground mt-1.5 italic">"{item.comment}"</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Generic Fallback ────────────────────────────────────────────
 function GenericDetail({ data }: { data: any }) {
   if (!data || typeof data !== "object") return null;
@@ -740,6 +792,9 @@ const REPORT_TYPE_NORMALIZE: Record<string, string> = {
   "Training Evaluation": "training-evaluation",
   "Bagel Orders": "bagel-orders",
   "Performance Evaluation": "performance-evaluation",
+  "Weekly Deep Clean Checklist": "deep-clean",
+  "Deep Clean Checklist": "deep-clean",
+  "Weekly Deep Clean": "deep-clean",
 };
 
 function normalizeType(reportType: string): string {
@@ -773,6 +828,8 @@ export function ReportDetailRenderer({ reportType, data, hideCosts = false }: { 
         return <BagelOrdersDetail data={payload} />;
       case "performance-evaluation":
         return <PerformanceEvaluationDetail data={payload} />;
+      case "deep-clean":
+        return <DeepCleanDetail data={payload} />;
       default:
         return <GenericDetail data={payload} />;
     }

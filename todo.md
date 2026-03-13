@@ -1365,3 +1365,16 @@
 - [x] ChecklistViewer.tsx already had the correct list (no changes needed)
 - [x] Verified in browser: all 41 items now display correctly on the Admin Dashboard
 - [x] All 234 tests passing
+
+# New Feature: Weekly Deep Clean Checklist
+- [x] Add "deep-clean" ChecklistType to positionChecklists.ts
+- [x] Define DEEP_CLEAN_SECTIONS data with 8 sections and 33 items
+- [x] Build DeepCleanChecklistForm in PositionChecklists.tsx (star ratings, N/A, comments per item)
+- [x] Register in POSITION_CHECKLISTS config for store-manager position
+- [x] Add REPORT_TYPE_MAP entries for "Weekly Deep Clean Checklist" → "deep-clean" in all 4 server maps
+- [x] Add ReportDetailRenderer support for deep clean reports (DeepCleanDetail component)
+- [x] Support edit mode for deep clean reports (pre-fill, PUT update, edit banner)
+- [x] Support draft save/load for deep clean reports
+- [x] Support duplicate detection for deep clean reports
+- [x] Written deepClean.test.ts with 8 tests (normalization, submit/retrieve, edit, draft, position config)
+- [x] All 242 tests passing (241 pass + 1 skipped)
