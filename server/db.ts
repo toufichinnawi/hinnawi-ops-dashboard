@@ -656,7 +656,7 @@ export async function getReportsByLocation(location: string, limit = 50) {
     .limit(limit);
 }
 
-export async function getAllReports(limit = 200) {
+export async function getAllReports(limit = 1000) {
   const db = await getDb();
   if (!db) return [];
   const rows = await db

@@ -1,0 +1,238 @@
+{
+  "query": "SELECT DISTINCT reportType, COUNT(*) as cnt FROM report_submissions GROUP BY reportType ORDER BY cnt DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT DISTINCT reportType, COUNT(*) as cnt FROM report_submissions GROUP BY reportType ORDER BY cnt DESC;",
+  "rows": [
+    {
+      "reportType": "bagel-orders",
+      "cnt": "149"
+    },
+    {
+      "reportType": "manager-checklist",
+      "cnt": "18"
+    },
+    {
+      "reportType": "waste-report",
+      "cnt": "9"
+    },
+    {
+      "reportType": "ops-manager-checklist",
+      "cnt": "5"
+    },
+    {
+      "reportType": "weekly-scorecard",
+      "cnt": "3"
+    },
+    {
+      "reportType": "LocDup_mmp39qa9",
+      "cnt": "2"
+    },
+    {
+      "reportType": "LocDup_mmp0ph5g",
+      "cnt": "2"
+    },
+    {
+      "reportType": "LocDup_mmp6kitq",
+      "cnt": "2"
+    },
+    {
+      "reportType": "DateDup_mmp39qa9",
+      "cnt": "2"
+    },
+    {
+      "reportType": "DateDup_mmp1b694",
+      "cnt": "2"
+    },
+    {
+      "reportType": "LocDup_mmp0q5qj",
+      "cnt": "2"
+    },
+    {
+      "reportType": "DateDup_mmp4uewg",
+      "cnt": "2"
+    },
+    {
+      "reportType": "DateDup_mmp6kitq",
+      "cnt": "2"
+    },
+    {
+      "reportType": "DateDup_mmp0ueme",
+      "cnt": "2"
+    },
+    {
+      "reportType": "LocDup_mmp5buky",
+      "cnt": "2"
+    },
+    {
+      "reportType": "pastry-orders",
+      "cnt": "2"
+    },
+    {
+      "reportType": "DateDup_mmp3p6qj",
+      "cnt": "2"
+    },
+    {
+      "reportType": "LocDup_mmp3p6qj",
+      "cnt": "2"
+    },
+    {
+      "reportType": "LocDup_mmp0rnqs",
+      "cnt": "2"
+    },
+    {
+      "reportType": "DateDup_mmp0rnqs",
+      "cnt": "2"
+    },
+    {
+      "reportType": "DateDup_mmp0q5qj",
+      "cnt": "2"
+    },
+    {
+      "reportType": "LocDup_mmp4uewg",
+      "cnt": "2"
+    },
+    {
+      "reportType": "LocDup_mmp0ueme",
+      "cnt": "2"
+    },
+    {
+      "reportType": "LocDup_mmp1b694",
+      "cnt": "2"
+    },
+    {
+      "reportType": "DateDup_mmp0ph5g",
+      "cnt": "2"
+    },
+    {
+      "reportType": "DateDup_mmp5buky",
+      "cnt": "2"
+    },
+    {
+      "reportType": "TestDup_mmp4uewg",
+      "cnt": "1"
+    },
+    {
+      "reportType": "PastryDup_mmp1b694",
+      "cnt": "1"
+    },
+    {
+      "reportType": "TestDup_mmp39qa9",
+      "cnt": "1"
+    },
+    {
+      "reportType": "PastryDup_mmp3p6qj",
+      "cnt": "1"
+    },
+    {
+      "reportType": "TestDup_mmp5buky",
+      "cnt": "1"
+    },
+    {
+      "reportType": "PastryDup_mmp4uewg",
+      "cnt": "1"
+    },
+    {
+      "reportType": "BagelDup_mmp0ueme",
+      "cnt": "1"
+    },
+    {
+      "reportType": "TestDup_mmp0ueme",
+      "cnt": "1"
+    },
+    {
+      "reportType": "deep-clean",
+      "cnt": "1"
+    },
+    {
+      "reportType": "TestDup_mmp3p6qj",
+      "cnt": "1"
+    },
+    {
+      "reportType": "PastryDup_mmp39qa9",
+      "cnt": "1"
+    },
+    {
+      "reportType": "TestDup_mmp1b694",
+      "cnt": "1"
+    },
+    {
+      "reportType": "PastryDup_mmp0ph5g",
+      "cnt": "1"
+    },
+    {
+      "reportType": "PastryDup_mmp6kitq",
+      "cnt": "1"
+    },
+    {
+      "reportType": "BagelDup_mmp0rnqs",
+      "cnt": "1"
+    },
+    {
+      "reportType": "TestDup_mmp0rnqs",
+      "cnt": "1"
+    },
+    {
+      "reportType": "BagelDup_mmp0ph5g",
+      "cnt": "1"
+    },
+    {
+      "reportType": "BagelDup_mmp5buky",
+      "cnt": "1"
+    },
+    {
+      "reportType": "BagelDup_mmp4uewg",
+      "cnt": "1"
+    },
+    {
+      "reportType": "PastryDup_mmp5buky",
+      "cnt": "1"
+    },
+    {
+      "reportType": "TestDup_mmp6kitq",
+      "cnt": "1"
+    },
+    {
+      "reportType": "BagelDup_mmp39qa9",
+      "cnt": "1"
+    },
+    {
+      "reportType": "BagelDup_mmp1b694",
+      "cnt": "1"
+    },
+    {
+      "reportType": "BagelDup_mmp3p6qj",
+      "cnt": "1"
+    },
+    {
+      "reportType": "BagelDup_mmp6kitq",
+      "cnt": "1"
+    },
+    {
+      "reportType": "TestDup_mmp0q5qj",
+      "cnt": "1"
+    },
+    {
+      "reportType": "PastryDup_mmp0ueme",
+      "cnt": "1"
+    },
+    {
+      "reportType": "PastryDup_mmp0q5qj",
+      "cnt": "1"
+    },
+    {
+      "reportType": "BagelDup_mmp0q5qj",
+      "cnt": "1"
+    },
+    {
+      "reportType": "TestDup_mmp0ph5g",
+      "cnt": "1"
+    },
+    {
+      "reportType": "PastryDup_mmp0rnqs",
+      "cnt": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "reportType\tcnt\nbagel-orders\t149\nmanager-checklist\t18\nwaste-report\t9\nops-manager-checklist\t5\nweekly-scorecard\t3\nLocDup_mmp39qa9\t2\nLocDup_mmp0ph5g\t2\nLocDup_mmp6kitq\t2\nDateDup_mmp39qa9\t2\nDateDup_mmp1b694\t2\nLocDup_mmp0q5qj\t2\nDateDup_mmp4uewg\t2\nDateDup_mmp6kitq\t2\nDateDup_mmp0ueme\t2\nLocDup_mmp5buky\t2\npastry-orders\t2\nDateDup_mmp3p6qj\t2\nLocDup_mmp3p6qj\t2\nLocDup_mmp0rnqs\t2\nDateDup_mmp0rnqs\t2\nDateDup_mmp0q5qj\t2\nLocDup_mmp4uewg\t2\nLocDup_mmp0ueme\t2\nLocDup_mmp1b694\t2\nDateDup_mmp0ph5g\t2\nDateDup_mmp5buky\t2\nTestDup_mmp4uewg\t1\nPastryDup_mmp1b694\t1\nTestDup_mmp39qa9\t1\nPastryDup_mmp3p6qj\t1\nTestDup_mmp5buky\t1\nPastryDup_mmp4uewg\t1\nBagelDup_mmp0ueme\t1\nTestDup_mmp0ueme\t1\ndeep-clean\t1\nTestDup_mmp3p6qj\t1\nPastryDup_mmp39qa9\t1\nTestDup_mmp1b694\t1\nPastryDup_mmp0ph5g\t1\nPastryDup_mmp6kitq\t1\nBagelDup_mmp0rnqs\t1\nTestDup_mmp0rnqs\t1\nBagelDup_mmp0ph5g\t1\nBagelDup_mmp5buky\t1\nBagelDup_mmp4uewg\t1\nPastryDup_mmp5buky\t1\nTestDup_mmp6kitq\t1\nBagelDup_mmp39qa9\t1\nBagelDup_mmp1b694\t1\nBagelDup_mmp3p6qj\t1\nBagelDup_mmp6kitq\t1\nTestDup_mmp0q5qj\t1\nPastryDup_mmp0ueme\t1\nPastryDup_mmp0q5qj\t1\nBagelDup_mmp0q5qj\t1\nTestDup_mmp0ph5g\t1\nPastryDup_mmp0rnqs\t1\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

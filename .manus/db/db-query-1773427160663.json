@@ -1,0 +1,82 @@
+{
+  "query": "SELECT id, reportType, location, reportDate, status, createdAt FROM report_submissions WHERE reportDate = '2026-03-02' ORDER BY createdAt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, reportType, location, reportDate, status, createdAt FROM report_submissions WHERE reportDate = '2026-03-02' ORDER BY createdAt DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "330335",
+      "reportType": "weekly-scorecard",
+      "location": "PK",
+      "reportDate": "2026-03-02",
+      "status": "submitted",
+      "createdAt": "2026-03-13 18:09:06"
+    },
+    {
+      "id": "300209",
+      "reportType": "ops-manager-checklist",
+      "location": "ON",
+      "reportDate": "2026-03-02",
+      "status": "submitted",
+      "createdAt": "2026-03-12 16:43:57"
+    },
+    {
+      "id": "300038",
+      "reportType": "ops-manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-02",
+      "status": "submitted",
+      "createdAt": "2026-03-12 15:28:48"
+    },
+    {
+      "id": "270143",
+      "reportType": "manager-checklist",
+      "location": "TN",
+      "reportDate": "2026-03-02",
+      "status": "submitted",
+      "createdAt": "2026-03-10 19:43:02"
+    },
+    {
+      "id": "270096",
+      "reportType": "manager-checklist",
+      "location": "MK",
+      "reportDate": "2026-03-02",
+      "status": "submitted",
+      "createdAt": "2026-03-10 18:12:54"
+    },
+    {
+      "id": "270001",
+      "reportType": "ops-manager-checklist",
+      "location": "PK",
+      "reportDate": "2026-03-02",
+      "status": "submitted",
+      "createdAt": "2026-03-10 13:22:01"
+    },
+    {
+      "id": "240001",
+      "reportType": "ops-manager-checklist",
+      "location": "Cathcart (Tunnel)",
+      "reportDate": "2026-03-02",
+      "status": "submitted",
+      "createdAt": "2026-03-10 12:05:27"
+    },
+    {
+      "id": "210001",
+      "reportType": "weekly-scorecard",
+      "location": "ON",
+      "reportDate": "2026-03-02",
+      "status": "submitted",
+      "createdAt": "2026-03-10 00:31:21"
+    },
+    {
+      "id": "180044",
+      "reportType": "manager-checklist",
+      "location": "ON",
+      "reportDate": "2026-03-02",
+      "status": "submitted",
+      "createdAt": "2026-03-09 20:24:39"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\treportType\tlocation\treportDate\tstatus\tcreatedAt\n330335\tweekly-scorecard\tPK\t2026-03-02\tsubmitted\t2026-03-13 18:09:06\n300209\tops-manager-checklist\tON\t2026-03-02\tsubmitted\t2026-03-12 16:43:57\n300038\tops-manager-checklist\tMK\t2026-03-02\tsubmitted\t2026-03-12 15:28:48\n270143\tmanager-checklist\tTN\t2026-03-02\tsubmitted\t2026-03-10 19:43:02\n270096\tmanager-checklist\tMK\t2026-03-02\tsubmitted\t2026-03-10 18:12:54\n270001\tops-manager-checklist\tPK\t2026-03-02\tsubmitted\t2026-03-10 13:22:01\n240001\tops-manager-checklist\tCathcart (Tunnel)\t2026-03-02\tsubmitted\t2026-03-10 12:05:27\n210001\tweekly-scorecard\tON\t2026-03-02\tsubmitted\t2026-03-10 00:31:21\n180044\tmanager-checklist\tON\t2026-03-02\tsubmitted\t2026-03-09 20:24:39\n",
+  "stderr": "",
+  "execution_time_ms": 133
+}

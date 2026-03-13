@@ -1412,3 +1412,9 @@
 - [x] Update admin dashboard ReportDetailRenderer for new scorecard format (table layout, backward compatible)
 - [x] Updated both ChecklistViewer.tsx (portal) and DirectChecklist.tsx (admin) forms
 - [x] All 242 tests passing (241 pass + 1 skipped)
+
+# Bug: Operations Manager reports not visible on Reports page
+- [x] Root cause: getAllReports had limit=200, 70 test duplicate records pushed real reports out of result set
+- [x] Fix: Increased limit to 1000, cleaned up 70 test duplicate records from database
+- [x] All 5 ops-manager-checklist reports now returned by API
+- [x] Note: Default "Last 7 Days" date filter also hides Mar 2 reports (user needs to select wider range)

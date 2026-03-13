@@ -1,0 +1,14 @@
+{
+  "query": "SELECT reportType, COUNT(*) as cnt FROM report_submissions WHERE reportType LIKE '%audit%' OR reportType LIKE '%weekly%' OR reportType LIKE '%Store%' GROUP BY reportType;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT reportType, COUNT(*) as cnt FROM report_submissions WHERE reportType LIKE '%audit%' OR reportType LIKE '%weekly%' OR reportType LIKE '%Store%' GROUP BY reportType;",
+  "rows": [
+    {
+      "reportType": "weekly-scorecard",
+      "cnt": "3"
+    }
+  ],
+  "messages": [],
+  "stdout": "reportType\tcnt\nweekly-scorecard\t3\n",
+  "stderr": "",
+  "execution_time_ms": 63
+}
