@@ -312,9 +312,7 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [auditorName, setAuditorName] = useState("");
   const [dateOfSubmission, setDateOfSubmission] = useState(() => new Date().toISOString().split("T")[0]);
-  const defaultWeekAudit = useMemo(() => getDefaultWeekRange(), []);
-  const [weekStart, setWeekStart] = useState(defaultWeekAudit.start);
-  const [weekEnd, setWeekEnd] = useState(defaultWeekAudit.end);
+
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [sectionComments, setSectionComments] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
@@ -334,9 +332,9 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
     }
     await submitWithDuplicateCheck(
       {
-        reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate: weekStart,
+        reportType: "ops-manager-checklist", location: selectedStore, submitterName: auditorName, reportDate: dateOfSubmission,
         data: {
-          dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd,
+          dateOfSubmission,
           sections: AUDIT_SECTIONS.map(s => ({ title: s, rating: ratings[s] || 0, comment: sectionComments[s] || "", photos: photoUrls[s] || [] })),
           notes,
           averageScore: avg.toFixed(2),
@@ -364,10 +362,6 @@ function WeeklyAuditForm({ onBack }: { onBack: () => void }) {
         <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
         <div className="space-y-1.5"><Label>Auditor Name</Label><Input value={auditorName} onChange={(e) => setAuditorName(e.target.value)} placeholder="Enter your name" /></div>
         <div className="space-y-1.5"><Label>Date of Submission</Label><Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} /></div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5"><Label>Start Date *</Label><Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>End Date *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
-        </div>
       </CardContent></Card>
       {AUDIT_SECTIONS.map((section) => {
         const photos = sectionPhotos[section] || [];

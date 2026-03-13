@@ -1418,3 +1418,9 @@
 - [x] Fix: Increased limit to 1000, cleaned up 70 test duplicate records from database
 - [x] All 5 ops-manager-checklist reports now returned by API
 - [x] Note: Default "Last 7 Days" date filter also hides Mar 2 reports (user needs to select wider range)
+
+# Fix: Remove Start Date and End Date from Store Weekly Audit
+- [x] Remove Start Date and End Date from admin dashboard (DirectChecklist.tsx - WeeklyAuditForm)
+- [x] Remove Start Date and End Date from Operations Manager Portal (PositionChecklists.tsx - SimpleAuditFormPublic)
+- [x] Keep only "Date of Submission" field — reportDate now uses dateOfSubmission
+- [x] All 242 tests passing

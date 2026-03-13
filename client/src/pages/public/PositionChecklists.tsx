@@ -605,22 +605,20 @@ function SimpleAuditFormPublic({ storeCode, storeName, positionLabel, onBack, ed
   storeCode: string; storeName: string; positionLabel: string; onBack: () => void; editReportId?: number; editData?: any;
 }) {
   const isEdit = !!editReportId;
-  const defaultWeek = useMemo(() => getDefaultWeekRange(), []);
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
   const auditServerConfig = useMemo(() => ({
     reportType: "ops-manager-checklist",
     location: storeCode,
-    reportDate: defaultWeek.start,
-  }), [storeCode, defaultWeek.start]);
+    reportDate: todayStr,
+  }), [storeCode, todayStr]);
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
     `store-weekly-audit-${storeCode}`,
-    { name: "", dateOfSubmission: new Date().toISOString().split("T")[0], weekStart: defaultWeek.start, weekEnd: defaultWeek.end, ratings: {} as Record<string, number>, sectionComments: {} as Record<string, string>, notes: "" },
+    { name: "", dateOfSubmission: new Date().toISOString().split("T")[0], ratings: {} as Record<string, number>, sectionComments: {} as Record<string, string>, notes: "" },
     auditServerConfig
   );
-  const { name, dateOfSubmission, weekStart, weekEnd, ratings, sectionComments, notes } = draft;
+  const { name, dateOfSubmission, ratings, sectionComments, notes } = draft;
   const setName = (v: string) => setDraft(d => ({ ...d, name: v }));
   const setDateOfSubmission = (v: string) => setDraft(d => ({ ...d, dateOfSubmission: v }));
-  const setWeekStart = (v: string) => setDraft(d => ({ ...d, weekStart: v }));
-  const setWeekEnd = (v: string) => setDraft(d => ({ ...d, weekEnd: v }));
   const setRating = (section: string, v: number) => setDraft(d => ({ ...d, ratings: { ...d.ratings, [section]: v } }));
   const setComment = (section: string, v: string) => setDraft(d => ({ ...d, sectionComments: { ...d.sectionComments, [section]: v } }));
   const setNotes = (v: string) => setDraft(d => ({ ...d, notes: v }));
@@ -643,8 +641,6 @@ function SimpleAuditFormPublic({ storeCode, storeName, positionLabel, onBack, ed
       ...prev,
       name: d.submitterName || prev.name,
       dateOfSubmission: d.dateOfSubmission || prev.dateOfSubmission,
-      weekStart: d.weekOfStart || prev.weekStart,
-      weekEnd: d.weekOfEnd || prev.weekEnd,
       ratings: Object.keys(newRatings).length ? newRatings : prev.ratings,
       sectionComments: Object.keys(newComments).length ? newComments : prev.sectionComments,
       notes: d.notes || "",
@@ -659,7 +655,7 @@ function SimpleAuditFormPublic({ storeCode, storeName, positionLabel, onBack, ed
       if (urls.length > 0) photoUrls[section] = urls;
     }
     const reportData = {
-      dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd,
+      dateOfSubmission,
       sections: AUDIT_SECTIONS_SIMPLE.map(s => ({ title: s, rating: ratings[s] || 0, comment: sectionComments[s] || "", photos: photoUrls[s] || [] })),
       notes, averageScore: avg, submittedVia: `Public - ${positionLabel}`, submitterName: name.trim(),
     };
@@ -677,7 +673,7 @@ function SimpleAuditFormPublic({ storeCode, storeName, positionLabel, onBack, ed
         submitterName: name.trim(),
         reportType: "Store Weekly Audit",
         location: storeName,
-        reportDate: weekStart,
+        reportDate: dateOfSubmission,
         data: reportData,
         totalScore: avg,
       },
@@ -696,10 +692,6 @@ function SimpleAuditFormPublic({ storeCode, storeName, positionLabel, onBack, ed
         <CardContent className="pt-6 space-y-4">
           <div className="space-y-2"><Label>Your Name *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div className="space-y-2"><Label>Date of Submission</Label><Input type="date" value={dateOfSubmission} onChange={(e) => setDateOfSubmission(e.target.value)} /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2"><Label>Start Date *</Label><Input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} /></div>
-            <div className="space-y-2"><Label>End Date *</Label><Input type="date" value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} /></div>
-          </div>
         </CardContent>
       </Card>
       <Badge variant="outline" className="text-lg px-4 py-2 border-[#faa600] text-[#faa600]">Score: {avg} / 5</Badge>
