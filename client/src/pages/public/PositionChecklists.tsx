@@ -1355,6 +1355,7 @@ function getDefaultWeekRange(): { start: string; end: string } {
 }
 
 function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack, editReportId, editData }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void; editReportId?: number; editData?: any }) {
+  const isEdit = !!editReportId;
   interface ScorecardSec { thisWeekGoal: string; thisWeekActual: string; lastWeekActual: string; lastMonthActual: string; howContribute: string; }
   interface DigitalSec { googleReviews: string; howContribute: string; }
   const initSec = (): ScorecardSec => ({ thisWeekGoal: "", thisWeekActual: "", lastWeekActual: "", lastMonthActual: "", howContribute: "" });
@@ -1382,13 +1383,41 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack, edit
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = typeof editData === "string" ? JSON.parse(editData) : editData;
+    setDraft(prev => ({
+      ...prev,
+      managerName: d.submitterName || d.managerName || prev.managerName,
+      dateEntered: d.dateEntered || prev.dateEntered,
+      weekStart: d.weekOfStart || prev.weekStart,
+      weekEnd: d.weekOfEnd || prev.weekEnd,
+      sales: d.sales || prev.sales,
+      labour: d.labour || prev.labour,
+      digital: d.digital || prev.digital,
+      food: d.food || prev.food,
+    }));
+  }, [editData]);
+
   const handleSubmit = async () => {
     if (!managerName.trim()) { toast.error("Please fill required fields"); return; }
+    const reportData = { dateEntered, weekOf: weekOfLabel, weekOfStart: weekStart, weekOfEnd: weekEnd, sales, labour, digital, food, submittedVia: `Public - ${positionLabel}`, submitterName: managerName.trim() };
+    const score = sales.thisWeekActual ? `$${parseFloat(sales.thisWeekActual).toFixed(0)}` : undefined;
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId!, { data: reportData, totalScore: score, status: "submitted" });
+        setSubmitted(true); toast.success("Scorecard updated!");
+      } catch { toast.error("Failed to update"); }
+      setSubmitting(false);
+      return;
+    }
     await submitWithDuplicateCheck(
       {
         submitterName: managerName.trim(), reportType: "weekly-scorecard", location: storeCode, reportDate: weekStart,
-        data: { dateEntered, weekOf: weekOfLabel, weekOfStart: weekStart, weekOfEnd: weekEnd, sales, labour, digital, food, submittedVia: `Public - ${positionLabel}` },
-        totalScore: sales.thisWeekActual ? `$${parseFloat(sales.thisWeekActual).toFixed(0)}` : undefined,
+        data: reportData,
+        totalScore: score,
       },
       () => { setSubmitted(true); clearDraft(); toast.success("Scorecard submitted!"); },
       (msg) => toast.error(msg),
@@ -1469,10 +1498,11 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack, edit
     );
   };
 
-  if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} submitted.`} onNew={() => { setSubmitted(false); setDraft({ managerName: "", dateEntered: new Date().toISOString().split("T")[0], weekStart: defaultWeek.start, weekEnd: defaultWeek.end, sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" }, food: initSec() }); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Weekly Scorecard for ${storeName} ${isEdit ? "updated" : "submitted"}.`} onNew={isEdit ? undefined : () => { setSubmitted(false); setDraft({ managerName: "", dateEntered: new Date().toISOString().split("T")[0], weekStart: defaultWeek.start, weekEnd: defaultWeek.end, sales: initSec(), labour: initSec(), digital: { googleReviews: "", howContribute: "" }, food: initSec() }); }} onBack={onBack} />;
 
   return (
-    <PublicFormLayout title="Store Manager Weekly Scorecard" subtitle={`${positionLabel} \u2014 ${storeName}`} onBack={onBack}>
+    <PublicFormLayout title={isEdit ? "Edit Weekly Scorecard" : "Store Manager Weekly Scorecard"} subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
+      {isEdit && <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm"><span className="font-medium">Editing mode</span> — Changes will update the existing report</div>}
       <Card><CardContent className="pt-6 space-y-4">
         <div className="space-y-1.5">
           <Label>Store Location</Label>
@@ -1523,9 +1553,9 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack, edit
       <div className="flex flex-col gap-3">
         <div className="flex gap-3">
           <Button variant="outline" onClick={onBack}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={submitting} className="flex-1 bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : "Submit Scorecard"}</Button>
+          <Button onClick={handleSubmit} disabled={submitting} className="flex-1 bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? (isEdit ? "Updating..." : "Submitting...") : (isEdit ? "Update Scorecard" : "Submit Scorecard")}</Button>
         </div>
-        {draftButton}
+        {!isEdit && draftButton}
       </div>
       {duplicateDialog}
     </PublicFormLayout>
@@ -1535,6 +1565,7 @@ function WeeklyScorecardForm({ storeCode, storeName, positionLabel, onBack, edit
 // ─── Training Evaluation Form ───
 
 function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack, editReportId, editData }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void; editReportId?: number; editData?: any }) {
+  const isEdit = !!editReportId;
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
     `training-eval-${storeCode}`,
     { name: "", date: new Date().toISOString().split("T")[0], traineeName: "", ratings: TRAINING_AREAS.map((a) => a.items.map(() => ({ rating: 0, comment: "" }))), overallComments: "" }
@@ -1549,16 +1580,47 @@ function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack, e
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = typeof editData === "string" ? JSON.parse(editData) : editData;
+    const newRatings = TRAINING_AREAS.map((a, ai) => {
+      const savedArea = d.areas?.find((da: any) => da.title === a.title);
+      if (!savedArea?.items) return a.items.map(() => ({ rating: 0, comment: "" }));
+      return a.items.map((item, ii) => {
+        const savedItem = savedArea.items.find((di: any) => di.item === item);
+        return savedItem ? { rating: savedItem.rating || 0, comment: savedItem.comment || "" } : { rating: 0, comment: "" };
+      });
+    });
+    setDraft(prev => ({
+      ...prev,
+      name: d.submitterName || prev.name,
+      traineeName: d.traineeName || prev.traineeName,
+      ratings: newRatings,
+      overallComments: d.overallComments || "",
+    }));
+  }, [editData]);
+
   const allRatings = ratings.flat().filter((r) => r.rating > 0);
   const avg = allRatings.length > 0 ? (allRatings.reduce((s, r) => s + r.rating, 0) / allRatings.length).toFixed(2) : "0.00";
 
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
     if (!traineeName.trim()) { toast.error("Please enter trainee name"); return; }
+    const reportData = { traineeName, areas: TRAINING_AREAS.map((a, ai) => ({ title: a.title, items: a.items.map((item, ii) => ({ item, ...ratings[ai][ii] })) })), overallComments, submittedVia: `Public - ${positionLabel}`, submitterName: name.trim() };
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId!, { data: reportData, totalScore: avg, status: "submitted" });
+        setSubmitted(true); toast.success("Training evaluation updated!");
+      } catch { toast.error("Failed to update"); }
+      setSubmitting(false);
+      return;
+    }
     await submitWithDuplicateCheck(
       {
         submitterName: name.trim(), reportType: "Training Evaluation", location: storeName, reportDate: date,
-        data: { traineeName, areas: TRAINING_AREAS.map((a, ai) => ({ title: a.title, items: a.items.map((item, ii) => ({ item, ...ratings[ai][ii] })) })), overallComments, submittedVia: `Public - ${positionLabel}` },
+        data: reportData,
         totalScore: avg,
       },
       () => { setSubmitted(true); clearDraft(); toast.success("Training evaluation submitted!"); },
@@ -1567,10 +1629,11 @@ function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack, e
     );
   };
 
-  if (submitted) return <SuccessScreen message={`Training evaluation for ${traineeName} at ${storeName} submitted. Average: ${avg}/5`} onNew={() => { setSubmitted(false); setRatings(() => TRAINING_AREAS.map((a) => a.items.map(() => ({ rating: 0, comment: "" })))); setTraineeName(""); setOverallComments(""); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Training evaluation for ${traineeName} at ${storeName} ${isEdit ? "updated" : "submitted"}. Average: ${avg}/5`} onNew={isEdit ? undefined : () => { setSubmitted(false); setRatings(() => TRAINING_AREAS.map((a) => a.items.map(() => ({ rating: 0, comment: "" })))); setTraineeName(""); setOverallComments(""); }} onBack={onBack} />;
 
   return (
-    <PublicFormLayout title="Training Evaluation" subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
+    <PublicFormLayout title={isEdit ? "Edit Training Evaluation" : "Training Evaluation"} subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
+      {isEdit && <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm"><span className="font-medium">Editing mode</span> — Changes will update the existing report</div>}
       <Card><CardContent className="pt-6 space-y-4">
         <div className="space-y-2"><Label>Your Name (Evaluator) *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="space-y-2"><Label>Trainee Name *</Label><Input placeholder="Enter trainee name" value={traineeName} onChange={(e) => setTraineeName(e.target.value)} /></div>
@@ -1606,6 +1669,7 @@ function TrainingEvaluationForm({ storeCode, storeName, positionLabel, onBack, e
 // ─── Bagel Orders Form ───
 
 function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack, editReportId, editData }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void; editReportId?: number; editData?: any }) {
+  const isEdit = !!editReportId;
   // Map portal storeCode (e.g. "ontario") to shortName (e.g. "ON") if needed
   const resolvedStoreCode = (() => {
     if (!storeCode || storeCode === "sales") return storeCode || "sales";
@@ -1636,19 +1700,46 @@ function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack, editRepo
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = typeof editData === "string" ? JSON.parse(editData) : editData;
+    const newQty: Record<string, string> = {};
+    const newUnits: Record<string, "dozen" | "unit" | "box"> = {};
+    if (d.orders) d.orders.forEach((o: any) => { newQty[o.type] = String(o.quantity || ""); newUnits[o.type] = o.unit || "dozen"; });
+    setDraft(prev => ({
+      ...prev,
+      name: d.submitterName || prev.name,
+      clientName: d.clientName || prev.clientName,
+      orderForDate: d.orderForDate || prev.orderForDate,
+      quantities: Object.keys(newQty).length ? { ...prev.quantities, ...newQty } : prev.quantities,
+      itemUnits: Object.keys(newUnits).length ? { ...prev.itemUnits, ...newUnits } : prev.itemUnits,
+    }));
+  }, [editData]);
+
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
     if (isSales && !clientName.trim()) { toast.error("Please enter the client name"); return; }
     if (!orderForDate) { toast.error("Please select the order date"); return; }
+    const reportData = {
+      orderForDate,
+      ...(isSales ? { clientName: clientName.trim() } : {}),
+      orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: (itemUnits?.[type]) || "dozen" })),
+      submittedVia: `Public - ${positionLabel}`, submitterName: name.trim(),
+    };
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId!, { data: reportData, status: "submitted" });
+        setSubmitted(true); toast.success(`Bagel order updated!`);
+      } catch { toast.error("Failed to update"); }
+      setSubmitting(false);
+      return;
+    }
     await submitWithDuplicateCheck(
       {
         submitterName: name.trim(), reportType: "Bagel Orders", location: isSales ? "sales" : selectedLocation, reportDate: orderForDate,
-        data: {
-          orderForDate,
-          ...(isSales ? { clientName: clientName.trim() } : {}),
-          orders: BAGEL_TYPES.map(type => ({ type, quantity: quantities[type] || "0", unit: (itemUnits?.[type]) || "dozen" })),
-          submittedVia: `Public - ${positionLabel}`,
-        },
+        data: reportData,
       },
       () => { setSubmitted(true); clearDraft(); toast.success(`Bagel order submitted for ${resolvedStoreName}${isSales ? ` — ${clientName}` : ""}!`); },
       (msg) => toast.error(msg),
@@ -1656,10 +1747,11 @@ function BagelOrdersForm({ storeCode, storeName, positionLabel, onBack, editRepo
     );
   };
 
-  if (submitted) return <SuccessScreen message={`Bagel order for ${resolvedStoreName}${isSales ? ` — ${clientName}` : ""} submitted.`} onNew={() => { setSubmitted(false); setDraft((d) => ({ ...d, clientName: "", quantities: Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])), itemUnits: Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])) as Record<string, "dozen" | "unit" | "box"> })); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Bagel order for ${resolvedStoreName}${isSales ? ` — ${clientName}` : ""} ${isEdit ? "updated" : "submitted"}.`} onNew={isEdit ? undefined : () => { setSubmitted(false); setDraft((d) => ({ ...d, clientName: "", quantities: Object.fromEntries(BAGEL_TYPES.map(t => [t, ""])), itemUnits: Object.fromEntries(BAGEL_TYPES.map(t => [t, "dozen"])) as Record<string, "dozen" | "unit" | "box"> })); }} onBack={onBack} />;
 
   return (
-    <PublicFormLayout title="Bagel Orders" subtitle={`${positionLabel} — ${resolvedStoreName}`} onBack={onBack}>
+    <PublicFormLayout title={isEdit ? "Edit Bagel Order" : "Bagel Orders"} subtitle={`${positionLabel} — ${resolvedStoreName}`} onBack={onBack}>
+      {isEdit && <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm"><span className="font-medium">Editing mode</span> — Changes will update the existing report</div>}
       {/* Location Selector — locked for store managers, full selector for ops manager */}
       {isLocationLocked ? (
         <Card><CardContent className="pt-6">
@@ -1764,6 +1856,7 @@ const PASTRY_ORDER_ITEMS = [
 ];
 
 function PastryOrdersForm({ storeCode, storeName, positionLabel, onBack, editReportId, editData }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void; editReportId?: number; editData?: any }) {
+  const isEdit = !!editReportId;
   // Map portal storeCode (e.g. "ontario") to shortName (e.g. "ON") if needed
   const resolvedStoreCode = (() => {
     if (!storeCode) return "";
@@ -1788,17 +1881,41 @@ function PastryOrdersForm({ storeCode, storeName, positionLabel, onBack, editRep
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = typeof editData === "string" ? JSON.parse(editData) : editData;
+    const newQty: Record<string, string> = {};
+    if (d.orders) d.orders.forEach((o: any) => { newQty[o.type] = String(o.quantity || ""); });
+    setDraft(prev => ({
+      ...prev,
+      name: d.submitterName || prev.name,
+      orderForDate: d.orderForDate || prev.orderForDate,
+      quantities: Object.keys(newQty).length ? { ...prev.quantities, ...newQty } : prev.quantities,
+    }));
+  }, [editData]);
+
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
     if (!orderForDate) { toast.error("Please select the order date"); return; }
+    const reportData = {
+      orderForDate,
+      orders: PASTRY_ORDER_ITEMS.map(type => ({ type, quantity: quantities[type] || "0", unit: "unit" })),
+      submittedVia: `Public - ${positionLabel}`, submitterName: name.trim(),
+    };
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId!, { data: reportData, status: "submitted" });
+        setSubmitted(true); toast.success(`Pastry order updated!`);
+      } catch { toast.error("Failed to update"); }
+      setSubmitting(false);
+      return;
+    }
     await submitWithDuplicateCheck(
       {
         submitterName: name.trim(), reportType: "Pastry Orders", location: selectedLocation, reportDate: orderForDate,
-        data: {
-          orderForDate,
-          orders: PASTRY_ORDER_ITEMS.map(type => ({ type, quantity: quantities[type] || "0", unit: "unit" })),
-          submittedVia: `Public - ${positionLabel}`,
-        },
+        data: reportData,
       },
       () => { setSubmitted(true); clearDraft(); toast.success(`Pastry order submitted for ${resolvedStoreName}!`); },
       (msg) => toast.error(msg),
@@ -1806,10 +1923,11 @@ function PastryOrdersForm({ storeCode, storeName, positionLabel, onBack, editRep
     );
   };
 
-  if (submitted) return <SuccessScreen message={`Pastry order for ${resolvedStoreName} submitted.`} onNew={() => { setSubmitted(false); setDraft((d) => ({ ...d, quantities: Object.fromEntries(PASTRY_ORDER_ITEMS.map(t => [t, ""])) })); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Pastry order for ${resolvedStoreName} ${isEdit ? "updated" : "submitted"}.`} onNew={isEdit ? undefined : () => { setSubmitted(false); setDraft((d) => ({ ...d, quantities: Object.fromEntries(PASTRY_ORDER_ITEMS.map(t => [t, ""])) })); }} onBack={onBack} />;
 
   return (
-    <PublicFormLayout title="Pastry Orders" subtitle={`${positionLabel} — ${resolvedStoreName}`} onBack={onBack}>
+    <PublicFormLayout title={isEdit ? "Edit Pastry Order" : "Pastry Orders"} subtitle={`${positionLabel} — ${resolvedStoreName}`} onBack={onBack}>
+      {isEdit && <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm"><span className="font-medium">Editing mode</span> — Changes will update the existing report</div>}
       {/* Location Selector — locked for store managers, full selector otherwise */}
       {isLocationLocked ? (
         <Card><CardContent className="pt-6">
@@ -1897,6 +2015,7 @@ const EVAL_CRITERIA = [
 ];
 
 function PerformanceEvaluationForm({ storeCode, storeName, positionLabel, onBack, editReportId, editData }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void; editReportId?: number; editData?: any }) {
+  const isEdit = !!editReportId;
   const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
     `perf-eval-${storeCode}`,
     { name: "", date: new Date().toISOString().split("T")[0], employeeName: "", employeePosition: "", ratings: EVAL_CRITERIA.map(() => ({ rating: 0, comment: "" })), overallComments: "" }
@@ -1912,16 +2031,44 @@ function PerformanceEvaluationForm({ storeCode, storeName, positionLabel, onBack
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
 
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = typeof editData === "string" ? JSON.parse(editData) : editData;
+    const newRatings = EVAL_CRITERIA.map((c, i) => {
+      const saved = d.criteria?.find((dc: any) => dc.key === c.key);
+      return saved ? { rating: saved.rating || 0, comment: saved.comment || "" } : { rating: 0, comment: "" };
+    });
+    setDraft(prev => ({
+      ...prev,
+      name: d.submitterName || prev.name,
+      employeeName: d.employeeName || prev.employeeName,
+      employeePosition: d.employeePosition || prev.employeePosition,
+      ratings: newRatings,
+      overallComments: d.overallComments || "",
+    }));
+  }, [editData]);
+
   const rated = ratings.filter((r) => r.rating > 0);
   const avg = rated.length > 0 ? (rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(2) : "0.00";
 
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("Please enter your name"); return; }
     if (!employeeName.trim()) { toast.error("Please enter employee name"); return; }
+    const reportData = { employeeName, employeePosition, criteria: EVAL_CRITERIA.map((c, i) => ({ ...c, ...ratings[i] })), overallComments, submittedVia: `Public - ${positionLabel}`, submitterName: name.trim() };
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId!, { data: reportData, totalScore: avg, status: "submitted" });
+        setSubmitted(true); toast.success("Evaluation updated!");
+      } catch { toast.error("Failed to update"); }
+      setSubmitting(false);
+      return;
+    }
     await submitWithDuplicateCheck(
       {
         submitterName: name.trim(), reportType: "Performance Evaluation", location: storeName, reportDate: date,
-        data: { employeeName, employeePosition, criteria: EVAL_CRITERIA.map((c, i) => ({ ...c, ...ratings[i] })), overallComments, submittedVia: `Public - ${positionLabel}` },
+        data: reportData,
         totalScore: avg,
       },
       () => { setSubmitted(true); clearDraft(); toast.success("Evaluation submitted!"); },
@@ -1930,10 +2077,11 @@ function PerformanceEvaluationForm({ storeCode, storeName, positionLabel, onBack
     );
   };
 
-  if (submitted) return <SuccessScreen message={`Performance evaluation for ${employeeName} submitted. Average: ${avg}/5`} onNew={() => { setSubmitted(false); setRatings(() => EVAL_CRITERIA.map(() => ({ rating: 0, comment: "" }))); setEmployeeName(""); setEmployeePosition(""); setOverallComments(""); }} onBack={onBack} />;
+  if (submitted) return <SuccessScreen message={`Performance evaluation for ${employeeName} ${isEdit ? "updated" : "submitted"}. Average: ${avg}/5`} onNew={isEdit ? undefined : () => { setSubmitted(false); setRatings(() => EVAL_CRITERIA.map(() => ({ rating: 0, comment: "" }))); setEmployeeName(""); setEmployeePosition(""); setOverallComments(""); }} onBack={onBack} />;
 
   return (
-    <PublicFormLayout title="Performance Evaluation" subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
+    <PublicFormLayout title={isEdit ? "Edit Performance Evaluation" : "Performance Evaluation"} subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
+      {isEdit && <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm"><span className="font-medium">Editing mode</span> — Changes will update the existing report</div>}
       <Card><CardContent className="pt-6 space-y-4">
         <div className="space-y-2"><Label>Your Name (Evaluator) *</Label><Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

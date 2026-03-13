@@ -951,6 +951,7 @@ function PortalInfoPage({
 }) {
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingReport, setEditingReport] = useState<any>(null);
 
   async function fetchReports() {
     setLoading(true);
@@ -1021,6 +1022,47 @@ function PortalInfoPage({
   }
 
   if (pageId === "reports") {
+    // If editing a report, show the checklist form in edit mode
+    if (editingReport) {
+      const checklistType = editingReport.reportType as ChecklistType;
+      const reportData = typeof editingReport.data === "string" ? JSON.parse(editingReport.data) : editingReport.data;
+      // Resolve the store for the report being edited
+      const editStore: StoreInfo = (() => {
+        const loc = editingReport.normalizedLocation || editingReport.location || "";
+        const locLower = loc.toLowerCase();
+        // Map normalized location back to store info
+        const storeMap: Record<string, StoreInfo> = {
+          "pk": { storeCode: "pk", storeName: "President Kennedy" },
+          "mk": { storeCode: "mk", storeName: "Mackay" },
+          "on": { storeCode: "ontario", storeName: "Ontario" },
+          "tn": { storeCode: "tunnel", storeName: "Cathcart (Tunnel)" },
+        };
+        return storeMap[locLower] || store || { storeCode: locLower, storeName: loc };
+      })();
+      return (
+        <div className="min-h-full bg-gradient-to-br from-amber-50/30 to-orange-50/30">
+          <div className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-amber-50 border-b border-amber-200">
+            <button
+              onClick={() => setEditingReport(null)}
+              className="flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-900 font-medium"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Reports
+            </button>
+          </div>
+          <ChecklistForm
+            key={`edit-${editingReport.id}`}
+            type={checklistType}
+            storeCode={editStore.storeCode}
+            storeName={editStore.storeName}
+            positionLabel={position.label}
+            onBack={() => { setEditingReport(null); fetchReports(); }}
+            editReportId={editingReport.id}
+            editData={reportData}
+          />
+        </div>
+      );
+    }
     return (
       <PortalReportsPage
         reports={store ? filteredReports : normalizedReports}
@@ -1028,6 +1070,7 @@ function PortalInfoPage({
         store={store}
         position={position}
         onRefresh={fetchReports}
+        onEditReport={(report) => setEditingReport(report)}
       />
     );
   }
@@ -1931,12 +1974,14 @@ function PortalReportsPage({
   store,
   position,
   onRefresh,
+  onEditReport,
 }: {
   reports: any[];
   loading: boolean;
   store: StoreInfo | null;
   position: PositionDef;
   onRefresh?: () => void;
+  onEditReport?: (report: any) => void;
 }) {
   const [filterStore, setFilterStore] = useState<string>("all");
   const [filterPosition, setFilterPosition] = useState<string>("all");
@@ -2407,6 +2452,7 @@ function PortalReportsPage({
           onClose={() => setSelectedReport(null)}
           canEditDelete={canEditDelete}
           onDelete={(id) => setDeleteConfirmId(id)}
+          onEdit={onEditReport ? (r) => { setSelectedReport(null); onEditReport(r); } : undefined}
           getSubmitter={getSubmitter}
           getPositionLabel={getPositionLabel}
           position={position}
@@ -2449,6 +2495,7 @@ function ReportDetailDialog({
   onClose,
   canEditDelete,
   onDelete,
+  onEdit,
   getSubmitter,
   getPositionLabel,
   position,
@@ -2458,6 +2505,7 @@ function ReportDetailDialog({
   onClose: () => void;
   canEditDelete: boolean;
   onDelete: (id: number) => void;
+  onEdit?: (report: any) => void;
   getSubmitter: (r: any) => string;
   getPositionLabel: (rt: string, report?: any) => string;
   position: PositionDef;
@@ -2721,17 +2769,30 @@ function ReportDetailDialog({
 
         {/* Action buttons */}
         <div className="flex items-center justify-between pt-3 border-t mt-4">
-          {canEditDelete ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 border-red-200 hover:bg-red-50"
-              onClick={() => onDelete(report.id)}
-            >
-              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-              Delete
-            </Button>
-          ) : <div />}
+          <div className="flex items-center gap-2">
+            {canEditDelete && onEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-amber-700 border-amber-200 hover:bg-amber-50"
+                onClick={() => onEdit(report)}
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                Edit
+              </Button>
+            )}
+            {canEditDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => onDelete(report.id)}
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                Delete
+              </Button>
+            )}
+          </div>
           <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
         </div>
       </div>

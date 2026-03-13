@@ -1336,9 +1336,25 @@
 - [x] All items now always visible and editable — no toggle needed
 
 # Report Editing Feature — Operations Manager
-- [ ] Add server-side tRPC endpoint to update an existing report's data
-- [ ] Add Edit button to the Operations Manager's report list/detail view in Portal
-- [ ] When Edit is clicked, reopen the checklist form pre-filled with original submitted data
-- [ ] On save, update the existing report (not create a new one)
-- [ ] Support editing for all checklist types (Manager Checklist, Waste Report, etc.)
-- [ ] Write tests for the update endpoint
+- [x] Server-side PUT /api/public/reports/:id endpoint already existed (verified working)
+- [x] Added Edit button to ReportDetailDialog (amber styled, next to Delete)
+- [x] Added onEdit prop chain: ReportDetailDialog → PortalReportsPage → PortalInfoPage
+- [x] Added editingReport state to PortalInfoPage — switches from reports list to edit form
+- [x] Added "Back to Reports" banner above edit form with auto-refresh on return
+- [x] Extended ChecklistFormProps with editReportId and editData for all 10 forms:
+  - [x] ManagerChecklistForm: Pre-fills tasks, notes, submitter name
+  - [x] WasteReportForm: Pre-fills all waste rows (leftover qty, waste qty, comments)
+  - [x] SimpleAuditFormPublic: Pre-fills audit items with ratings and comments
+  - [x] SectionChecklistForm: Pre-fills section items with done/comments
+  - [x] EquipmentMaintenanceForm: Pre-fills equipment items with status/comments
+  - [x] WeeklyScorecardForm: Pre-fills sales, labour, digital, food sections
+  - [x] TrainingEvaluationForm: Pre-fills trainee info, criteria ratings
+  - [x] BagelOrdersForm: Pre-fills order quantities by bagel type
+  - [x] PastryOrdersForm: Pre-fills pastry order quantities
+  - [x] PerformanceEvaluationForm: Pre-fills employee info, criteria ratings
+- [x] All forms show "Editing mode" banner and "Update" button text when editing
+- [x] Success screen shows "updated" message and hides "Submit Another" button in edit mode
+- [x] Added updateReport() helper in useDuplicateReportCheck.tsx
+- [x] Store resolution: Maps normalized location (PK/MK/ON/TN) back to storeCode/storeName for edit form
+- [x] Written reportEdit.test.ts (4 tests: create, update, verify persistence, non-existent)
+- [x] All 234 tests passing
