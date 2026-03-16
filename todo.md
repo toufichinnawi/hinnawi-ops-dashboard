@@ -1461,3 +1461,8 @@
 - [x] Rebuild frontend: unified flow with "Add Page" + thumbnail filmstrip + reorder/delete
 - [x] Update backend AI analysis to accept and process multiple images as one invoice
 - [x] Test multi-page flow: 7 tests passing (upload-photo, analyze validation, legacy compat)
+
+# Fix Multi-Page Invoice AI Analysis Bug
+- [x] Investigated: AI works correctly on dev server; published site was running old code without the new analyze endpoint
+- [x] Confirmed with real Gordon/GFS invoice: extracted vendor, 12 line items, $1,650.68 total
+- [x] Tested with actual invoice images (HEIC converted to JPEG) — all data extracted correctly
