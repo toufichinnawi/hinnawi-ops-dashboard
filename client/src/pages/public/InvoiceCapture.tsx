@@ -1,10 +1,13 @@
 /**
- * Invoice Capture — Portal component for photographing and verifying delivery invoices
- * Flow: Take photo(s) → OCR auto-fill from first photo → Review/edit → Verify → Submit
- * Supports multiple photos per invoice (e.g. multi-page invoices)
+ * Invoice Capture — Unified multi-page flow
+ * Flow: Add page(s) → "Analyze Invoice" → AI extracts from ALL pages → Review/edit → Submit
+ * No single vs multi-page toggle — same flow whether 1 page or 10.
  */
-import { useState, useRef } from "react";
-import { Camera, Upload, Loader2, CheckCircle2, ArrowLeft, X, Plus, Image } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import {
+  Camera, Upload, Loader2, CheckCircle2, ArrowLeft, X, Plus,
+  Image, GripVertical, Sparkles, FileText,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,7 +43,7 @@ interface InvoiceCapturePortalProps {
   onBack: () => void;
 }
 
-type Step = "capture" | "processing" | "review" | "success";
+type Step = "capture" | "uploading" | "analyzing" | "review" | "success";
 
 export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: InvoiceCapturePortalProps) {
   const [step, setStep] = useState<Step>("capture");
@@ -48,10 +51,8 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const addPhotoFileRef = useRef<HTMLInputElement>(null);
-  const addPhotoCameraRef = useRef<HTMLInputElement>(null);
 
-  // Form fields (populated by OCR from first photo)
+  // Form fields (populated by AI analysis)
   const [vendorName, setVendorName] = useState("");
   const [customVendor, setCustomVendor] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -66,7 +67,8 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
   const [ocrRawData, setOcrRawData] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const uploadPhoto = async (file: File): Promise<{ preview: string; url: string; key: string; ocrData?: any } | null> => {
+  // Upload a single photo to S3 (no OCR yet)
+  const uploadPhoto = async (file: File): Promise<PhotoEntry | null> => {
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return null;
@@ -82,7 +84,7 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
         const base64Full = e.target?.result as string;
         try {
           const base64Data = base64Full.split(",")[1];
-          const res = await fetch("/api/public/invoices/upload", {
+          const res = await fetch("/api/public/invoices/upload-photo", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -97,7 +99,6 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
             preview: base64Full,
             url: data.photoUrl,
             key: data.photoKey,
-            ocrData: data.ocrData,
           });
         } catch (err) {
           console.error("Upload error:", err);
@@ -109,59 +110,80 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
     });
   };
 
-  const handleFirstPhoto = async (file: File) => {
-    setStep("processing");
-    const result = await uploadPhoto(file);
-    if (!result) {
-      setStep("capture");
-      return;
-    }
-
-    setPhotos([{ preview: result.preview, url: result.url, key: result.key }]);
-
-    // Apply OCR data from first photo
-    if (result.ocrData) {
-      setOcrRawData(result.ocrData);
-      if (result.ocrData.vendorName) {
-        const matched = KNOWN_VENDORS.find(
-          (v) => v.toLowerCase() === result.ocrData.vendorName.toLowerCase()
-        );
-        if (matched && matched !== "Other") {
-          setVendorName(matched);
-        } else {
-          setVendorName("Other");
-          setCustomVendor(result.ocrData.vendorName);
-        }
-      }
-      if (result.ocrData.invoiceNumber) setInvoiceNumber(result.ocrData.invoiceNumber);
-      if (result.ocrData.invoiceDate) setInvoiceDate(result.ocrData.invoiceDate);
-      if (result.ocrData.lineItems?.length) setLineItems(result.ocrData.lineItems);
-      if (result.ocrData.subtotal != null) setSubtotal(String(result.ocrData.subtotal));
-      if (result.ocrData.tax != null) setTax(String(result.ocrData.tax));
-      if (result.ocrData.total != null) setTotal(String(result.ocrData.total));
-      toast.success("Invoice data extracted successfully");
-    } else {
-      toast.info("Photo uploaded — please fill in the details manually");
-    }
-    setStep("review");
-  };
-
-  const handleAddPhoto = async (file: File) => {
+  // Handle adding a photo (first or subsequent)
+  const handleAddPhoto = useCallback(async (file: File) => {
     setUploadingPhoto(true);
     const result = await uploadPhoto(file);
     if (result) {
-      setPhotos((prev) => [...prev, { preview: result.preview, url: result.url, key: result.key }]);
-      toast.success(`Photo ${photos.length + 1} added`);
+      setPhotos((prev) => [...prev, result]);
+      toast.success(`Page ${photos.length + 1} added`);
     }
     setUploadingPhoto(false);
-  };
+  }, [photos.length]);
 
   const removePhoto = (index: number) => {
-    if (photos.length <= 1) {
-      toast.error("At least one photo is required");
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Move photo up/down for reordering
+  const movePhoto = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= photos.length) return;
+    setPhotos((prev) => {
+      const updated = [...prev];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      return updated;
+    });
+  };
+
+  // Analyze all pages with AI
+  const handleAnalyze = async () => {
+    if (photos.length === 0) {
+      toast.error("Please add at least one page");
       return;
     }
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setStep("analyzing");
+    try {
+      const imageUrls = photos.map((p) => p.url);
+      const res = await fetch("/api/public/invoices/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrls }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Analysis failed");
+
+      const ocrData = data.ocrData;
+      setOcrRawData(ocrData);
+
+      if (ocrData) {
+        if (ocrData.vendorName) {
+          const matched = KNOWN_VENDORS.find(
+            (v) => v.toLowerCase() === ocrData.vendorName.toLowerCase()
+          );
+          if (matched && matched !== "Other") {
+            setVendorName(matched);
+          } else {
+            setVendorName("Other");
+            setCustomVendor(ocrData.vendorName);
+          }
+        }
+        if (ocrData.invoiceNumber) setInvoiceNumber(ocrData.invoiceNumber);
+        if (ocrData.invoiceDate) setInvoiceDate(ocrData.invoiceDate);
+        if (ocrData.lineItems?.length) setLineItems(ocrData.lineItems);
+        if (ocrData.subtotal != null) setSubtotal(String(ocrData.subtotal));
+        if (ocrData.tax != null) setTax(String(ocrData.tax));
+        if (ocrData.total != null) setTotal(String(ocrData.total));
+        toast.success(`Invoice analyzed — ${photos.length} page${photos.length > 1 ? "s" : ""} processed`);
+      } else {
+        toast.info("Analysis complete — please fill in the details manually");
+      }
+      setStep("review");
+    } catch (err) {
+      console.error("Analysis error:", err);
+      toast.error("Failed to analyze invoice. Please try again.");
+      setStep("capture");
+    }
   };
 
   const handleSubmit = async () => {
@@ -198,13 +220,13 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
           subtotal: subtotal ? parseFloat(subtotal) : null,
           tax: tax ? parseFloat(tax) : null,
           total: total ? parseFloat(total) : null,
-          photoUrl: photos[0].url, // Primary photo (backward compat)
-          photoUrls, // All photos
+          photoUrl: photos[0].url,
+          photoUrls,
           photoKey: photos[0].key,
           ocrRawData,
           verifiedBy: verifiedBy.trim(),
           notes: notes || null,
-          category: "cogs", // Recorded as Cost of Goods Sold
+          category: "cogs",
         }),
       });
       const data = await res.json();
@@ -237,10 +259,10 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
     setOcrRawData(null);
   };
 
-  // ─── Capture Step ───
+  // ─── Capture Step: Add pages, then analyze ───
   if (step === "capture") {
     return (
-      <div className="max-w-lg mx-auto p-4 space-y-6">
+      <div className="max-w-lg mx-auto p-4 space-y-5">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-lg hover:bg-gray-100">
             <ArrowLeft className="w-5 h-5" />
@@ -252,9 +274,72 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
         </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-          Take a clear photo of the delivery invoice. You can add multiple photos for multi-page invoices. The system will automatically extract vendor, items, and totals from the first photo.
+          <strong>How it works:</strong> Take photos of each page of the invoice, then tap <strong>"Analyze Invoice"</strong>. The AI will read all pages together and extract the details automatically.
         </div>
 
+        {/* Photo thumbnails filmstrip */}
+        {photos.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Pages Added ({photos.length})
+            </Label>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {photos.map((photo, i) => (
+                <div
+                  key={i}
+                  className="relative flex-shrink-0 w-[100px] h-[130px] rounded-lg overflow-hidden border-2 border-border bg-white shadow-sm group"
+                >
+                  <img
+                    src={photo.preview}
+                    alt={`Page ${i + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Page number badge */}
+                  <div className="absolute top-0 left-0 bg-[#1C1210]/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-br-lg">
+                    {i + 1}
+                  </div>
+                  {/* Reorder + delete controls */}
+                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent p-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-0.5">
+                      {i > 0 && (
+                        <button
+                          onClick={() => movePhoto(i, i - 1)}
+                          className="p-0.5 text-white/80 hover:text-white"
+                          title="Move left"
+                        >
+                          <GripVertical className="w-3 h-3 rotate-90" />
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => removePhoto(i)}
+                      className="p-0.5 text-red-300 hover:text-red-400"
+                      title="Remove page"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {/* Always-visible delete on mobile */}
+                  <button
+                    onClick={() => removePhoto(i)}
+                    className="absolute top-0 right-0 p-1 bg-red-500/80 text-white rounded-bl-lg md:hidden"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {/* Uploading placeholder */}
+              {uploadingPhoto && (
+                <div className="flex-shrink-0 w-[100px] h-[130px] rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center bg-muted/30">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Add page buttons */}
         <div className="space-y-3">
           <input
             ref={cameraInputRef}
@@ -262,47 +347,126 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
             accept="image/*"
             capture="environment"
             className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleFirstPhoto(e.target.files[0])}
+            onChange={(e) => {
+              if (e.target.files?.[0]) handleAddPhoto(e.target.files[0]);
+              e.target.value = "";
+            }}
           />
-          <Button
-            onClick={() => cameraInputRef.current?.click()}
-            className="w-full h-32 flex flex-col gap-2 bg-[#1C1210] hover:bg-[#2a1e1a] text-white"
-            size="lg"
-          >
-            <Camera className="w-8 h-8" />
-            <span className="text-lg font-medium">Take Photo</span>
-          </Button>
-
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleFirstPhoto(e.target.files[0])}
+            onChange={(e) => {
+              const files = e.target.files;
+              if (files) {
+                Array.from(files).forEach((f) => handleAddPhoto(f));
+              }
+              e.target.value = "";
+            }}
           />
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            variant="outline"
-            className="w-full h-16 flex gap-2"
-            size="lg"
-          >
-            <Upload className="w-5 h-5" />
-            <span>Upload from Gallery</span>
-          </Button>
+
+          {photos.length === 0 ? (
+            <>
+              {/* First photo — big prominent buttons */}
+              <Button
+                onClick={() => cameraInputRef.current?.click()}
+                className="w-full h-28 flex flex-col gap-2 bg-[#1C1210] hover:bg-[#2a1e1a] text-white"
+                size="lg"
+                disabled={uploadingPhoto}
+              >
+                <Camera className="w-7 h-7" />
+                <span className="text-base font-medium">Take Photo of Invoice</span>
+              </Button>
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                variant="outline"
+                className="w-full h-14 flex gap-2"
+                size="lg"
+                disabled={uploadingPhoto}
+              >
+                <Upload className="w-5 h-5" />
+                <span>Upload from Gallery</span>
+              </Button>
+            </>
+          ) : (
+            <>
+              {/* Subsequent pages — smaller "add more" buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  onClick={() => cameraInputRef.current?.click()}
+                  variant="outline"
+                  className="h-12 flex gap-2"
+                  disabled={uploadingPhoto}
+                >
+                  {uploadingPhoto ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
+                  <span className="text-sm">Add Page</span>
+                </Button>
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="outline"
+                  className="h-12 flex gap-2"
+                  disabled={uploadingPhoto}
+                >
+                  {uploadingPhoto ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                  <span className="text-sm">Upload Page</span>
+                </Button>
+              </div>
+
+              {/* Analyze button */}
+              <Button
+                onClick={handleAnalyze}
+                className="w-full h-14 bg-[#D4A853] hover:bg-[#c49a48] text-[#1C1210] font-semibold text-base"
+                size="lg"
+                disabled={uploadingPhoto}
+              >
+                <Sparkles className="w-5 h-5 mr-2" />
+                Analyze Invoice ({photos.length} page{photos.length > 1 ? "s" : ""})
+              </Button>
+            </>
+          )}
         </div>
       </div>
     );
   }
 
-  // ─── Processing Step ───
-  if (step === "processing") {
+  // ─── Uploading Step ───
+  if (step === "uploading") {
     return (
       <div className="max-w-lg mx-auto p-4 flex flex-col items-center justify-center min-h-[400px] gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-[#D4A853]" />
         <div className="text-center">
-          <p className="font-medium">Processing Invoice...</p>
-          <p className="text-sm text-muted-foreground">Uploading photo and extracting data</p>
+          <p className="font-medium">Uploading Photos...</p>
+          <p className="text-sm text-muted-foreground">Please wait while we upload your pages</p>
         </div>
+      </div>
+    );
+  }
+
+  // ─── Analyzing Step ───
+  if (step === "analyzing") {
+    return (
+      <div className="max-w-lg mx-auto p-4 flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <div className="relative">
+          <Sparkles className="w-10 h-10 text-[#D4A853] animate-pulse" />
+        </div>
+        <div className="text-center">
+          <p className="font-medium text-lg">Analyzing Invoice...</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            AI is reading {photos.length} page{photos.length > 1 ? "s" : ""} and extracting data
+          </p>
+          <p className="text-xs text-muted-foreground mt-3">This may take a few seconds</p>
+        </div>
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mt-2" />
       </div>
     );
   }
@@ -316,7 +480,7 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
         </div>
         <h3 className="text-xl font-semibold">Invoice Submitted!</h3>
         <p className="text-muted-foreground text-center">
-          The invoice has been recorded as <strong>Cost of Goods Sold</strong> and saved. It will appear on the Store Performance dashboard.
+          The invoice ({photos.length} page{photos.length > 1 ? "s" : ""}) has been recorded as <strong>Cost of Goods Sold</strong> and saved.
         </p>
         <div className="flex gap-3 mt-4">
           <Button onClick={resetForm} className="bg-[#1C1210] hover:bg-[#2a1e1a] text-white">
@@ -334,7 +498,7 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
   return (
     <div className="max-w-lg mx-auto p-4 space-y-5 pb-24">
       <div className="flex items-center gap-3">
-        <button onClick={() => { setStep("capture"); setPhotos([]); }} className="p-2 rounded-lg hover:bg-gray-100">
+        <button onClick={() => setStep("capture")} className="p-2 rounded-lg hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
@@ -345,69 +509,16 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
 
       {/* Photo Gallery */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">Photos ({photos.length})</Label>
-          <div className="flex gap-1">
-            <input
-              ref={addPhotoCameraRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => { if (e.target.files?.[0]) handleAddPhoto(e.target.files[0]); e.target.value = ""; }}
-            />
-            <input
-              ref={addPhotoFileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => { if (e.target.files?.[0]) handleAddPhoto(e.target.files[0]); e.target.value = ""; }}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => addPhotoCameraRef.current?.click()}
-              disabled={uploadingPhoto}
-              className="text-xs"
-            >
-              <Camera className="w-3 h-3 mr-1" />
-              Camera
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => addPhotoFileRef.current?.click()}
-              disabled={uploadingPhoto}
-              className="text-xs"
-            >
-              <Plus className="w-3 h-3 mr-1" />
-              Add Photo
-            </Button>
-          </div>
-        </div>
-
+        <Label className="text-sm font-medium">Pages ({photos.length})</Label>
         <div className="flex gap-2 overflow-x-auto pb-2">
           {photos.map((photo, i) => (
-            <div key={i} className="relative flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border">
-              <img src={photo.preview} alt={`Invoice page ${i + 1}`} className="w-full h-full object-cover" />
+            <div key={i} className="relative flex-shrink-0 w-20 h-24 rounded-lg overflow-hidden border">
+              <img src={photo.preview} alt={`Page ${i + 1}`} className="w-full h-full object-cover" />
               <div className="absolute top-0 left-0 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-br">
                 {i + 1}
               </div>
-              {photos.length > 1 && (
-                <button
-                  onClick={() => removePhoto(i)}
-                  className="absolute top-0 right-0 p-1 bg-red-500/80 text-white rounded-bl hover:bg-red-600"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
             </div>
           ))}
-          {uploadingPhoto && (
-            <div className="flex-shrink-0 w-24 h-24 rounded-lg border border-dashed flex items-center justify-center">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
         </div>
       </div>
 
@@ -451,7 +562,7 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
 
       {lineItems.length > 0 && (
         <div className="space-y-2">
-          <Label>Line Items (from OCR)</Label>
+          <Label>Line Items ({lineItems.length} extracted)</Label>
           <div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
             {lineItems.map((item, i) => (
               <div key={i} className="px-3 py-2 text-sm flex justify-between">

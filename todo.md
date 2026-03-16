@@ -1455,3 +1455,9 @@
 - [x] Integrated into existing /api/public/active-alerts endpoint (no separate tRPC route needed)
 - [x] Display overdue flags on the Overview dashboard (alerts section) with "Deep Clean" label
 - [x] Tested: 6 active alerts tests passing, deep clean alerts showing correctly
+
+# Multi-Page Invoice Capture
+- [x] Investigate current invoice capture UI and backend
+- [x] Rebuild frontend: unified flow with "Add Page" + thumbnail filmstrip + reorder/delete
+- [x] Update backend AI analysis to accept and process multiple images as one invoice
+- [x] Test multi-page flow: 7 tests passing (upload-photo, analyze validation, legacy compat)

@@ -498,6 +498,53 @@ async function startServer() {
     }
   });
 
+  // Upload photo only (no OCR) — used by multi-page flow
+  app.post("/api/public/invoices/upload-photo", async (req, res) => {
+    try {
+      const { base64, fileName, contentType } = req.body;
+      if (!base64 || !fileName || !contentType) {
+        return res.status(400).json({ error: "Missing required fields: base64, fileName, contentType" });
+      }
+      if (!contentType.startsWith("image/")) {
+        return res.status(400).json({ error: "Only image files are allowed" });
+      }
+      const buffer = Buffer.from(base64, "base64");
+      if (buffer.length > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "File too large (max 10MB)" });
+      }
+      const { storagePut } = await import("../storage");
+      const suffix = Math.random().toString(36).substring(2, 10);
+      const ext = fileName.split(".").pop() || "jpg";
+      const key = `invoices/${Date.now()}-${suffix}.${ext}`;
+      const { url } = await storagePut(key, buffer, contentType);
+      console.log(`[Invoice Upload] Uploaded ${key} (${(buffer.length / 1024).toFixed(1)}KB)`);
+      res.json({ success: true, photoUrl: url, photoKey: key });
+    } catch (err) {
+      console.error("[Invoice Upload] Error:", err);
+      res.status(500).json({ error: "Failed to upload invoice photo" });
+    }
+  });
+
+  // Analyze multiple invoice pages with AI
+  app.post("/api/public/invoices/analyze", async (req, res) => {
+    try {
+      const { imageUrls } = req.body;
+      if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+        return res.status(400).json({ error: "Missing required field: imageUrls (array of URLs)" });
+      }
+      if (imageUrls.length > 20) {
+        return res.status(400).json({ error: "Too many pages (max 20)" });
+      }
+      const { extractInvoiceDataMultiPage } = await import("../invoiceOcr");
+      const ocrData = await extractInvoiceDataMultiPage(imageUrls);
+      console.log(`[Invoice OCR] Multi-page (${imageUrls.length} pages): vendor=${ocrData.vendorName}, total=${ocrData.total}`);
+      res.json({ success: true, ocrData });
+    } catch (err) {
+      console.error("[Invoice Analyze] Error:", err);
+      res.status(500).json({ error: "Failed to analyze invoice" });
+    }
+  });
+
   // Create invoice record
   app.post("/api/public/invoices", async (req, res) => {
     try {
