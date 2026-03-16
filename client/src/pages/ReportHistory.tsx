@@ -2,7 +2,7 @@
 // Upgraded from simple Report History to a professional reports hub
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { format, startOfDay, endOfDay, subDays, addDays } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -41,6 +41,8 @@ import {
   Pencil,
 } from "lucide-react";
 import { ReportDetailRenderer } from "@/components/ReportDetailRenderer";
+import { exportReportToPdf } from "@/lib/exportReportPdf";
+import { useRef } from "react";
 import {
   ALL_CHECKLISTS,
   POSITION_CHECKLISTS,
@@ -906,28 +908,54 @@ export default function ReportHistory() {
                       </p>
                     </div>
                   </div>
-                  <ReportDetailRenderer reportType={selectedReport.reportType} data={selectedReport.data} />
+                  <div data-report-content>
+                    <ReportDetailRenderer reportType={selectedReport.reportType} data={selectedReport.data} />
+                  </div>
                 </div>
-                {/* Edit & Delete buttons in detail view */}
+                {/* Edit, Export & Delete buttons in detail view */}
                 <div className="flex justify-between gap-2 pt-3 border-t">
-                  {(() => {
-                    const slug = getSlugForReport(selectedReport.reportType);
-                    if (!slug) return <div />;
-                    return (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-amber-700 border-amber-200 hover:bg-amber-50"
-                        onClick={() => {
-                          setSelectedReport(null);
-                          navigate(`/checklists/${slug}?editId=${selectedReport.id}`);
-                        }}
-                      >
-                        <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                        Edit Report
-                      </Button>
-                    );
-                  })()}
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const slug = getSlugForReport(selectedReport.reportType);
+                      if (!slug) return null;
+                      return (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-amber-700 border-amber-200 hover:bg-amber-50"
+                          onClick={() => {
+                            setSelectedReport(null);
+                            navigate(`/checklists/${slug}?editId=${selectedReport.id}`);
+                          }}
+                        >
+                          <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                          Edit
+                        </Button>
+                      );
+                    })()}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-[#D4A853] border-[#D4A853]/30 hover:bg-[#D4A853]/10"
+                      onClick={() => {
+                        const el = document.querySelector('[data-report-content]') as HTMLElement;
+                        exportReportToPdf({
+                          reportType: selectedReport.reportType,
+                          reportTypeLabel: getChecklistLabel(selectedReport.reportType),
+                          storeName: `${selectedReport.location} — ${getStoreName(selectedReport.location)}`,
+                          reportDate: selectedReport.reportDate || "—",
+                          submittedBy: getSubmitter(selectedReport),
+                          score: selectedReport.totalScore?.toString(),
+                          submittedAt: selectedReport.createdAt ? new Date(selectedReport.createdAt).toLocaleString("en-CA") : undefined,
+                          position: getPositionForChecklist(selectedReport.reportType) || undefined,
+                          status: selectedReport.status,
+                        }, el);
+                      }}
+                    >
+                      <Download className="w-3.5 h-3.5 mr-1.5" />
+                      Export PDF
+                    </Button>
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
@@ -935,7 +963,7 @@ export default function ReportHistory() {
                     onClick={() => setDeleteConfirmId(selectedReport.id)}
                   >
                     <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                    Delete Report
+                    Delete
                   </Button>
                 </div>
               </>

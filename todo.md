@@ -1488,3 +1488,10 @@
 - [x] Investigated: WeeklyAuditForm already had photos+restore; ManagerChecklistForm and DeepCleanForm were missing photos entirely
 - [x] Added photo upload + edit restoration to ManagerChecklistForm (per-task photos) and DeepCleanForm (per-section photos)
 - [x] All 248 tests passing, 0 TypeScript errors, consistent with portal behavior
+
+# Export to PDF for Completed Reports
+- [x] Investigated report viewing: admin (ReportHistory.tsx dialog) + portal (PortalCompletedChecklists + ReportDetailDialog)
+- [x] Built client-side PDF export utility (exportReportPdf.ts) using browser print — no server dependency
+- [x] Added Export PDF button in admin dashboard report detail dialog
+- [x] Added Export PDF button in portal: Store Manager's completed checklists + Ops Manager's ReportDetailDialog
+- [x] All 248 tests passing, 0 TypeScript errors

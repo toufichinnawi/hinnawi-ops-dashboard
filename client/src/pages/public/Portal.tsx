@@ -38,6 +38,7 @@ import { type ChecklistType, ALL_CHECKLISTS, POSITION_CHECKLISTS } from "@/lib/p
 import { ChecklistForm } from "./PositionChecklists";
 import { ScorecardContent } from "@/pages/OperationsScorecard";
 import { ReportDetailRenderer } from "@/components/ReportDetailRenderer";
+import { exportReportToPdf } from "@/lib/exportReportPdf";
 import { StorePerformanceContent } from "@/pages/Stores";
 import { BagelProductionContent } from "@/pages/BagelProduction";
 import { PastryProductionContent } from "@/pages/PastryProduction";
@@ -1720,12 +1721,33 @@ function PortalCompletedChecklists({
             </div>
 
             {/* Detailed Data — proper template rendering */}
-            <div className="mt-4">
+            <div className="mt-4" data-report-content-portal>
               <ReportDetailRenderer reportType={selectedReport.reportType} data={selectedReport.data} hideCosts />
             </div>
 
-            {/* Close button */}
-            <div className="flex justify-end mt-3">
+            {/* Export & Close buttons */}
+            <div className="flex justify-between mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-[#D4A853] border-[#D4A853]/30 hover:bg-[#D4A853]/10"
+                onClick={() => {
+                  const el = document.querySelector('[data-report-content-portal]') as HTMLElement;
+                  exportReportToPdf({
+                    reportType: selectedReport.reportType,
+                    reportTypeLabel: ALL_CHECKLISTS[selectedReport.reportType as ChecklistType]?.label || selectedReport.reportType,
+                    storeName: selectedReport.normalizedLocation || selectedReport.location || (store?.storeName ?? ""),
+                    reportDate: selectedReport.reportDate || "\u2014",
+                    submittedBy: getSubmitter(selectedReport),
+                    score: selectedReport.totalScore?.toString(),
+                    submittedAt: selectedReport.createdAt ? new Date(selectedReport.createdAt).toLocaleString("en-CA") : undefined,
+                    status: selectedReport.status,
+                  }, el);
+                }}
+              >
+                <Download className="w-3.5 h-3.5 mr-1.5" />
+                Export PDF
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setSelectedReport(null)}>Close</Button>
             </div>
           </div>
@@ -2685,7 +2707,7 @@ function ReportDetailDialog({
         </div>
 
         {/* Detailed Data */}
-        <div className="mt-4">
+        <div className="mt-4" data-report-content-dialog>
           <ReportDetailRenderer reportType={report.reportType} data={report.data} hideCosts />
         </div>
 
@@ -2783,6 +2805,28 @@ function ReportDetailDialog({
                 Edit
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-[#D4A853] border-[#D4A853]/30 hover:bg-[#D4A853]/10"
+              onClick={() => {
+                const el = document.querySelector('[data-report-content-dialog]') as HTMLElement;
+                exportReportToPdf({
+                  reportType: report.reportType,
+                  reportTypeLabel: ALL_CHECKLISTS[report.reportType as ChecklistType]?.label || report.reportType,
+                  storeName: report.normalizedLocation || report.location || "",
+                  reportDate: report.reportDate || "\u2014",
+                  submittedBy: getSubmitter(report),
+                  score: report.totalScore?.toString(),
+                  submittedAt: report.createdAt ? new Date(report.createdAt).toLocaleString("en-CA") : undefined,
+                  position: getPositionLabel(report.reportType, report),
+                  status: report.status,
+                }, el);
+              }}
+            >
+              <Download className="w-3.5 h-3.5 mr-1.5" />
+              Export PDF
+            </Button>
             {canEditDelete && (
               <Button
                 variant="outline"
