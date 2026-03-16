@@ -68,46 +68,85 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
   const [submitting, setSubmitting] = useState(false);
 
   // Upload a single photo to S3 (no OCR yet)
+  // Convert any image (including HEIC from iOS) to JPEG via canvas
+  const convertToJpeg = (file: File): Promise<{ base64: string; preview: string }> => {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          // Scale down if very large (max 2048px on longest side for OCR)
+          const MAX_DIM = 2048;
+          let w = img.naturalWidth;
+          let h = img.naturalHeight;
+          if (w > MAX_DIM || h > MAX_DIM) {
+            const scale = MAX_DIM / Math.max(w, h);
+            w = Math.round(w * scale);
+            h = Math.round(h * scale);
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { reject(new Error("Canvas not supported")); return; }
+          ctx.drawImage(img, 0, 0, w, h);
+          const jpegDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          const base64Data = jpegDataUrl.split(",")[1];
+          if (!base64Data || base64Data.length < 100) {
+            reject(new Error("Canvas produced empty image"));
+            return;
+          }
+          resolve({ base64: base64Data, preview: jpegDataUrl });
+        } catch (err) {
+          reject(err);
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Failed to load image — format may not be supported"));
+      };
+      img.src = objectUrl;
+    });
+  };
+
   const uploadPhoto = async (file: File): Promise<PhotoEntry | null> => {
-    if (!file.type.startsWith("image/")) {
+    if (!file.type.startsWith("image/") && !file.name.toLowerCase().match(/\.(heic|heif)$/)) {
       toast.error("Please select an image file");
       return null;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File too large (max 10MB)");
+    if (file.size > 16 * 1024 * 1024) {
+      toast.error("File too large (max 16MB)");
       return null;
     }
 
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64Full = e.target?.result as string;
-        try {
-          const base64Data = base64Full.split(",")[1];
-          const res = await fetch("/api/public/invoices/upload-photo", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              base64: base64Data,
-              fileName: file.name,
-              contentType: file.type,
-            }),
-          });
-          const data = await res.json();
-          if (!data.success) throw new Error(data.error);
-          resolve({
-            preview: base64Full,
-            url: data.photoUrl,
-            key: data.photoKey,
-          });
-        } catch (err) {
-          console.error("Upload error:", err);
-          toast.error("Failed to upload photo. Please try again.");
-          resolve(null);
-        }
+    try {
+      // Convert to JPEG via canvas (handles HEIC, PNG, WebP, etc.)
+      const { base64, preview } = await convertToJpeg(file);
+      console.log(`[InvoiceCapture] Converted ${file.name} (${(file.size/1024).toFixed(0)}KB) → JPEG base64 (${(base64.length/1024).toFixed(0)}KB)`);
+
+      const res = await fetch("/api/public/invoices/upload-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          base64,
+          fileName: file.name.replace(/\.[^.]+$/, ".jpg"),
+          contentType: "image/jpeg",
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      return {
+        preview,
+        url: data.photoUrl,
+        key: data.photoKey,
       };
-      reader.readAsDataURL(file);
-    });
+    } catch (err) {
+      console.error("Upload error:", err);
+      toast.error("Failed to upload photo. Please try again.");
+      return null;
+    }
   };
 
   // Handle adding a photo (first or subsequent)
@@ -145,6 +184,7 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
     setStep("analyzing");
     try {
       const imageUrls = photos.map((p) => p.url);
+      console.log(`[InvoiceCapture] Analyzing ${imageUrls.length} pages:`, imageUrls);
       const res = await fetch("/api/public/invoices/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -344,7 +384,7 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
           <input
             ref={cameraInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             capture="environment"
             className="hidden"
             onChange={(e) => {
@@ -355,7 +395,7 @@ export default function InvoiceCapturePortal({ storeCode, storeName, onBack }: I
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             multiple
             className="hidden"
             onChange={(e) => {

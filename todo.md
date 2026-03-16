@@ -1469,3 +1469,11 @@
 
 # Refresh Button on Overview
 - [x] Add Refresh button next to Sync All on the Overview page to refresh dashboard data/KPIs
+
+# Fix Invoice Capture iOS HEIC/Image Upload Issue
+- [x] Root cause: iOS sends HEIC photos which may not convert properly via FileReader base64
+- [x] Fix: Added canvas-based JPEG conversion on frontend — all images drawn to canvas and exported as JPEG
+- [x] Added HEIC/HEIF file accept support in file inputs
+- [x] Added image scaling (max 2048px) for OCR optimization
+- [x] Added debug logging for upload and analyze steps
+- [x] Tests: 7/7 invoice tests passing
