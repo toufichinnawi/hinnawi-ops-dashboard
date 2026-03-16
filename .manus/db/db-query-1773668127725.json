@@ -1,0 +1,190 @@
+{
+  "query": "SELECT id, location, reportType, reportDate, totalScore, status, createdAt FROM report_submissions ORDER BY createdAt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, location, reportType, reportDate, totalScore, status, createdAt FROM report_submissions ORDER BY createdAt DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "420002",
+      "location": "Cathcart (Tunnel)",
+      "reportType": "ops-manager-checklist",
+      "reportDate": "2026-03-16",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-16 13:17:15"
+    },
+    {
+      "id": "420001",
+      "location": "PK",
+      "reportType": "ops-manager-checklist",
+      "reportDate": "2026-03-16",
+      "totalScore": "4.67",
+      "status": "submitted",
+      "createdAt": "2026-03-16 11:34:18"
+    },
+    {
+      "id": "390001",
+      "location": "ON",
+      "reportType": "waste-report",
+      "reportDate": "2026-03-15",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-15 19:23:09"
+    },
+    {
+      "id": "360001",
+      "location": "PK",
+      "reportType": "waste-report",
+      "reportDate": "2026-03-14",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-14 21:04:58"
+    },
+    {
+      "id": "330512",
+      "location": "MK",
+      "reportType": "manager-checklist",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:43"
+    },
+    {
+      "id": "330508",
+      "location": "sales",
+      "reportType": "bagel-orders",
+      "reportDate": "2018-06-15",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:42"
+    },
+    {
+      "id": "330506",
+      "location": "sales",
+      "reportType": "bagel-orders",
+      "reportDate": "2018-06-15",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:42"
+    },
+    {
+      "id": "330511",
+      "location": "sales",
+      "reportType": "bagel-orders",
+      "reportDate": "2018-06-15",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:42"
+    },
+    {
+      "id": "330503",
+      "location": "sales",
+      "reportType": "bagel-orders",
+      "reportDate": "2018-06-15",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:42"
+    },
+    {
+      "id": "330510",
+      "location": "sales",
+      "reportType": "bagel-orders",
+      "reportDate": "2018-06-15",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:42"
+    },
+    {
+      "id": "330504",
+      "location": "sales",
+      "reportType": "bagel-orders",
+      "reportDate": "2018-06-15",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:42"
+    },
+    {
+      "id": "330496",
+      "location": "TN",
+      "reportType": "PastryDup_mmpfkt6u",
+      "reportDate": "2098-03-01",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:41"
+    },
+    {
+      "id": "330497",
+      "location": "PK",
+      "reportType": "DateDup_mmpfkt6u",
+      "reportDate": "2098-04-01",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:41"
+    },
+    {
+      "id": "330498",
+      "location": "PK",
+      "reportType": "DateDup_mmpfkt6u",
+      "reportDate": "2098-04-02",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:41"
+    },
+    {
+      "id": "330492",
+      "location": "PK",
+      "reportType": "TestDup_mmpfkt6u",
+      "reportDate": "2098-01-01",
+      "totalScore": "4.00",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:41"
+    },
+    {
+      "id": "330499",
+      "location": "PK",
+      "reportType": "LocDup_mmpfkt6u",
+      "reportDate": "2098-05-01",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:41"
+    },
+    {
+      "id": "330494",
+      "location": "MK",
+      "reportType": "BagelDup_mmpfkt6u",
+      "reportDate": "2098-02-01",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:41"
+    },
+    {
+      "id": "330500",
+      "location": "MK",
+      "reportType": "LocDup_mmpfkt6u",
+      "reportDate": "2098-05-01",
+      "totalScore": "NULL",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:50:41"
+    },
+    {
+      "id": "330488",
+      "location": "MK",
+      "reportType": "deep-clean",
+      "reportDate": "2018-06-15",
+      "totalScore": "NULL",
+      "status": "draft",
+      "createdAt": "2026-03-13 21:50:40"
+    },
+    {
+      "id": "330477",
+      "location": "MK",
+      "reportType": "manager-checklist",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "createdAt": "2026-03-13 21:25:46"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tlocation\treportType\treportDate\ttotalScore\tstatus\tcreatedAt\n420002\tCathcart (Tunnel)\tops-manager-checklist\t2026-03-16\t5.00\tsubmitted\t2026-03-16 13:17:15\n420001\tPK\tops-manager-checklist\t2026-03-16\t4.67\tsubmitted\t2026-03-16 11:34:18\n390001\tON\twaste-report\t2026-03-15\tNULL\tsubmitted\t2026-03-15 19:23:09\n360001\tPK\twaste-report\t2026-03-14\tNULL\tsubmitted\t2026-03-14 21:04:58\n330512\tMK\tmanager-checklist\t2026-03-03\t5.00\tsubmitted\t2026-03-13 21:50:43\n330508\tsales\tbagel-orders\t2018-06-15\tNULL\tsubmitted\t2026-03-13 21:50:42\n330506\tsales\tbagel-orders\t2018-06-15\tNULL\tsubmitted\t2026-03-13 21:50:42\n330511\tsales\tbagel-orders\t2018-06-15\tNULL\tsubmitted\t2026-03-13 21:50:42\n330503\tsales\tbagel-orders\t2018-06-15\tNULL\tsubmitted\t2026-03-13 21:50:42\n330510\tsales\tbagel-orders\t2018-06-15\tNULL\tsubmitted\t2026-03-13 21:50:42\n330504\tsales\tbagel-orders\t2018-06-15\tNULL\tsubmitted\t2026-03-13 21:50:42\n330496\tTN\tPastryDup_mmpfkt6u\t2098-03-01\tNULL\tsubmitted\t2026-03-13 21:50:41\n330497\tPK\tDateDup_mmpfkt6u\t2098-04-01\tNULL\tsubmitted\t2026-03-13 21:50:41\n330498\tPK\tDateDup_mmpfkt6u\t2098-04-02\tNULL\tsubmitted\t2026-03-13 21:50:41\n330492\tPK\tTestDup_mmpfkt6u\t2098-01-01\t4.00\tsubmitted\t2026-03-13 21:50:41\n330499\tPK\tLocDup_mmpfkt6u\t2098-05-01\tNULL\tsubmitted\t2026-03-13 21:50:41\n330494\tMK\tBagelDup_mmpfkt6u\t2098-02-01\tNULL\tsubmitted\t2026-03-13 21:50:41\n330500\tMK\tLocDup_mmpfkt6u\t2098-05-01\tNULL\tsubmitted\t2026-03-13 21:50:41\n330488\tMK\tdeep-clean\t2018-06-15\tNULL\tdraft\t2026-03-13 21:50:40\n330477\tMK\tmanager-checklist\t2026-03-03\t5.00\tsubmitted\t2026-03-13 21:25:46\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}

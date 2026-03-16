@@ -1,0 +1,9 @@
+{
+  "query": "SELECT id, location, reportType, reportDate, totalScore, status, createdAt, JSON_EXTRACT(data, '$.submitterName') as submitter_name FROM report_submissions WHERE location LIKE '%ackay%' AND reportType LIKE '%anager%' ORDER BY createdAt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, location, reportType, reportDate, totalScore, status, createdAt, JSON_EXTRACT(data, '$.submitterName') as submitter_name FROM report_submissions WHERE location LIKE '%ackay%' AND reportType LIKE '%anager%' ORDER BY createdAt DESC LIMIT 10;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 52
+}

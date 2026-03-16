@@ -782,7 +782,44 @@ async function startServer() {
         }
       }
 
-      // 5. Check: High labour % (real-time from today's data)
+      // 5. Check: Weekly Deep Clean (due every Wednesday)
+      const isWednesdayOrLater = dayOfWeek >= 3 || dayOfWeek === 0; // Wed=3, Thu=4, Fri=5, Sat=6, Sun=0
+      if (isWednesdayOrLater) {
+        for (const store of STORES) {
+          const hasDeepClean = weekReports.some(
+            r => r.location === store.code && (r.reportType === "deep-clean" || r.reportType === "Weekly Deep Clean Checklist")
+          );
+          if (!hasDeepClean) {
+            alerts.push({
+              id: `deepclean-${store.id}`,
+              type: "critical",
+              message: `${store.name} has not submitted the Weekly Deep Clean (due every Wednesday)`,
+              store: store.id,
+              category: "missing-deepclean",
+              timestamp: now.toISOString(),
+            });
+          }
+        }
+      } else {
+        // Before Wednesday, show as info reminder
+        for (const store of STORES) {
+          const hasDeepClean = weekReports.some(
+            r => r.location === store.code && (r.reportType === "deep-clean" || r.reportType === "Weekly Deep Clean Checklist")
+          );
+          if (!hasDeepClean) {
+            alerts.push({
+              id: `deepclean-${store.id}`,
+              type: "info",
+              message: `${store.name} — Weekly Deep Clean not yet submitted (due Wednesday)`,
+              store: store.id,
+              category: "missing-deepclean",
+              timestamp: now.toISOString(),
+            });
+          }
+        }
+      }
+
+      // 6. Check: High labour % (real-time from today's data)
       const koomiData = await getKoomiSalesByDateRange(today, today);
       const sevenData = await getSevenShiftsSalesByDateRange(today, today);
       const excelData = await getExcelLabourByDateRange(today, today);

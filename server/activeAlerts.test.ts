@@ -29,7 +29,7 @@ describe("Active Alerts API", () => {
       expect(alert).toHaveProperty("category");
       expect(alert).toHaveProperty("timestamp");
       expect(["critical", "warning", "info", "success"]).toContain(alert.type);
-      expect(["missing-audit", "missing-daily", "missing-weekly", "high-labour", "labour-ok"]).toContain(alert.category);
+      expect(["missing-audit", "missing-daily", "missing-weekly", "missing-deepclean", "high-labour", "labour-ok"]).toContain(alert.category);
     }
   });
 

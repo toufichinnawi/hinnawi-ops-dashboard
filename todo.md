@@ -1449,3 +1449,9 @@
 - [x] Remove Start/End Date from portal form (PositionChecklists.tsx)
 - [x] Remove Start/End Date from admin dashboard form (DirectChecklist.tsx)
 - [x] Verified: 239 passed, 1 skipped, 2 Koomi timeout (unrelated)
+
+# Flag Overdue Weekly Deep Clean on Dashboard
+- [x] Add backend logic to detect overdue deep cleans (no submission after Wednesday for each store)
+- [x] Integrated into existing /api/public/active-alerts endpoint (no separate tRPC route needed)
+- [x] Display overdue flags on the Overview dashboard (alerts section) with "Deep Clean" label
+- [x] Tested: 6 active alerts tests passing, deep clean alerts showing correctly

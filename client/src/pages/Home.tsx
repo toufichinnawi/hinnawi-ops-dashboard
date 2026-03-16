@@ -437,6 +437,7 @@ export default function Home() {
                             {alert.category === "missing-audit" ? "Weekly Audit" :
                              alert.category === "missing-daily" ? "Waste Report" :
                              alert.category === "missing-weekly" ? "Weekly Checklist" :
+                             alert.category === "missing-deepclean" ? "Deep Clean" :
                              alert.category === "high-labour" ? "Labour Alert" :
                              alert.category === "labour-ok" ? "Labour OK" : alert.category}
                           </span>

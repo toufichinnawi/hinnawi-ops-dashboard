@@ -1,0 +1,49 @@
+{
+  "query": "SELECT id, location, reportType, reportDate, totalScore, status, DATE_FORMAT(createdAt, '%Y-%m-%d %H:%i:%s') as created, JSON_EXTRACT(data, '$.submitterName') as submitter, JSON_EXTRACT(data, '$.submittedVia') as submitted_via, JSON_EXTRACT(data, '$.weekOfStart') as week_start, JSON_EXTRACT(data, '$.weekOfEnd') as week_end FROM report_submissions WHERE reportDate = '2026-03-03' ORDER BY createdAt DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4hPncfDS8MBAb.4e1326b24a82 --database i5zcri4CVdStBBckDWTaVK --execute SELECT id, location, reportType, reportDate, totalScore, status, DATE_FORMAT(createdAt, '%Y-%m-%d %H:%i:%s') as created, JSON_EXTRACT(data, '$.submitterName') as submitter, JSON_EXTRACT(data, '$.submittedVia') as submitted_via, JSON_EXTRACT(data, '$.weekOfStart') as week_start, JSON_EXTRACT(data, '$.weekOfEnd') as week_end FROM report_submissions WHERE reportDate = '2026-03-03' ORDER BY createdAt DESC;",
+  "rows": [
+    {
+      "id": "330512",
+      "location": "MK",
+      "reportType": "manager-checklist",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "created": "2026-03-13 21:50:43",
+      "submitter": "NULL",
+      "submitted_via": "NULL",
+      "week_start": "NULL",
+      "week_end": "NULL"
+    },
+    {
+      "id": "330477",
+      "location": "MK",
+      "reportType": "manager-checklist",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "created": "2026-03-13 21:25:46",
+      "submitter": "NULL",
+      "submitted_via": "NULL",
+      "week_start": "NULL",
+      "week_end": "NULL"
+    },
+    {
+      "id": "330442",
+      "location": "MK",
+      "reportType": "manager-checklist",
+      "reportDate": "2026-03-03",
+      "totalScore": "5.00",
+      "status": "submitted",
+      "created": "2026-03-13 20:01:30",
+      "submitter": "NULL",
+      "submitted_via": "NULL",
+      "week_start": "NULL",
+      "week_end": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tlocation\treportType\treportDate\ttotalScore\tstatus\tcreated\tsubmitter\tsubmitted_via\tweek_start\tweek_end\n330512\tMK\tmanager-checklist\t2026-03-03\t5.00\tsubmitted\t2026-03-13 21:50:43\tNULL\tNULL\tNULL\tNULL\n330477\tMK\tmanager-checklist\t2026-03-03\t5.00\tsubmitted\t2026-03-13 21:25:46\tNULL\tNULL\tNULL\tNULL\n330442\tMK\tmanager-checklist\t2026-03-03\t5.00\tsubmitted\t2026-03-13 20:01:30\tNULL\tNULL\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}
