@@ -267,6 +267,7 @@ function ManagerChecklistForm({ onBack, editReportId, editData, editStore }: { o
   const [weekEnd, setWeekEnd] = useState(defaultWeekMgr.end);
   const [tasks, setTasks] = useState(() => OPS_TASKS.map(() => ({ rating: 0, isNA: false, comment: "" })));
   const [comments, setComments] = useState("");
+  const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
@@ -289,6 +290,7 @@ function ManagerChecklistForm({ onBack, editReportId, editData, editStore }: { o
         comment: d.tasks[i]?.comment || "",
       })));
     }
+    if (d.sectionPhotos) setSectionPhotos(restorePhotoMap(d.sectionPhotos));
   }, [editData, editStore]);
 
   const ratedTasks = tasks.filter((t) => !t.isNA && t.rating > 0);
@@ -297,7 +299,12 @@ function ManagerChecklistForm({ onBack, editReportId, editData, editStore }: { o
   const handleSubmit = async () => {
     if (!managerName.trim() || !selectedStore) { toast.error("Please fill in your name and select a store"); return; }
     if (ratedTasks.length === 0) { toast.error("Please rate at least one item"); return; }
-    const reportData = { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, averageScore: avg };
+    const photoUrls: Record<string, string[]> = {};
+    for (const [key, photos] of Object.entries(sectionPhotos)) {
+      const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
+      if (urls.length > 0) photoUrls[key] = urls;
+    }
+    const reportData = { dateOfSubmission, weekOfStart: weekStart, weekOfEnd: weekEnd, tasks: OPS_TASKS.map((t, i) => ({ task: t.en, taskFr: t.fr, rating: tasks[i].rating, isNA: tasks[i].isNA, comment: tasks[i].comment })), comments, averageScore: avg, ...(Object.keys(photoUrls).length > 0 ? { sectionPhotos: photoUrls } : {}) };
     if (isEdit) {
       setSubmitting(true);
       try {
@@ -357,6 +364,34 @@ function ManagerChecklistForm({ onBack, editReportId, editData, editStore }: { o
                 <StarRating value={tasks[i].rating} onChange={(v) => setTasks((p) => p.map((t, j) => j === i ? { ...t, rating: v } : t))} disabled={tasks[i].isNA} />
                 <Input placeholder="Comment..." value={tasks[i].comment} onChange={(e) => setTasks((p) => p.map((t, j) => j === i ? { ...t, comment: e.target.value } : t))} className="flex-1" disabled={tasks[i].isNA} />
               </div>
+              {(() => {
+                const photoKey = `task-${i}`;
+                const photos = sectionPhotos[photoKey] || [];
+                const photoCount = photos.filter(p => p.status === "success").length;
+                return (
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => { if (!sectionPhotos[photoKey]) setSectionPhotos(prev => ({ ...prev, [photoKey]: [] })); }}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors",
+                        photoCount > 0 ? "bg-[#D4A853]/15 text-[#D4A853] hover:bg-[#D4A853]/25" : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      {photoCount > 0 ? `${photoCount} photo${photoCount > 1 ? "s" : ""}` : "Attach Photo"}
+                    </button>
+                    {sectionPhotos[photoKey] !== undefined && (
+                      <PhotoUpload
+                        photos={photos}
+                        onChange={(newPhotos) => setSectionPhotos(prev => ({ ...prev, [photoKey]: newPhotos }))}
+                        maxPhotos={5}
+                        label="Task Photos"
+                      />
+                    )}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         ))}
@@ -1921,6 +1956,7 @@ function DeepCleanForm({ onBack, editReportId, editData, editStore }: { onBack: 
   const [managerName, setManagerName] = useState("");
   const [dateOfSubmission, setDateOfSubmission] = useState(() => new Date().toISOString().split("T")[0]);
   const [overallComments, setOverallComments] = useState("");
+  const [sectionPhotos, setSectionPhotos] = useState<Record<string, UploadedPhoto[]>>({});
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog: deepCleanDuplicateDialog } = useDuplicateCheck();
@@ -1946,6 +1982,7 @@ function DeepCleanForm({ onBack, editReportId, editData, editStore }: { onBack: 
       });
       setItems(newItems);
     }
+    if (d.sectionPhotos) setSectionPhotos(restorePhotoMap(d.sectionPhotos));
   }, [editData, editStore]);
 
   type DeepCleanItemState = { rating: number; na: boolean; comment: string };
@@ -1972,6 +2009,11 @@ function DeepCleanForm({ onBack, editReportId, editData, editStore }: { onBack: 
 
   const handleSubmit = async () => {
     if (!managerName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
+    const photoUrls: Record<string, string[]> = {};
+    for (const [key, photos] of Object.entries(sectionPhotos)) {
+      const urls = photos.filter(p => p.status === "success" && p.url).map(p => p.url);
+      if (urls.length > 0) photoUrls[key] = urls;
+    }
     const deepCleanData = {
       dateOfSubmission,
       sections: DEEP_CLEAN_SECTIONS.map((s) => ({
@@ -1985,6 +2027,7 @@ function DeepCleanForm({ onBack, editReportId, editData, editStore }: { onBack: 
       })),
       overallComments,
       averageScore: avg,
+      ...(Object.keys(photoUrls).length > 0 ? { sectionPhotos: photoUrls } : {}),
     };
     if (isEdit) {
       setSubmitting(true);
@@ -2075,6 +2118,35 @@ function DeepCleanForm({ onBack, editReportId, editData, editStore }: { onBack: 
                 </div>
               );
             })}
+            {/* Section-level photo upload */}
+            {(() => {
+              const photoKey = section.title;
+              const photos = sectionPhotos[photoKey] || [];
+              const photoCount = photos.filter(p => p.status === "success").length;
+              return (
+                <div className="mt-2 pt-2 border-t">
+                  <button
+                    type="button"
+                    onClick={() => { if (!sectionPhotos[photoKey]) setSectionPhotos(prev => ({ ...prev, [photoKey]: [] })); }}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors",
+                      photoCount > 0 ? "bg-[#D4A853]/15 text-[#D4A853] hover:bg-[#D4A853]/25" : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    {photoCount > 0 ? `${photoCount} photo${photoCount > 1 ? "s" : ""}` : "Attach Photo"}
+                  </button>
+                  {sectionPhotos[photoKey] !== undefined && (
+                    <PhotoUpload
+                      photos={photos}
+                      onChange={(newPhotos) => setSectionPhotos(prev => ({ ...prev, [photoKey]: newPhotos }))}
+                      maxPhotos={5}
+                      label={`${section.title} Photos`}
+                    />
+                  )}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       ))}

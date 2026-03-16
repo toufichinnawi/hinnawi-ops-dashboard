@@ -1483,3 +1483,8 @@
 - [x] Restore section photos + item photos from editData in SectionChecklistForm (Deep Clean, Ops Checklist, etc.)
 - [x] Fixed DirectChecklist: convert URL arrays to UploadedPhoto objects + restore deep clean item ratings
 - [x] All 248 tests passing, 0 TypeScript errors
+
+# Fix Admin Dashboard Checklist Edit — Preserve Photos (matching portal)
+- [x] Investigated: WeeklyAuditForm already had photos+restore; ManagerChecklistForm and DeepCleanForm were missing photos entirely
+- [x] Added photo upload + edit restoration to ManagerChecklistForm (per-task photos) and DeepCleanForm (per-section photos)
+- [x] All 248 tests passing, 0 TypeScript errors, consistent with portal behavior
