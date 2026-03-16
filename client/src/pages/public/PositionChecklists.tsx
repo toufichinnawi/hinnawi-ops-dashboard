@@ -17,6 +17,29 @@ import { toast } from "sonner";
 import { useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PhotoUpload, type UploadedPhoto } from "@/components/PhotoUpload";
+
+// Helper: convert saved photo URLs (string[]) back to UploadedPhoto objects for edit mode
+function urlsToUploadedPhotos(urls: string[]): UploadedPhoto[] {
+  return urls.map((url, i) => ({
+    id: `restored-${i}-${Math.random().toString(36).slice(2, 8)}`,
+    url,
+    fileName: url.split("/").pop() || `photo-${i + 1}.jpg`,
+    status: "success" as const,
+    previewUrl: url,
+  }));
+}
+
+// Helper: restore Record<string, string[]> to Record<string, UploadedPhoto[]>
+function restorePhotoMap(photoMap: Record<string, string[]> | undefined): Record<string, UploadedPhoto[]> {
+  if (!photoMap || typeof photoMap !== "object") return {};
+  const result: Record<string, UploadedPhoto[]> = {};
+  for (const [key, urls] of Object.entries(photoMap)) {
+    if (Array.isArray(urls) && urls.length > 0) {
+      result[key] = urlsToUploadedPhotos(urls);
+    }
+  }
+  return result;
+}
 import { stores } from "@/lib/data";
 import { calcBagelCost, calcPastryCost, calcCKCost } from "@shared/wastePricing";
 
@@ -641,6 +664,16 @@ function SimpleAuditFormPublic({ storeCode, storeName, positionLabel, onBack, ed
       sectionComments: Object.keys(newComments).length ? newComments : prev.sectionComments,
       notes: d.notes || "",
     }));
+    // Restore section photos from saved data
+    const restoredPhotos: Record<string, UploadedPhoto[]> = {};
+    if (d.sections) {
+      d.sections.forEach((s: any) => {
+        if (s.photos && Array.isArray(s.photos) && s.photos.length > 0) {
+          restoredPhotos[s.title] = urlsToUploadedPhotos(s.photos);
+        }
+      });
+    }
+    if (Object.keys(restoredPhotos).length > 0) setSectionPhotos(restoredPhotos);
   }, [editData]);
 
   const handleSubmit = async () => {
@@ -793,6 +826,9 @@ function SectionChecklistForm({ title, sections, reportType, storeCode, storeNam
       data: newData,
       comments: d.comments || "",
     }));
+    // Restore section photos and item photos from saved data
+    if (d.photos) setSectionPhotos(restorePhotoMap(d.photos));
+    if (d.itemPhotos) setItemPhotos(restorePhotoMap(d.itemPhotos));
   }, [editData]);
 
   const totalScore = useRating

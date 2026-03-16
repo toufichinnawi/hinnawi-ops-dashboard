@@ -27,6 +27,29 @@ import { CheckCircle2, Send, DollarSign, Users2, MessageSquare, Utensils, AlertT
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { PhotoUpload, type UploadedPhoto } from "@/components/PhotoUpload";
+
+// Helper: convert saved photo URLs (string[]) back to UploadedPhoto objects for edit mode
+function urlsToUploadedPhotos(urls: string[]): UploadedPhoto[] {
+  return urls.map((url, i) => ({
+    id: `restored-${i}-${Math.random().toString(36).slice(2, 8)}`,
+    url,
+    fileName: url.split("/").pop() || `photo-${i + 1}.jpg`,
+    status: "success" as const,
+    previewUrl: url,
+  }));
+}
+
+// Helper: restore Record<string, string[]> to Record<string, UploadedPhoto[]>
+function restorePhotoMap(photoMap: Record<string, string[]> | undefined): Record<string, UploadedPhoto[]> {
+  if (!photoMap || typeof photoMap !== "object") return {};
+  const result: Record<string, UploadedPhoto[]> = {};
+  for (const [key, urls] of Object.entries(photoMap)) {
+    if (Array.isArray(urls) && urls.length > 0) {
+      result[key] = urlsToUploadedPhotos(urls);
+    }
+  }
+  return result;
+}
 import { calcBagelCost, calcPastryCost, calcCKCost } from "@shared/wastePricing";
 import { useDuplicateReportCheck, updateReport } from "@/hooks/useDuplicateReportCheck";
 
@@ -374,7 +397,7 @@ function WeeklyAuditForm({ onBack, editReportId, editData, editStore }: { onBack
     if (d.ratings) setRatings(d.ratings);
     if (d.sectionComments) setSectionComments(d.sectionComments);
     if (d.notes) setNotes(d.notes);
-    if (d.sectionPhotos) setSectionPhotos(d.sectionPhotos);
+    if (d.sectionPhotos) setSectionPhotos(restorePhotoMap(d.sectionPhotos));
   }, [editData, editStore]);
 
   const handleSubmit = async () => {
@@ -1911,6 +1934,18 @@ function DeepCleanForm({ onBack, editReportId, editData, editStore }: { onBack: 
     if (d.managerName) setManagerName(d.managerName);
     if (d.submitterName) setManagerName(d.submitterName);
     if (d.overallComments) setOverallComments(d.overallComments);
+    // Restore deep clean item ratings from editData
+    if (d.sections) {
+      const newItems: Record<string, DeepCleanItemState[]> = {};
+      DEEP_CLEAN_SECTIONS.forEach((s) => {
+        const savedSection = d.sections.find((ds: any) => ds.title === s.title);
+        newItems[s.title] = s.items.map((_, idx) => {
+          const savedItem = savedSection?.items?.[idx];
+          return savedItem ? { rating: savedItem.rating || 0, na: savedItem.na || false, comment: savedItem.comment || "" } : { rating: 0, na: false, comment: "" };
+        });
+      });
+      setItems(newItems);
+    }
   }, [editData, editStore]);
 
   type DeepCleanItemState = { rating: number; na: boolean; comment: string };

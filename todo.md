@@ -1477,3 +1477,9 @@
 - [x] Added image scaling (max 2048px) for OCR optimization
 - [x] Added debug logging for upload and analyze steps
 - [x] Tests: 7/7 invoice tests passing
+
+# Fix Checklist Edit Mode — Preserve Photos
+- [x] Restore section photos from editData in SimpleAuditFormPublic (Store Weekly Audit)
+- [x] Restore section photos + item photos from editData in SectionChecklistForm (Deep Clean, Ops Checklist, etc.)
+- [x] Fixed DirectChecklist: convert URL arrays to UploadedPhoto objects + restore deep clean item ratings
+- [x] All 248 tests passing, 0 TypeScript errors
