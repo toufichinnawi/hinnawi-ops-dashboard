@@ -1466,3 +1466,6 @@
 - [x] Investigated: AI works correctly on dev server; published site was running old code without the new analyze endpoint
 - [x] Confirmed with real Gordon/GFS invoice: extracted vendor, 12 line items, $1,650.68 total
 - [x] Tested with actual invoice images (HEIC converted to JPEG) — all data extracted correctly
+
+# Refresh Button on Overview
+- [x] Add Refresh button next to Sync All on the Overview page to refresh dashboard data/KPIs

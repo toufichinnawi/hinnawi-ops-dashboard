@@ -246,7 +246,7 @@ export default function Home() {
             )}
           </div>
 
-          {/* Date Filter + Sync Button */}
+          {/* Date Filter + Sync + Refresh Buttons */}
           <div className="flex items-center gap-2 shrink-0">
             {filterLoading && hasLiveSource && (
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -265,6 +265,22 @@ export default function Home() {
                 {syncAllSources.isPending ? "Syncing..." : "Sync All"}
               </button>
             )}
+            <button
+              onClick={() => {
+                utils.clover.salesData.invalidate();
+                utils.sevenShifts.salesData.invalidate();
+                utils.koomi.salesByDateRange.invalidate();
+                fetchAlerts();
+                toast.success("Dashboard refreshed");
+              }}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                "bg-white border border-border text-foreground hover:bg-muted"
+              )}
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh
+            </button>
             <DateFilter value={dateFilter} onChange={setDateFilter} />
           </div>
         </div>
