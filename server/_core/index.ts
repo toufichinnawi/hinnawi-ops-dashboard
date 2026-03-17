@@ -1395,16 +1395,12 @@ async function startServer() {
         html += `A follow-up alert will be sent in 30 minutes if the form is not submitted.`;
       }
 
-      // Send to the store-specific chat
+      // Send to the store-specific chat ONLY (not TRD Management)
       const storeChatKey = STORE_TO_CHAT[store.id];
       if (storeChatKey) {
         console.log(`[WasteAlert] Sending ${urgency} to ${store.name} chat...`);
         await sendChatMessage(TEAMS_CHAT_IDS[storeChatKey], html);
       }
-
-      // Send to TRD Management
-      console.log(`[WasteAlert] Sending ${urgency} for ${store.name} to TRD Management...`);
-      await sendChatMessage(TEAMS_CHAT_IDS.trd, html);
 
       // Log to alert history
       await createAlertHistoryEntry({

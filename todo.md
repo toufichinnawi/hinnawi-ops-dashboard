@@ -1550,3 +1550,8 @@
 
 - [x] Fix Active Alerts widget to only show waste report missing alerts AFTER each store's closing time
 - [x] Ontario: only show after 3pm, Mackay: after 5pm, PK: after 6pm, Tunnel: after 2pm
+
+## Bug Fix: Waste alerts sent to TRD Management + duplicate messages
+
+- [x] Remove TRD Management from waste report reminder/overdue alerts (only send to store-specific chats)
+- [x] Fix duplicate message issue (message was sent twice to TRD)

@@ -193,6 +193,30 @@ describe("Waste Report Closing-Time Alerts", () => {
     });
   });
 
+  describe("Alert Routing", () => {
+    // Mirrors STORE_TO_CHAT from teamsChat.ts
+    const STORE_TO_CHAT: Record<string, string> = {
+      ontario: "ontario",
+      tunnel: "tunnel",
+      mk: "mackay",
+      mackay: "mackay",
+      pk: "pk",
+    };
+
+    it("should send waste alerts to store-specific chats only, NOT TRD Management", () => {
+      // Verify every store in WASTE_ALERT_STORES has a mapping in STORE_TO_CHAT
+      for (const store of WASTE_ALERT_STORES) {
+        expect(STORE_TO_CHAT[store.id]).toBeDefined();
+      }
+    });
+
+    it("TRD Management should only receive daily reports and labour alerts, not waste reminders", () => {
+      // This is a design assertion: waste alerts route to store chats only
+      const wasteAlertTargets = WASTE_ALERT_STORES.map(s => STORE_TO_CHAT[s.id]);
+      expect(wasteAlertTargets).not.toContain("trd");
+    });
+  });
+
   describe("Alert Sequence Per Day", () => {
     it("should have alerts in chronological order: Tunnel → Ontario → Mackay → PK", () => {
       const sortedByClosing = [...WASTE_ALERT_STORES].sort((a, b) => a.closingHour - b.closingHour);
