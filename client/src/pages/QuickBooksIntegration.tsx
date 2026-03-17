@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Receipt, RefreshCw, CheckCircle2, XCircle, Link2, Unlink,
-  Calendar, DollarSign, TrendingDown, ArrowUpDown, ExternalLink,
+  DollarSign, Building2, Plus, Settings, ChevronDown, ChevronUp, AlertTriangle,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
@@ -18,33 +18,65 @@ function fmt(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+const STORE_OPTIONS = [
+  { id: "pk", label: "President Kennedy" },
+  { id: "mk", label: "Mackay" },
+  { id: "tunnel", label: "Tunnel" },
+  { id: "ontario", label: "Ontario" },
+];
+
+// Expected company-to-store mapping reference
+const EXPECTED_MAPPINGS: { company: string; stores: string[]; description: string }[] = [
+  { company: "9287-8982 Quebec Inc", stores: ["ontario"], description: "Ontario Store" },
+  { company: "9364-1009 Quebec INC", stores: ["tunnel"], description: "Tunnel Store" },
+  { company: "9427-0659 Quebec Inc", stores: ["pk", "mk"], description: "President Kennedy + Mackay" },
+];
+
 export default function QuickBooksIntegration() {
-  const [activeTab, setActiveTab] = useState<"status" | "cogs">("status");
+  const [activeTab, setActiveTab] = useState<"connections" | "cogs">("connections");
   const [syncStartDate, setSyncStartDate] = useState(() => {
     const d = new Date();
-    d.setDate(1); // First of current month
+    d.setDate(1);
     return d.toISOString().split("T")[0];
   });
   const [syncEndDate, setSyncEndDate] = useState(() => {
     return new Date().toISOString().split("T")[0];
   });
+  const [expandedConnection, setExpandedConnection] = useState<number | null>(null);
 
-  // Fetch QBO connection status
-  const statusQuery = trpc.quickbooks.status.useQuery();
+  // Fetch all QBO connections
+  const connectionsQuery = trpc.quickbooks.connections.useQuery();
 
   // Fetch all COGS data
   const cogsQuery = trpc.quickbooks.allCogs.useQuery();
 
+  // Update store mapping mutation
+  const updateStoreMappingMutation = trpc.quickbooks.updateStoreMapping.useMutation({
+    onSuccess: () => {
+      toast.success("Store mapping updated");
+      connectionsQuery.refetch();
+    },
+    onError: (err: any) => {
+      toast.error("Failed to update mapping", { description: err.message });
+    },
+  });
+
   // Sync COGS mutation
   const syncCogsMutation = trpc.quickbooks.syncCogs.useMutation({
-    onSuccess: (data) => {
-      toast.success("COGS Sync Complete", {
-        description: `Synced ${data.locationsSynced} locations`,
-      });
+    onSuccess: (data: any) => {
+      if (data.success) {
+        toast.success("COGS Sync Complete", {
+          description: `Synced ${data.totalLocationsSynced} locations across ${data.companies.length} companies`,
+        });
+      } else {
+        toast.error("COGS Sync had errors", {
+          description: data.companies.map((c: any) => c.error).filter(Boolean).join("; "),
+        });
+      }
       cogsQuery.refetch();
-      statusQuery.refetch();
+      connectionsQuery.refetch();
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error("COGS Sync Failed", { description: err.message });
     },
   });
@@ -52,21 +84,22 @@ export default function QuickBooksIntegration() {
   // Disconnect mutation
   const disconnectMutation = trpc.quickbooks.disconnect.useMutation({
     onSuccess: () => {
-      toast.success("QuickBooks Disconnected");
-      statusQuery.refetch();
+      toast.success("QuickBooks Company Disconnected");
+      connectionsQuery.refetch();
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error("Disconnect Failed", { description: err.message });
     },
   });
 
-  const status = statusQuery.data;
-  const isConnected = status?.connected === true;
+  const connections = connectionsQuery.data ?? [];
+  const hasConnections = connections.length > 0;
+  const connectedCount = connections.filter((c: any) => c.connected).length;
 
   // Sort COGS data
   const sortedCogs = useMemo(() => {
     const data = cogsQuery.data ?? [];
-    return [...data].sort((a, b) => {
+    return [...data].sort((a: any, b: any) => {
       const dateA = a.periodEnd ?? "";
       const dateB = b.periodEnd ?? "";
       return dateB.localeCompare(dateA);
@@ -74,7 +107,6 @@ export default function QuickBooksIntegration() {
   }, [cogsQuery.data]);
 
   const handleConnect = () => {
-    // Redirect to QBO OAuth flow
     window.location.href = "/api/quickbooks/connect";
   };
 
@@ -93,14 +125,24 @@ export default function QuickBooksIntegration() {
               QuickBooks Online
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Connect to QuickBooks to pull Cost of Goods Sold (COGS) data by location
+              Connect 3 QuickBooks companies to pull COGS data for all 4 stores
             </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              "px-3 py-1 rounded-full text-xs font-medium",
+              connectedCount === 3 ? "bg-green-100 text-green-700" :
+              connectedCount > 0 ? "bg-amber-100 text-amber-700" :
+              "bg-gray-100 text-gray-500"
+            )}>
+              {connectedCount}/3 Companies Connected
+            </span>
           </div>
         </motion.div>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-muted/50 rounded-lg p-1 w-fit">
-          {(["status", "cogs"] as const).map((tab) => (
+          {(["connections", "cogs"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -111,126 +153,100 @@ export default function QuickBooksIntegration() {
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {tab === "status" ? "Connection" : "COGS Data"}
+              {tab === "connections" ? "Connections" : "COGS Data"}
             </button>
           ))}
         </div>
 
-        {/* Connection Tab */}
-        {activeTab === "status" && (
+        {/* Connections Tab */}
+        {activeTab === "connections" && (
           <motion.div variants={fadeUp} initial="hidden" animate="show" className="space-y-6">
-            {/* Connection Status Card */}
-            <div className="bg-card border border-border rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-4">Connection Status</h3>
-
-              {statusQuery.isLoading ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Checking connection...
-                </div>
-              ) : isConnected ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-green-700">Connected</p>
-                      <p className="text-sm text-muted-foreground">
-                        {status?.companyName ?? "QuickBooks Company"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    <div className="bg-muted/30 rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">Company ID</p>
-                      <p className="text-sm font-mono">{status?.realmId}</p>
-                    </div>
-                    <div className="bg-muted/30 rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">Last Sync</p>
-                      <p className="text-sm">
-                        {status?.lastSyncAt
-                          ? new Date(status.lastSyncAt).toLocaleString()
-                          : "Never"}
-                      </p>
-                    </div>
-                    <div className="bg-muted/30 rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">Last Sync Status</p>
-                      <p className="text-sm flex items-center gap-1">
-                        {status?.lastSyncSuccess === true ? (
-                          <><CheckCircle2 className="w-3 h-3 text-green-500" /> Success</>
-                        ) : status?.lastSyncSuccess === false ? (
-                          <><XCircle className="w-3 h-3 text-red-500" /> Failed</>
+            {/* Expected Companies Guide */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+              <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                Required QuickBooks Companies
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {EXPECTED_MAPPINGS.map((mapping) => {
+                  const isConnected = connections.some((c: any) =>
+                    c.companyName?.toLowerCase().includes(mapping.company.split(" ")[0].toLowerCase()) && c.connected
+                  );
+                  return (
+                    <div key={mapping.company} className={cn(
+                      "rounded-lg p-3 border",
+                      isConnected ? "bg-green-50 border-green-200" : "bg-white border-blue-100"
+                    )}>
+                      <div className="flex items-center gap-2 mb-1">
+                        {isConnected ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
                         ) : (
-                          "N/A"
+                          <XCircle className="w-4 h-4 text-gray-300 flex-shrink-0" />
                         )}
-                      </p>
+                        <span className="text-xs font-medium text-blue-900 truncate">{mapping.company}</span>
+                      </div>
+                      <p className="text-xs text-blue-600 ml-6">{mapping.description}</p>
                     </div>
-                    <div className="bg-muted/30 rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">Access Token</p>
-                      <p className="text-sm">
-                        {status?.accessTokenExpired ? (
-                          <span className="text-amber-600">Expired (will auto-refresh)</span>
-                        ) : (
-                          <span className="text-green-600">Active</span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 mt-4">
-                    <button
-                      onClick={() => disconnectMutation.mutate()}
-                      disabled={disconnectMutation.isPending}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors text-sm font-medium"
-                    >
-                      <Unlink className="w-4 h-4" />
-                      {disconnectMutation.isPending ? "Disconnecting..." : "Disconnect"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                      <XCircle className="w-5 h-5 text-gray-400" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-muted-foreground">Not Connected</p>
-                      <p className="text-sm text-muted-foreground">
-                        Connect to QuickBooks to pull COGS data
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleConnect}
-                    className="flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2CA01C] text-white hover:bg-[#248a17] transition-colors text-sm font-medium shadow-sm"
-                  >
-                    <Link2 className="w-4 h-4" />
-                    Connect to QuickBooks
-                  </button>
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                    <p className="text-sm text-blue-800">
-                      <strong>How it works:</strong> Click "Connect to QuickBooks" to authorize
-                      read-only access to your QuickBooks Online account. We'll pull your Profit & Loss
-                      report by Location to extract COGS data for each store. Your credentials are never
-                      stored — we use secure OAuth2 tokens that can be revoked at any time.
-                    </p>
-                  </div>
-                </div>
-              )}
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Sync Controls (only when connected) */}
-            {isConnected && (
+            {/* Connected Companies */}
+            {connectionsQuery.isLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground p-6">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Loading connections...
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {connections.map((conn: any) => (
+                  <CompanyConnectionCard
+                    key={conn.id}
+                    connection={conn}
+                    isExpanded={expandedConnection === conn.id}
+                    onToggleExpand={() => setExpandedConnection(
+                      expandedConnection === conn.id ? null : conn.id
+                    )}
+                    onDisconnect={() => disconnectMutation.mutate({ connectionId: conn.id })}
+                    onUpdateMapping={(stores: string[]) => updateStoreMappingMutation.mutate({
+                      connectionId: conn.id,
+                      storeMapping: stores,
+                    })}
+                    isDisconnecting={disconnectMutation.isPending}
+                    isUpdatingMapping={updateStoreMappingMutation.isPending}
+                  />
+                ))}
+
+                {/* Connect Another Company Button */}
+                <button
+                  onClick={handleConnect}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl border-2 border-dashed border-[#2CA01C]/30 text-[#2CA01C] hover:bg-[#2CA01C]/5 hover:border-[#2CA01C]/50 transition-all text-sm font-medium"
+                >
+                  <Plus className="w-5 h-5" />
+                  {hasConnections ? "Connect Another QuickBooks Company" : "Connect to QuickBooks"}
+                </button>
+
+                {!hasConnections && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-blue-800">
+                      <strong>How it works:</strong> Click "Connect to QuickBooks" to authorize
+                      read-only access to a QuickBooks Online company. You'll need to connect all 3
+                      companies separately. Each connection pulls Profit & Loss data by Location to
+                      extract COGS for the mapped stores. Your credentials are never stored — we use
+                      secure OAuth2 tokens that can be revoked at any time.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Sync Controls (when at least one connected) */}
+            {hasConnections && (
               <div className="bg-card border border-border rounded-xl p-6">
-                <h3 className="text-lg font-semibold mb-4">Sync COGS Data</h3>
+                <h3 className="text-lg font-semibold mb-2">Sync COGS Data</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Pull Profit & Loss data from QuickBooks for the selected date range.
-                  COGS will be extracted per location and stored in your dashboard.
+                  Pull Profit & Loss data from all connected QuickBooks companies for the selected date range.
                 </p>
 
                 <div className="flex flex-wrap items-end gap-4">
@@ -263,7 +279,7 @@ export default function QuickBooksIntegration() {
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#D4A853] text-[#1C1210] hover:bg-[#c49a48] transition-colors text-sm font-medium"
                   >
                     <RefreshCw className={cn("w-4 h-4", syncCogsMutation.isPending && "animate-spin")} />
-                    {syncCogsMutation.isPending ? "Syncing..." : "Sync COGS"}
+                    {syncCogsMutation.isPending ? "Syncing All Companies..." : `Sync All ${connectedCount} Companies`}
                   </button>
                 </div>
 
@@ -298,6 +314,30 @@ export default function QuickBooksIntegration() {
                     </button>
                   ))}
                 </div>
+
+                {/* Sync results */}
+                {syncCogsMutation.data && (
+                  <div className="mt-4 space-y-2">
+                    {(syncCogsMutation.data as any).companies?.map((result: any, i: number) => (
+                      <div key={i} className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm",
+                        result.error ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
+                      )}>
+                        {result.error ? (
+                          <XCircle className="w-4 h-4 flex-shrink-0" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                        )}
+                        <span className="font-medium">{result.company}:</span>
+                        {result.error ? (
+                          <span>{result.error}</span>
+                        ) : (
+                          <span>{result.locationsSynced} locations synced</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </motion.div>
@@ -306,7 +346,7 @@ export default function QuickBooksIntegration() {
         {/* COGS Data Tab */}
         {activeTab === "cogs" && (
           <motion.div variants={fadeUp} initial="hidden" animate="show" className="space-y-6">
-            {!isConnected ? (
+            {!hasConnections ? (
               <div className="bg-card border border-border rounded-xl p-8 text-center">
                 <Receipt className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground">
@@ -317,7 +357,7 @@ export default function QuickBooksIntegration() {
               <div className="bg-card border border-border rounded-xl p-8 text-center">
                 <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground">
-                  No COGS data yet. Use the Connection tab to sync data from QuickBooks.
+                  No COGS data yet. Use the Connections tab to sync data from QuickBooks.
                 </p>
               </div>
             ) : (
@@ -341,7 +381,7 @@ export default function QuickBooksIntegration() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedCogs.map((row, i) => (
+                      {sortedCogs.map((row: any, i: number) => (
                         <tr
                           key={`${row.storeId}-${row.periodStart}-${i}`}
                           className="border-b border-border/50 hover:bg-muted/20 transition-colors"
@@ -373,5 +413,251 @@ export default function QuickBooksIntegration() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+// ─── Company Connection Card Component ───
+
+interface ConnectionCardProps {
+  connection: {
+    id: number;
+    connected: boolean;
+    companyName: string | null;
+    realmId: string;
+    storeMapping: string[];
+    lastSyncAt: Date | string | null;
+    lastSyncSuccess: boolean | null;
+    accessTokenExpired: boolean;
+    refreshTokenExpired: boolean;
+  };
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onDisconnect: () => void;
+  onUpdateMapping: (stores: string[]) => void;
+  isDisconnecting: boolean;
+  isUpdatingMapping: boolean;
+}
+
+function CompanyConnectionCard({
+  connection,
+  isExpanded,
+  onToggleExpand,
+  onDisconnect,
+  onUpdateMapping,
+  isDisconnecting,
+  isUpdatingMapping,
+}: ConnectionCardProps) {
+  const [editingMapping, setEditingMapping] = useState(false);
+  const [selectedStores, setSelectedStores] = useState<string[]>(connection.storeMapping);
+
+  const handleSaveMapping = () => {
+    onUpdateMapping(selectedStores);
+    setEditingMapping(false);
+  };
+
+  const storeLabels = connection.storeMapping
+    .map(id => STORE_OPTIONS.find(s => s.id === id)?.label ?? id)
+    .join(", ");
+
+  return (
+    <div className={cn(
+      "bg-card border rounded-xl overflow-hidden transition-all",
+      connection.connected ? "border-green-200" : "border-red-200",
+    )}>
+      {/* Header */}
+      <div
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/20 transition-colors"
+        onClick={onToggleExpand}
+      >
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center",
+            connection.connected ? "bg-green-100" : "bg-red-100"
+          )}>
+            {connection.connected ? (
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+            )}
+          </div>
+          <div>
+            <p className="font-medium text-sm">
+              {connection.companyName ?? "QuickBooks Company"}
+            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-xs text-muted-foreground font-mono">
+                Realm: {connection.realmId}
+              </span>
+              {storeLabels && (
+                <>
+                  <span className="text-xs text-muted-foreground">|</span>
+                  <span className="text-xs text-[#D4A853] font-medium">
+                    {storeLabels}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {connection.refreshTokenExpired && (
+            <span className="px-2 py-1 rounded-full bg-red-100 text-red-600 text-xs font-medium">
+              Token Expired
+            </span>
+          )}
+          {connection.connected && !connection.refreshTokenExpired && (
+            <span className="px-2 py-1 rounded-full bg-green-100 text-green-600 text-xs font-medium">
+              Active
+            </span>
+          )}
+          {isExpanded ? (
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          )}
+        </div>
+      </div>
+
+      {/* Expanded Details */}
+      {isExpanded && (
+        <div className="border-t border-border p-4 space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-muted/30 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground">Company ID</p>
+              <p className="text-sm font-mono truncate">{connection.realmId}</p>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground">Last Sync</p>
+              <p className="text-sm">
+                {connection.lastSyncAt
+                  ? new Date(connection.lastSyncAt as string).toLocaleString()
+                  : "Never"}
+              </p>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground">Last Sync Status</p>
+              <p className="text-sm flex items-center gap-1">
+                {connection.lastSyncSuccess === true ? (
+                  <><CheckCircle2 className="w-3 h-3 text-green-500" /> Success</>
+                ) : connection.lastSyncSuccess === false ? (
+                  <><XCircle className="w-3 h-3 text-red-500" /> Failed</>
+                ) : (
+                  "N/A"
+                )}
+              </p>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground">Access Token</p>
+              <p className="text-sm">
+                {connection.accessTokenExpired ? (
+                  <span className="text-amber-600">Expired (auto-refresh)</span>
+                ) : (
+                  <span className="text-green-600">Active</span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Store Mapping */}
+          <div className="bg-muted/20 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Store Mapping
+              </h4>
+              {!editingMapping && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setEditingMapping(true); setSelectedStores(connection.storeMapping); }}
+                  className="text-xs text-[#D4A853] hover:underline"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+
+            {editingMapping ? (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Select which stores this QuickBooks company covers:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {STORE_OPTIONS.map((store) => (
+                    <button
+                      key={store.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedStores(prev =>
+                          prev.includes(store.id)
+                            ? prev.filter(s => s !== store.id)
+                            : [...prev, store.id]
+                        );
+                      }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+                        selectedStores.includes(store.id)
+                          ? "bg-[#D4A853] text-[#1C1210] border-[#D4A853]"
+                          : "bg-white text-muted-foreground border-border hover:border-[#D4A853]/50"
+                      )}
+                    >
+                      {store.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleSaveMapping(); }}
+                    disabled={isUpdatingMapping}
+                    className="px-3 py-1.5 rounded-md bg-[#D4A853] text-[#1C1210] text-xs font-medium hover:bg-[#c49a48] transition-colors"
+                  >
+                    {isUpdatingMapping ? "Saving..." : "Save Mapping"}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setEditingMapping(false); }}
+                    className="px-3 py-1.5 rounded-md bg-muted text-muted-foreground text-xs font-medium hover:bg-muted/80 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {connection.storeMapping.length > 0 ? (
+                  connection.storeMapping.map(storeId => (
+                    <span key={storeId} className="px-3 py-1 rounded-full bg-[#D4A853]/10 text-[#D4A853] text-xs font-medium border border-[#D4A853]/20">
+                      {STORE_OPTIONS.find(s => s.id === storeId)?.label ?? storeId}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-muted-foreground italic">
+                    No stores mapped — click Edit to assign stores
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <button
+              onClick={(e) => { e.stopPropagation(); onDisconnect(); }}
+              disabled={isDisconnecting}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors text-sm font-medium"
+            >
+              <Unlink className="w-4 h-4" />
+              {isDisconnecting ? "Disconnecting..." : "Disconnect"}
+            </button>
+            {connection.refreshTokenExpired && (
+              <button
+                onClick={(e) => { e.stopPropagation(); window.location.href = "/api/quickbooks/connect"; }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2CA01C] text-white hover:bg-[#248a17] transition-colors text-sm font-medium"
+              >
+                <Link2 className="w-4 h-4" />
+                Reconnect
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

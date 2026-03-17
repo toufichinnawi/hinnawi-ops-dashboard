@@ -1155,6 +1155,22 @@ export async function getActiveQboToken(): Promise<QboToken | undefined> {
   return rows[0];
 }
 
+export async function getAllActiveQboTokens(): Promise<QboToken[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(qboTokens)
+    .where(eq(qboTokens.isActive, true));
+}
+
+export async function getQboTokenByRealmId(realmId: string): Promise<QboToken | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(qboTokens)
+    .where(eq(qboTokens.realmId, realmId))
+    .limit(1);
+  return rows[0];
+}
+
 export async function updateQboToken(id: number, data: Partial<InsertQboToken>): Promise<void> {
   const db = await getDb();
   if (!db) return;

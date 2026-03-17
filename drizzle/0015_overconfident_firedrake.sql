@@ -1,0 +1,1 @@
+ALTER TABLE `qbo_tokens` ADD `storeMapping` json;

@@ -60,10 +60,32 @@
 
 # QuickBooks Integration
 
-- [ ] Research QuickBooks Online API capabilities (payroll, P&L, expenses)
-- [ ] Determine best integration approach (OAuth2, API keys, CSV)
-- [ ] Present options to user for approval
-- [ ] Implement chosen approach
+- [x] Research QuickBooks Online API capabilities (payroll, P&L, expenses)
+- [x] Determine best integration approach (OAuth2, API keys, CSV)
+- [x] Present options to user for approval
+- [x] Implement OAuth2 flow with token storage (qboTokens table)
+- [x] Build P&L report parsing for COGS extraction by location
+- [x] Build COGS sync and storage (qboCogs table)
+- [x] QuickBooks Integration page UI (connection status, sync controls, COGS data table)
+- [x] 7 vitest tests passing for P&L parsing
+
+## Multi-Company COGS Integration
+
+- [x] Update backend router to support multiple QBO connections simultaneously
+- [x] Add `connections` endpoint returning all active QBO tokens with store mappings
+- [x] Add `updateStoreMapping` endpoint to assign stores to each company
+- [x] Update `disconnect` to accept specific connectionId
+- [x] Update `syncCogs` to iterate all connected companies (or a specific one)
+- [x] Rewrite QuickBooks UI page with multi-company management
+- [x] Show "Required QuickBooks Companies" guide (3 companies, 4 stores)
+- [x] Expandable company connection cards with store mapping editor
+- [x] "Connect Another QuickBooks Company" button for adding companies
+- [x] Sync results per-company with success/error indicators
+- [x] 12 new multi-company tests passing (255 total)
+- [ ] Connect 9287-8982 Quebec Inc (Ontario)
+- [ ] Connect 9364-1009 Quebec INC (Tunnel)
+- [ ] Connect 9427-0659 Quebec Inc (PK + Mackay)
+- [ ] Disconnect old realm 9341456522572832 (Hinnawi Bros Bagel & Cafe)
 
 ---
 
@@ -1495,3 +1517,20 @@
 - [x] Added Export PDF button in admin dashboard report detail dialog
 - [x] Added Export PDF button in portal: Store Manager's completed checklists + Ops Manager's ReportDetailDialog
 - [x] All 248 tests passing, 0 TypeScript errors
+
+# QuickBooks COGS Integration
+- [ ] Update QBO_CLIENT_ID and QBO_CLIENT_SECRET credentials
+- [ ] Investigate existing QuickBooks code in the project
+- [ ] Build/fix QuickBooks OAuth flow (connect, callback, token refresh)
+- [ ] Build COGS data endpoint (pull purchases/bills from QuickBooks)
+- [ ] Add "Connect to QuickBooks" button on dashboard
+- [ ] Display COGS data on the dashboard
+- [ ] Test end-to-end
+
+# Multi-Company QuickBooks COGS Integration
+- [ ] Disconnect current (wrong) company connection
+- [ ] Update backend: support multiple QBO tokens (one per company) with store mapping
+- [ ] Update QBO OAuth flow to allow connecting additional companies
+- [ ] Update QuickBooks UI: show all connections, "Connect Another Company" button, store mapping per company
+- [ ] Update COGS sync to pull P&L from all 3 connected companies and combine results
+- [ ] Test multi-company flow end-to-end

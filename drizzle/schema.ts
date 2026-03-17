@@ -268,6 +268,7 @@ export const qboTokens = mysqlTable("qbo_tokens", {
   isActive: boolean("isActive").default(true).notNull(),
   lastSyncAt: timestamp("lastSyncAt"),
   lastSyncSuccess: boolean("lastSyncSuccess"),
+  storeMapping: json("storeMapping"), // e.g. ["pk", "mk"] or ["ontario"] — which stores this QBO company covers
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

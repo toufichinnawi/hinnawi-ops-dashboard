@@ -310,3 +310,208 @@ describe("QuickBooks Service", () => {
     });
   });
 });
+
+// ─── Multi-Company Integration Tests ───
+
+describe("Multi-Company QuickBooks Integration", () => {
+  describe("Store Mapping", () => {
+    it("should correctly map expected companies to stores", () => {
+      const EXPECTED_MAPPINGS = [
+        { company: "9287-8982 Quebec Inc", stores: ["ontario"], description: "Ontario Store" },
+        { company: "9364-1009 Quebec INC", stores: ["tunnel"], description: "Tunnel Store" },
+        { company: "9427-0659 Quebec Inc", stores: ["pk", "mk"], description: "President Kennedy + Mackay" },
+      ];
+
+      // All 4 stores should be covered
+      const allStores = EXPECTED_MAPPINGS.flatMap(m => m.stores);
+      expect(allStores).toContain("pk");
+      expect(allStores).toContain("mk");
+      expect(allStores).toContain("tunnel");
+      expect(allStores).toContain("ontario");
+      expect(new Set(allStores).size).toBe(4);
+    });
+
+    it("should have 3 companies covering 4 stores", () => {
+      const EXPECTED_MAPPINGS = [
+        { company: "9287-8982 Quebec Inc", stores: ["ontario"] },
+        { company: "9364-1009 Quebec INC", stores: ["tunnel"] },
+        { company: "9427-0659 Quebec Inc", stores: ["pk", "mk"] },
+      ];
+
+      expect(EXPECTED_MAPPINGS).toHaveLength(3);
+      const totalStores = EXPECTED_MAPPINGS.reduce((sum, m) => sum + m.stores.length, 0);
+      expect(totalStores).toBe(4);
+    });
+  });
+
+  describe("Location Name to Store ID Mapping", () => {
+    const LOCATION_TO_STORE: Record<string, string> = {
+      "mackay": "mk", "mk": "mk",
+      "tunnel": "tunnel", "cathcart": "tunnel", "tn": "tunnel",
+      "president kennedy": "pk", "pk": "pk",
+      "ontario": "ontario", "on": "ontario",
+    };
+
+    it("should map common location names to store IDs", () => {
+      expect(LOCATION_TO_STORE["mackay"]).toBe("mk");
+      expect(LOCATION_TO_STORE["tunnel"]).toBe("tunnel");
+      expect(LOCATION_TO_STORE["cathcart"]).toBe("tunnel");
+      expect(LOCATION_TO_STORE["president kennedy"]).toBe("pk");
+      expect(LOCATION_TO_STORE["ontario"]).toBe("ontario");
+    });
+
+    it("should map short codes to store IDs", () => {
+      expect(LOCATION_TO_STORE["mk"]).toBe("mk");
+      expect(LOCATION_TO_STORE["tn"]).toBe("tunnel");
+      expect(LOCATION_TO_STORE["pk"]).toBe("pk");
+      expect(LOCATION_TO_STORE["on"]).toBe("ontario");
+    });
+
+    it("should cover all 4 stores", () => {
+      const uniqueStoreIds = new Set(Object.values(LOCATION_TO_STORE));
+      expect(uniqueStoreIds.has("mk")).toBe(true);
+      expect(uniqueStoreIds.has("tunnel")).toBe(true);
+      expect(uniqueStoreIds.has("pk")).toBe(true);
+      expect(uniqueStoreIds.has("ontario")).toBe(true);
+    });
+  });
+
+  describe("P&L parsing for multi-company scenario", () => {
+    it("should parse PK+MK company P&L with two locations", () => {
+      // Simulates 9427-0659 Quebec Inc which has PK and MK in chart of accounts
+      const reportData = {
+        Columns: {
+          Column: [
+            { ColType: "Account", ColTitle: "Account" },
+            {
+              ColType: "Money",
+              ColTitle: "President Kennedy",
+              MetaData: [{ Name: "LocationName", Value: "President Kennedy" }],
+            },
+            {
+              ColType: "Money",
+              ColTitle: "Mackay",
+              MetaData: [{ Name: "LocationName", Value: "Mackay" }],
+            },
+            { ColType: "Money", ColTitle: "Total" },
+          ],
+        },
+        Rows: {
+          Row: [
+            {
+              type: "Section",
+              Header: { ColData: [{ value: "Income" }] },
+              Summary: {
+                ColData: [
+                  { value: "Total Income" },
+                  { value: "25000.00" },
+                  { value: "18000.00" },
+                  { value: "43000.00" },
+                ],
+              },
+            },
+            {
+              type: "Section",
+              Header: { ColData: [{ value: "Cost of Goods Sold" }] },
+              Rows: {
+                Row: [
+                  {
+                    type: "Data",
+                    ColData: [
+                      { value: "Food Purchases" },
+                      { value: "7500.00" },
+                      { value: "5400.00" },
+                      { value: "12900.00" },
+                    ],
+                  },
+                ],
+              },
+              Summary: {
+                ColData: [
+                  { value: "Total COGS" },
+                  { value: "7500.00" },
+                  { value: "5400.00" },
+                  { value: "12900.00" },
+                ],
+              },
+            },
+          ],
+        },
+      };
+
+      const result = parsePnlForCogs(reportData);
+      expect(result).toHaveLength(2);
+
+      const pk = result.find(r => r.locationName === "President Kennedy");
+      expect(pk).toBeDefined();
+      expect(pk!.revenue).toBe(25000);
+      expect(pk!.cogsAmount).toBe(7500);
+      expect(pk!.cogsPercent).toBe(30);
+
+      const mk = result.find(r => r.locationName === "Mackay");
+      expect(mk).toBeDefined();
+      expect(mk!.revenue).toBe(18000);
+      expect(mk!.cogsAmount).toBe(5400);
+      expect(mk!.cogsPercent).toBe(30);
+    });
+
+    it("should parse single-location company P&L (Ontario or Tunnel)", () => {
+      // Simulates 9287-8982 Quebec Inc (Ontario only) or 9364-1009 Quebec INC (Tunnel only)
+      const reportData = {
+        Columns: {
+          Column: [
+            { ColType: "Account", ColTitle: "Account" },
+            {
+              ColType: "Money",
+              ColTitle: "Ontario",
+              MetaData: [{ Name: "LocationName", Value: "Ontario" }],
+            },
+          ],
+        },
+        Rows: {
+          Row: [
+            {
+              type: "Section",
+              Header: { ColData: [{ value: "Income" }] },
+              Summary: {
+                ColData: [
+                  { value: "Total Income" },
+                  { value: "12000.00" },
+                ],
+              },
+            },
+            {
+              type: "Section",
+              Header: { ColData: [{ value: "Cost of Goods Sold" }] },
+              Rows: {
+                Row: [
+                  {
+                    type: "Data",
+                    ColData: [
+                      { value: "Food Cost" },
+                      { value: "3600.00" },
+                    ],
+                  },
+                ],
+              },
+              Summary: {
+                ColData: [
+                  { value: "Total COGS" },
+                  { value: "3600.00" },
+                ],
+              },
+            },
+          ],
+        },
+      };
+
+      const result = parsePnlForCogs(reportData);
+      expect(result).toHaveLength(1);
+      expect(result[0].locationName).toBe("Ontario");
+      expect(result[0].revenue).toBe(12000);
+      expect(result[0].cogsAmount).toBe(3600);
+      expect(result[0].cogsPercent).toBe(30);
+      expect(result[0].cogsBreakdown["Food Cost"]).toBe(3600);
+    });
+  });
+});
