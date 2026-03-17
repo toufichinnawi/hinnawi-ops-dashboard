@@ -82,4 +82,35 @@ describe("Active Alerts API", () => {
       expect(alert.message).toMatch(/target/i);
     }
   });
+
+  it("waste report alerts only appear for stores past their closing time", async () => {
+    const res = await fetch(`${BASE_URL}/api/public/active-alerts`);
+    const body = await res.json();
+
+    // Store closing hours in EST
+    const CLOSING_HOURS: Record<string, number> = {
+      tunnel: 14, // 2 PM
+      ontario: 15, // 3 PM
+      mk: 17, // 5 PM
+      pk: 18, // 6 PM
+    };
+
+    // Get current EST hour
+    const now = new Date();
+    const currentEstHour = parseInt(
+      now.toLocaleString("en-US", { timeZone: "America/Toronto", hour: "numeric", hour12: false })
+    );
+
+    const wasteAlerts = body.alerts.filter(
+      (a: any) => a.category === "missing-daily"
+    );
+
+    for (const alert of wasteAlerts) {
+      const closingHour = CLOSING_HOURS[alert.store];
+      if (closingHour !== undefined) {
+        // This store's waste alert should only appear if we're past closing time
+        expect(currentEstHour).toBeGreaterThanOrEqual(closingHour);
+      }
+    }
+  });
 });

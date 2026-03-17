@@ -1545,3 +1545,8 @@
 - [x] Send follow-up alert if form not submitted within 30 min grace period after closing
 - [x] Implement cron/interval scheduler to trigger alerts at correct times per store
 - [x] Write vitest tests for waste alert scheduling logic (24 tests passing, 280 total)
+
+## Bug Fix: Active Alerts showing waste alerts before store closing time
+
+- [x] Fix Active Alerts widget to only show waste report missing alerts AFTER each store's closing time
+- [x] Ontario: only show after 3pm, Mackay: after 5pm, PK: after 6pm, Tunnel: after 2pm

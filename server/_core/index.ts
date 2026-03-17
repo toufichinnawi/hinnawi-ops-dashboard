@@ -762,13 +762,16 @@ async function startServer() {
       const mondayStr = monday.toISOString().slice(0, 10);
       const fridayStr = friday.toISOString().slice(0, 10);
 
-      // Store config
+      // Store config with closing hours (EST)
       const STORES = [
-        { id: "pk", code: "PK", name: "President Kennedy", shortName: "PK", labourTarget: 18, koomiId: "1037" },
-        { id: "mk", code: "MK", name: "Mackay", shortName: "MK", labourTarget: 23, koomiId: "2207" },
-        { id: "ontario", code: "ON", name: "Ontario", shortName: "ON", labourTarget: 28 },
-        { id: "tunnel", code: "TN", name: "Cathcart (Tunnel)", shortName: "TN", labourTarget: 24, koomiId: "1036", closedWeekends: true },
+        { id: "pk", code: "PK", name: "President Kennedy", shortName: "PK", labourTarget: 18, koomiId: "1037", closingHour: 18 },
+        { id: "mk", code: "MK", name: "Mackay", shortName: "MK", labourTarget: 23, koomiId: "2207", closingHour: 17 },
+        { id: "ontario", code: "ON", name: "Ontario", shortName: "ON", labourTarget: 28, closingHour: 15 },
+        { id: "tunnel", code: "TN", name: "Cathcart (Tunnel)", shortName: "TN", labourTarget: 24, koomiId: "1036", closedWeekends: true, closingHour: 14 },
       ];
+
+      // Current hour in ET for closing-time checks
+      const currentEstHour = etDate.getHours();
 
       const alerts: Array<{ id: string; type: "critical" | "warning" | "info" | "success"; message: string; store: string; category: string; timestamp: string }> = [];
 
@@ -792,11 +795,14 @@ async function startServer() {
         }
       }
 
-      // 3. Check: Leftovers & Waste Report (waste-report) for today — this is the daily submission
+      // 3. Check: Leftovers & Waste Report (waste-report) for today
+      // Only show alert AFTER the store's closing time
       const todayReports = weekReports.filter(r => r.reportDate === today);
       for (const store of STORES) {
         // Skip weekend-closed stores on weekends
         if (store.closedWeekends && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
+        // Only flag as missing after the store has closed
+        if (currentEstHour < store.closingHour) continue;
         const hasWasteReport = todayReports.some(
           r => r.location === store.code && r.reportType === "waste-report"
         );
