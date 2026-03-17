@@ -1534,3 +1534,14 @@
 - [ ] Update QuickBooks UI: show all connections, "Connect Another Company" button, store mapping per company
 - [ ] Update COGS sync to pull P&L from all 3 connected companies and combine results
 - [ ] Test multi-company flow end-to-end
+
+---
+
+# Store-Specific Closing Time Alerts for Leftovers & Waste
+
+- [x] Add store closing times to store config (Ontario 3pm, Mackay 5pm, PK 6pm, Tunnel 2pm)
+- [x] Build scheduled waste alert logic that checks each store at their closing time
+- [x] Send Teams alert to remind store to complete Leftovers & Waste form at closing time
+- [x] Send follow-up alert if form not submitted within 30 min grace period after closing
+- [x] Implement cron/interval scheduler to trigger alerts at correct times per store
+- [x] Write vitest tests for waste alert scheduling logic (24 tests passing, 280 total)

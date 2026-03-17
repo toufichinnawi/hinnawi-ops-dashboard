@@ -1334,8 +1334,91 @@ async function startServer() {
     }
   }
 
-  // ─── Schedule: Daily Report at 8 PM + Labour Alerts after sync ─
-  // Add to the existing interval checker
+  // ─── Waste Report Closing-Time Alerts ─────────────────────────
+  // Each store gets a reminder at their closing time if they haven't submitted
+  // their Leftovers & Waste Report for today. A follow-up is sent 30 min later.
+  const WASTE_ALERT_STORES = [
+    { id: "tunnel", code: "TN", name: "Cathcart (Tunnel)", closingHour: 14, closedWeekends: true },
+    { id: "ontario", code: "ON", name: "Ontario", closingHour: 15 },
+    { id: "mk", code: "MK", name: "Mackay", closingHour: 17 },
+    { id: "pk", code: "PK", name: "President Kennedy", closingHour: 18 },
+  ];
+
+  async function checkWasteReportForStore(
+    store: typeof WASTE_ALERT_STORES[number],
+    isFollowUp: boolean
+  ) {
+    try {
+      const { getReportsByDateRange, createAlertHistoryEntry } = await import("../db");
+      const { sendChatMessage, TEAMS_CHAT_IDS, STORE_TO_CHAT } = await import("../teamsChat");
+
+      const now = new Date();
+      const estDate = now.toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+
+      // Check if waste report already submitted for today
+      const todayReports = await getReportsByDateRange(estDate, estDate);
+      const hasWasteReport = todayReports.some(
+        (r: any) => r.location === store.code && r.reportType === "waste-report"
+      );
+
+      if (hasWasteReport) {
+        console.log(`[WasteAlert] ${store.name}: Already submitted waste report for ${estDate}. Skipping.`);
+        return;
+      }
+
+      // Build the alert message
+      const closingTimeStr = store.closingHour <= 12
+        ? `${store.closingHour}:00 PM`
+        : store.closingHour === 12 ? "12:00 PM"
+        : `${store.closingHour > 12 ? store.closingHour - 12 : store.closingHour}:00 PM`;
+
+      const alertEmoji = isFollowUp ? "\u{1F6A8}" : "\u{1F4CB}";
+      const urgency = isFollowUp ? "OVERDUE" : "REMINDER";
+      const severity: "critical" | "warning" = isFollowUp ? "critical" : "warning";
+
+      let html = `${alertEmoji} <b>Leftovers & Waste Report — ${urgency}</b><br><br>`;
+      html += `<b>Store:</b> ${store.name}<br>`;
+      html += `<b>Date:</b> ${estDate}<br>`;
+      html += `<b>Store Closing:</b> ${closingTimeStr} EST<br><br>`;
+
+      if (isFollowUp) {
+        html += `<b>\u{26A0}\u{FE0F} This report is now overdue.</b> The store closed 30 minutes ago and the Leftovers & Waste form has not been submitted.<br><br>`;
+        html += `Please complete and submit the form immediately.`;
+      } else {
+        html += `It's closing time! Please complete the <b>Leftovers & Waste</b> form before leaving.<br><br>`;
+        html += `A follow-up alert will be sent in 30 minutes if the form is not submitted.`;
+      }
+
+      // Send to the store-specific chat
+      const storeChatKey = STORE_TO_CHAT[store.id];
+      if (storeChatKey) {
+        console.log(`[WasteAlert] Sending ${urgency} to ${store.name} chat...`);
+        await sendChatMessage(TEAMS_CHAT_IDS[storeChatKey], html);
+      }
+
+      // Send to TRD Management
+      console.log(`[WasteAlert] Sending ${urgency} for ${store.name} to TRD Management...`);
+      await sendChatMessage(TEAMS_CHAT_IDS.trd, html);
+
+      // Log to alert history
+      await createAlertHistoryEntry({
+        webhookId: null,
+        alertType: isFollowUp ? "waste-overdue" : "waste-reminder",
+        title: `Leftovers & Waste ${urgency} \u2014 ${store.name}`,
+        severity,
+        message: `${store.name} has not submitted the Leftovers & Waste Report (closing time: ${closingTimeStr})`,
+        storeId: store.id,
+        delivered: true,
+        errorMessage: null,
+      });
+
+      console.log(`[WasteAlert] ${store.name}: ${urgency} alert sent successfully`);
+    } catch (err: any) {
+      console.error(`[WasteAlert] ${store.name}: Failed to send alert:`, err.message);
+    }
+  }
+
+  // ─── Schedule: Daily Report at 8 PM + Labour Alerts + Waste Alerts ─
   const reportLog = new Set<string>();
 
   setInterval(() => {
@@ -1344,8 +1427,8 @@ async function startServer() {
     const estHour = parseInt(now.toLocaleString("en-US", { timeZone: "America/Toronto", hour: "numeric", hour12: false }));
     const estMin = parseInt(now.toLocaleString("en-US", { timeZone: "America/Toronto", minute: "numeric" }));
     const estDate = now.toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+    const dayOfWeek = new Date(now.toLocaleString("en-US", { timeZone: "America/Toronto" })).getDay();
     const reportKey = `report-${estDate}`;
-
 
     // Daily report at 8 PM EST
     if (estHour === 20 && estMin === 0 && !reportLog.has(reportKey)) {
@@ -1360,13 +1443,33 @@ async function startServer() {
       checkHighLabourAlerts();
     }
 
+    // ─── Waste Report Alerts: At each store's closing time + 30 min follow-up ───
+    for (const store of WASTE_ALERT_STORES) {
+      // Skip weekend-closed stores on weekends
+      if (store.closedWeekends && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
+
+      // First reminder: at closing time (e.g., 14:00 for Tunnel)
+      const reminderKey = `waste-${store.id}-${estDate}`;
+      if (estHour === store.closingHour && estMin === 0 && !reportLog.has(reminderKey)) {
+        reportLog.add(reminderKey);
+        checkWasteReportForStore(store, false);
+      }
+
+      // Follow-up: 30 minutes after closing (e.g., 14:30 for Tunnel)
+      const followUpKey = `waste-followup-${store.id}-${estDate}`;
+      if (estHour === store.closingHour && estMin === 30 && !reportLog.has(followUpKey)) {
+        reportLog.add(followUpKey);
+        checkWasteReportForStore(store, true);
+      }
+    }
+
     // Clean up old entries
     Array.from(reportLog).forEach(entry => {
       if (!entry.includes(estDate)) reportLog.delete(entry);
     });
   }, 30_000);
 
-  console.log("[Schedule] Daily report + Labour alerts at 8PM EST");
+  console.log("[Schedule] Daily report at 8PM + Labour alerts at 8PM + Waste alerts at store closing times (TN:2PM, ON:3PM, MK:5PM, PK:6PM)");
 }
 
 startServer().catch(console.error);

@@ -10,6 +10,7 @@ export interface Store {
   image: string;
   labourTarget: number;
   closedWeekends?: boolean;
+  closingHour?: number; // Store closing hour in EST (24h format)
 }
 
 export interface KPI {
@@ -79,6 +80,7 @@ export const stores: Store[] = [
     color: "#D4A853",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663391168179/i5zcri4CVdStBBckDWTaVK/store-montreal-RcRt6eBtLfwQpQzQtscz4r.webp",
     labourTarget: 18,
+    closingHour: 18, // 6 PM
   },
   {
     id: "mk",
@@ -87,6 +89,7 @@ export const stores: Store[] = [
     color: "#3B82F6",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663391168179/i5zcri4CVdStBBckDWTaVK/store-laval-dpjkGF2brpbGH54kMSVUMD.webp",
     labourTarget: 23,
+    closingHour: 17, // 5 PM
   },
   {
     id: "ontario",
@@ -95,6 +98,7 @@ export const stores: Store[] = [
     color: "#10B981",
     image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80",
     labourTarget: 28,
+    closingHour: 15, // 3 PM
   },
   {
     id: "tunnel",
@@ -104,6 +108,7 @@ export const stores: Store[] = [
     image: "https://images.unsplash.com/photo-1559329007-40df8a9345d8?w=800&q=80",
     labourTarget: 24,
     closedWeekends: true,
+    closingHour: 14, // 2 PM
   },
 ];
 
