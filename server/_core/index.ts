@@ -1445,25 +1445,22 @@ async function startServer() {
       checkHighLabourAlerts();
     }
 
-    // ─── Waste Report Alerts: At each store's closing time + 30 min follow-up ───
-    for (const store of WASTE_ALERT_STORES) {
-      // Skip weekend-closed stores on weekends
-      if (store.closedWeekends && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
-
-      // First reminder: at closing time (e.g., 14:00 for Tunnel)
-      const reminderKey = `waste-${store.id}-${estDate}`;
-      if (estHour === store.closingHour && estMin === 0 && !reportLog.has(reminderKey)) {
-        reportLog.add(reminderKey);
-        checkWasteReportForStore(store, false);
-      }
-
-      // Follow-up: 30 minutes after closing (e.g., 14:30 for Tunnel)
-      const followUpKey = `waste-followup-${store.id}-${estDate}`;
-      if (estHour === store.closingHour && estMin === 30 && !reportLog.has(followUpKey)) {
-        reportLog.add(followUpKey);
-        checkWasteReportForStore(store, true);
-      }
-    }
+    // ─── Waste Report Alerts: DISABLED ───
+    // Disabled: waste alerts were sending to wrong chat groups and duplicating.
+    // To re-enable, uncomment the block below and update TEAMS_CHAT_IDS with correct 🔥 store chat IDs.
+    // for (const store of WASTE_ALERT_STORES) {
+    //   if (store.closedWeekends && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
+    //   const reminderKey = `waste-${store.id}-${estDate}`;
+    //   if (estHour === store.closingHour && estMin === 0 && !reportLog.has(reminderKey)) {
+    //     reportLog.add(reminderKey);
+    //     checkWasteReportForStore(store, false);
+    //   }
+    //   const followUpKey = `waste-followup-${store.id}-${estDate}`;
+    //   if (estHour === store.closingHour && estMin === 30 && !reportLog.has(followUpKey)) {
+    //     reportLog.add(followUpKey);
+    //     checkWasteReportForStore(store, true);
+    //   }
+    // }
 
     // Clean up old entries
     Array.from(reportLog).forEach(entry => {
@@ -1471,7 +1468,7 @@ async function startServer() {
     });
   }, 30_000);
 
-  console.log("[Schedule] Daily report at 8PM + Labour alerts at 8PM + Waste alerts at store closing times (TN:2PM, ON:3PM, MK:5PM, PK:6PM)");
+  console.log("[Schedule] Daily report at 8PM + Labour alerts at 8PM. Waste alerts DISABLED.");
 }
 
 startServer().catch(console.error);

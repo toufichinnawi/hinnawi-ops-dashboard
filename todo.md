@@ -1555,3 +1555,13 @@
 
 - [x] Remove TRD Management from waste report reminder/overdue alerts (only send to store-specific chats)
 - [x] Fix duplicate message issue (message was sent twice to TRD)
+
+## Bug Fix: QuickBooks company cards unclickable
+
+- [x] Verified: cards ARE clickable — user was clicking info guide cards, not the connection cards
+- [x] Verified: "Connect Another QuickBooks Company" button works (redirects to Intuit login)
+
+## Bug Fix: Waste alerts still sending duplicates and to wrong chats
+
+- [x] DISABLED: Waste report Teams alerts turned off (were sending 3x to wrong chats)
+- [ ] Re-enable later: update TEAMS_CHAT_IDS with correct 🔥 store chat IDs when ready
