@@ -106,6 +106,7 @@ const POSITIONS: PositionDef[] = [
       si("reports", "Reports", FileText, "info", { infoContent: "reports" }),
       si("ops-audit", "Store Weekly Audit", ClipboardCheck, "checklist", { checklistType: "ops-manager-checklist" }),
       si("training", "Training Evaluation", GraduationCap, "checklist", { checklistType: "training-evaluation" }),
+      si("performance-eval", "Performance Evaluation", Star, "checklist", { checklistType: "performance-evaluation" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
       si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
       si("pastry-orders", "Pastry Orders", CakeSlice, "checklist", { checklistType: "pastry-orders" }),

@@ -1593,3 +1593,7 @@
 - [x] Add Team Evaluations Report to Store Manager portal sidebar
 - [x] Extracted TeamEvaluationsContent as reusable component
 - [x] Store Manager view auto-filters to their store; Ops Manager sees all
+
+## Add Performance Evaluation to Ops Manager Portal
+
+- [x] Add Performance Evaluation to Operations Manager portal sidebar
