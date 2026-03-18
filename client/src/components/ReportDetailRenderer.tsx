@@ -785,7 +785,7 @@ function ManagerEvaluationDetail({ data }: { data: any }) {
               <div key={ii} className="p-2.5 rounded-lg border bg-card">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{item.title || `Item ${ii + 1}`}</p>
+                    <p className="text-sm font-medium">{item.label || item.title || `Item ${ii + 1}`}</p>
                   </div>
                   <Stars rating={item.rating || 0} />
                 </div>

@@ -1609,3 +1609,8 @@
 - [x] Include in Team Evaluations Report (filter, stats, indigo color coding)
 - [x] Add managerName-based duplicate check for Manager Evaluation
 - [x] 302 tests passing (all existing tests still pass)
+
+## Bug Fix: Manager Evaluation detail shows "Item #" instead of real criteria names
+
+- [x] Fix ManagerEvaluationDetail to use item.label for real criteria names
+- [x] Fix score display: Manager Evaluation shows /100, Training/Performance show /5

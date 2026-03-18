@@ -710,7 +710,7 @@ export function TeamEvaluationsContent({ storeFilter: externalStoreFilter }: { s
                                     variant="outline"
                                     className="font-mono text-xs border-[#D4A853] text-[#D4A853]"
                                   >
-                                    {report.totalScore}/5
+                                    {report.totalScore}/{report.reportType === "Manager Evaluation" ? "100" : "5"}
                                   </Badge>
                                 )}
                               </div>
@@ -794,7 +794,7 @@ export function TeamEvaluationsContent({ storeFilter: externalStoreFilter }: { s
                             variant="outline"
                             className="font-mono text-xs border-[#D4A853] text-[#D4A853]"
                           >
-                            {report.totalScore}/5
+                            {report.totalScore}/{report.reportType === "Manager Evaluation" ? "100" : "5"}
                           </Badge>
                         )}
                       </div>
@@ -857,7 +857,7 @@ export function TeamEvaluationsContent({ storeFilter: externalStoreFilter }: { s
                       variant="outline"
                       className="font-mono text-xs border-[#D4A853] text-[#D4A853]"
                     >
-                      Score: {selectedReport.totalScore}/5
+                      Score: {selectedReport.totalScore}/{selectedReport.reportType === "Manager Evaluation" ? "100" : "5"}
                     </Badge>
                   )}
                 </div>
