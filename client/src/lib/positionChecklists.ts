@@ -15,6 +15,7 @@ export type ChecklistType =
   | "bagel-orders"
   | "pastry-orders"
   | "performance-evaluation"
+  | "manager-evaluation"
   | "deep-clean";
 
 export interface ChecklistInfo {
@@ -101,6 +102,13 @@ export const ALL_CHECKLISTS: Record<ChecklistType, ChecklistInfo> = {
     description:
       "Evaluate employee performance across competencies",
     icon: "⭐",
+  },
+  "manager-evaluation": {
+    type: "manager-evaluation",
+    label: "Manager Evaluation",
+    description:
+      "Semi-annual/annual store manager evaluation across financial, operational, leadership, growth, and accountability areas",
+    icon: "👔",
   },
   "deep-clean": {
     type: "deep-clean",

@@ -55,6 +55,7 @@ const EVAL_TYPES = [
   { value: "all", label: "All Evaluations" },
   { value: "training-evaluation", label: "Training Evaluation" },
   { value: "performance-evaluation", label: "Performance Evaluation" },
+  { value: "Manager Evaluation", label: "Manager Evaluation" },
 ];
 
 const DATE_PRESETS = [
@@ -98,6 +99,7 @@ function getEvaluatorName(report: any): string {
 function getEvalTypeLabel(reportType: string): string {
   if (reportType === "training-evaluation") return "Training";
   if (reportType === "performance-evaluation") return "Performance";
+  if (reportType === "Manager Evaluation") return "Manager";
   return reportType;
 }
 
@@ -106,6 +108,8 @@ function getEvalTypeColor(reportType: string): string {
     return "bg-blue-100 text-blue-700 border-blue-200";
   if (reportType === "performance-evaluation")
     return "bg-purple-100 text-purple-700 border-purple-200";
+  if (reportType === "Manager Evaluation")
+    return "bg-indigo-100 text-indigo-700 border-indigo-200";
   return "bg-gray-100 text-gray-700";
 }
 
@@ -124,6 +128,9 @@ function EmployeeSummaryCard({
   );
   const perfEvals = evaluations.filter(
     (e) => e.reportType === "performance-evaluation"
+  );
+  const mgrEvals = evaluations.filter(
+    (e) => e.reportType === "Manager Evaluation"
   );
 
   const allScores = evaluations
@@ -195,6 +202,14 @@ function EmployeeSummaryCard({
               ⭐ {perfEvals.length} Performance
             </Badge>
           )}
+          {mgrEvals.length > 0 && (
+            <Badge
+              variant="outline"
+              className="text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200"
+            >
+              🛡️ {mgrEvals.length} Manager
+            </Badge>
+          )}
           {Array.from(storesSet).map((store) => (
             <Badge
               key={store}
@@ -241,7 +256,8 @@ export function TeamEvaluationsContent({ storeFilter: externalStoreFilter }: { s
     return allReports.filter(
       (r: any) =>
         r.reportType === "training-evaluation" ||
-        r.reportType === "performance-evaluation"
+        r.reportType === "performance-evaluation" ||
+        r.reportType === "Manager Evaluation"
     );
   }, [allReports]);
 
@@ -319,6 +335,9 @@ export function TeamEvaluationsContent({ storeFilter: externalStoreFilter }: { s
     const performance = filteredReports.filter(
       (r: any) => r.reportType === "performance-evaluation"
     ).length;
+    const manager = filteredReports.filter(
+      (r: any) => r.reportType === "Manager Evaluation"
+    ).length;
     const uniqueEmployees = new Set(
       filteredReports.map((r: any) => getEmployeeName(r))
     ).size;
@@ -355,6 +374,7 @@ export function TeamEvaluationsContent({ storeFilter: externalStoreFilter }: { s
       total,
       training,
       performance,
+      manager,
       uniqueEmployees,
       avgScore,
       storeAvgs,
@@ -460,6 +480,15 @@ export function TeamEvaluationsContent({ storeFilter: externalStoreFilter }: { s
                   </p>
                   <p className="text-[9px] text-muted-foreground uppercase">
                     Performance
+                  </p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <div className="text-center">
+                  <p className="text-lg font-bold font-mono text-indigo-600">
+                    {stats.manager}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground uppercase">
+                    Manager
                   </p>
                 </div>
               </div>

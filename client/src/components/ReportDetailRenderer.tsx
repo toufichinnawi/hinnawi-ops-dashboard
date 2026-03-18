@@ -715,6 +715,127 @@ function DeepCleanDetail({ data }: { data: any }) {
   );
 }
 
+// ─── Manager Evaluation Detail ──────────────────────────────────
+function ManagerEvaluationDetail({ data }: { data: any }) {
+  const managerName = data.managerName || "";
+  const evaluatorName = data.evaluatorName || "";
+  const evaluationPeriod = data.evaluationPeriod || "";
+  const sections = data.sections || [];
+  const totalScore = data.totalScore || "0";
+  const performanceLevel = data.performanceLevel || "";
+  const futureAssessment = data.futureAssessment || "";
+  const currentSalary = data.currentSalary || "";
+  const recommendedAdjustment = data.recommendedAdjustment || "";
+  const bonusEligible = data.bonusEligible;
+  const overallComments = data.overallComments || "";
+
+  return (
+    <div className="space-y-3">
+      <NotesBanner notes={overallComments} label="Overall Comments" />
+      <div className="flex flex-wrap items-center gap-4 text-sm mb-2">
+        {managerName && (
+          <div>
+            <span className="text-muted-foreground">Manager: </span>
+            <span className="font-medium">{managerName}</span>
+          </div>
+        )}
+        {evaluatorName && (
+          <div>
+            <span className="text-muted-foreground">Evaluator: </span>
+            <span className="font-medium">{evaluatorName}</span>
+          </div>
+        )}
+        {evaluationPeriod && (
+          <div>
+            <span className="text-muted-foreground">Period: </span>
+            <span className="font-medium">{evaluationPeriod}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Performance Level & Score */}
+      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-2">
+        <div className="flex items-center gap-4 text-sm">
+          <div>
+            <span className="text-xs text-indigo-600 font-medium">Total Score: </span>
+            <span className="font-bold text-indigo-900">{totalScore}/100</span>
+          </div>
+          {performanceLevel && (
+            <div>
+              <span className="text-xs text-indigo-600 font-medium">Level: </span>
+              <span className="font-bold text-indigo-900">{performanceLevel}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Sections with criteria */}
+      {sections.map((section: any, si: number) => (
+        <div key={si}>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              {section.title} ({section.weight}%)
+            </p>
+            <span className="text-xs font-mono text-muted-foreground">
+              {section.subtotal}/{section.maxScore}
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {(section.items || []).map((item: any, ii: number) => (
+              <div key={ii} className="p-2.5 rounded-lg border bg-card">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{item.title || `Item ${ii + 1}`}</p>
+                  </div>
+                  <Stars rating={item.rating || 0} />
+                </div>
+                {item.comment && (
+                  <p className="text-xs text-muted-foreground mt-1.5 italic">"{item.comment}"</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* 12-Month Future Assessment */}
+      {futureAssessment && (
+        <div className="p-3 rounded-lg border bg-card">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">12-Month Future Assessment</p>
+          <p className="text-sm font-medium">{futureAssessment}</p>
+        </div>
+      )}
+
+      {/* Compensation Review */}
+      {(currentSalary || recommendedAdjustment || bonusEligible !== undefined) && (
+        <div className="p-3 rounded-lg border bg-card">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Compensation Review</p>
+          <div className="flex flex-wrap gap-4 text-sm">
+            {currentSalary && (
+              <div>
+                <span className="text-muted-foreground">Current Salary: </span>
+                <span className="font-medium">{currentSalary}</span>
+              </div>
+            )}
+            {recommendedAdjustment && (
+              <div>
+                <span className="text-muted-foreground">Recommended Adjustment: </span>
+                <span className="font-medium">{recommendedAdjustment}</span>
+              </div>
+            )}
+            {bonusEligible !== undefined && (
+              <div>
+                <span className="text-muted-foreground">Bonus Eligible: </span>
+                <span className="font-medium">{bonusEligible ? "Yes" : "No"}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Generic Fallback ────────────────────────────────────────────
 function GenericDetail({ data }: { data: any }) {
   if (!data || typeof data !== "object") return null;
@@ -823,6 +944,7 @@ const REPORT_TYPE_NORMALIZE: Record<string, string> = {
   "Weekly Deep Clean Checklist": "deep-clean",
   "Deep Clean Checklist": "deep-clean",
   "Weekly Deep Clean": "deep-clean",
+  "Manager Evaluation": "manager-evaluation",
 };
 
 function normalizeType(reportType: string): string {
@@ -858,6 +980,8 @@ export function ReportDetailRenderer({ reportType, data, hideCosts = false }: { 
         return <PerformanceEvaluationDetail data={payload} />;
       case "deep-clean":
         return <DeepCleanDetail data={payload} />;
+      case "manager-evaluation":
+        return <ManagerEvaluationDetail data={payload} />;
       default:
         return <GenericDetail data={payload} />;
     }

@@ -434,6 +434,8 @@ export function ChecklistForm({ type, storeCode, storeName, positionLabel, onBac
       return <PastryOrdersForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} {...editProps} />;
     case "performance-evaluation":
       return <PerformanceEvaluationForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} {...editProps} />;
+    case "manager-evaluation":
+      return <ManagerEvaluationForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} {...editProps} />;
     case "deep-clean":
       return <DeepCleanChecklistForm storeCode={storeCode} storeName={storeName} positionLabel={positionLabel} onBack={onBack} {...editProps} />;
     default:
@@ -2474,6 +2476,417 @@ function DeepCleanChecklistForm({ storeCode, storeName, positionLabel, onBack, e
           className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white"
         >
           {submitting ? "Submitting..." : isEdit ? "Update Checklist" : "Submit Checklist"}
+        </Button>
+        {draftButton}
+      </div>
+      {duplicateDialog}
+    </PublicFormLayout>
+  );
+}
+
+
+// ─── Manager Evaluation Data ───
+
+const MANAGER_EVAL_SECTIONS = [
+  {
+    title: "Financial Performance",
+    weight: 25,
+    items: [
+      { key: "revenue_growth", label: "Revenue Growth" },
+      { key: "labour_control", label: "Labour % Control" },
+      { key: "food_cost", label: "Food Cost %" },
+      { key: "waste_control", label: "Waste Control" },
+      { key: "profit_contribution", label: "Profit Contribution" },
+    ],
+  },
+  {
+    title: "Operational Excellence",
+    weight: 20,
+    items: [
+      { key: "store_audit_avg", label: "Store Audit Average" },
+      { key: "cleanliness", label: "Cleanliness Consistency" },
+      { key: "product_quality", label: "Product Quality Consistency" },
+      { key: "systems_compliance", label: "Systems Compliance" },
+    ],
+  },
+  {
+    title: "Leadership & Team Development",
+    weight: 20,
+    items: [
+      { key: "staff_retention", label: "Staff Retention" },
+      { key: "training_new_staff", label: "Training New Staff" },
+      { key: "conflict_resolution", label: "Conflict Resolution" },
+      { key: "team_morale", label: "Team Morale" },
+    ],
+  },
+  {
+    title: "Growth & Initiative",
+    weight: 15,
+    items: [
+      { key: "sales_growth", label: "Sales Growth Efforts" },
+      { key: "local_marketing", label: "Local Marketing Actions" },
+      { key: "cost_saving", label: "Cost-Saving Initiatives" },
+    ],
+  },
+  {
+    title: "Accountability & Owner Trust",
+    weight: 20,
+    items: [
+      { key: "transparency", label: "Transparency" },
+      { key: "communication", label: "Communication" },
+      { key: "takes_ownership", label: "Takes Ownership" },
+      { key: "brings_solutions", label: "Brings Solutions" },
+      { key: "professionalism", label: "Professionalism" },
+    ],
+  },
+];
+
+const FUTURE_ASSESSMENT_OPTIONS = [
+  "Can manage 2 stores",
+  "Ready for multi-unit",
+  "Strong single-store operator",
+  "Not ready for growth",
+];
+
+const PERFORMANCE_LEVELS = [
+  { range: "90 – 100", label: "Promotion Track / High Bonus", color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+  { range: "80 – 89", label: "Strong Performer", color: "text-blue-700 bg-blue-50 border-blue-200" },
+  { range: "70 – 79", label: "Needs Structured Improvement", color: "text-amber-700 bg-amber-50 border-amber-200" },
+  { range: "60 – 69", label: "Performance Plan", color: "text-orange-700 bg-orange-50 border-orange-200" },
+  { range: "Below 60", label: "Replacement Review", color: "text-red-700 bg-red-50 border-red-200" },
+];
+
+function getPerformanceLevel(score: number) {
+  if (score >= 90) return PERFORMANCE_LEVELS[0];
+  if (score >= 80) return PERFORMANCE_LEVELS[1];
+  if (score >= 70) return PERFORMANCE_LEVELS[2];
+  if (score >= 60) return PERFORMANCE_LEVELS[3];
+  return PERFORMANCE_LEVELS[4];
+}
+
+type ManagerEvalRatings = Record<string, { rating: number; comment: string }>;
+
+function initManagerEvalRatings(): ManagerEvalRatings {
+  const r: ManagerEvalRatings = {};
+  MANAGER_EVAL_SECTIONS.forEach((s) => s.items.forEach((item) => { r[item.key] = { rating: 0, comment: "" }; }));
+  return r;
+}
+
+function calcFinalScore(ratings: ManagerEvalRatings): number {
+  let totalWeighted = 0;
+  MANAGER_EVAL_SECTIONS.forEach((section) => {
+    const maxRaw = section.items.length * 5;
+    const rawSum = section.items.reduce((sum, item) => sum + (ratings[item.key]?.rating || 0), 0);
+    const sectionScore = maxRaw > 0 ? (rawSum / maxRaw) * section.weight : 0;
+    totalWeighted += sectionScore;
+  });
+  return Math.round(totalWeighted * 100) / 100;
+}
+
+function ManagerEvaluationForm({ storeCode, storeName, positionLabel, onBack, editReportId, editData }: { storeCode: string; storeName: string; positionLabel: string; onBack: () => void; editReportId?: number; editData?: any }) {
+  const isEdit = !!editReportId;
+  const { value: draft, setValue: setDraft, clearDraft, draftButton } = useDraft(
+    `mgr-eval-${storeCode}`,
+    {
+      name: "",
+      date: new Date().toISOString().split("T")[0],
+      managerName: "",
+      evaluationPeriod: "",
+      ratings: initManagerEvalRatings(),
+      futureAssessment: "",
+      currentSalary: "",
+      recommendedAdjustment: "",
+      bonusEligible: "",
+      overallComments: "",
+    }
+  );
+  const { name, date, managerName, evaluationPeriod, ratings, futureAssessment, currentSalary, recommendedAdjustment, bonusEligible, overallComments } = draft;
+  const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
+  const setDate = (v: string) => setDraft((d) => ({ ...d, date: v }));
+  const setManagerName = (v: string) => setDraft((d) => ({ ...d, managerName: v }));
+  const setEvaluationPeriod = (v: string) => setDraft((d) => ({ ...d, evaluationPeriod: v }));
+  const setRating = (key: string, field: string, value: any) => setDraft((d) => ({ ...d, ratings: { ...d.ratings, [key]: { ...d.ratings[key], [field]: value } } }));
+  const setFutureAssessment = (v: string) => setDraft((d) => ({ ...d, futureAssessment: v }));
+  const setCurrentSalary = (v: string) => setDraft((d) => ({ ...d, currentSalary: v }));
+  const setRecommendedAdjustment = (v: string) => setDraft((d) => ({ ...d, recommendedAdjustment: v }));
+  const setBonusEligible = (v: string) => setDraft((d) => ({ ...d, bonusEligible: v }));
+  const setOverallComments = (v: string) => setDraft((d) => ({ ...d, overallComments: v }));
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog } = useDuplicateCheck();
+
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = typeof editData === "string" ? JSON.parse(editData) : editData;
+    const newRatings = initManagerEvalRatings();
+    if (d.sections) {
+      d.sections.forEach((sec: any) => {
+        if (sec.items) {
+          sec.items.forEach((item: any) => {
+            if (newRatings[item.key] !== undefined) {
+              newRatings[item.key] = { rating: item.rating || 0, comment: item.comment || "" };
+            }
+          });
+        }
+      });
+    }
+    setDraft((prev) => ({
+      ...prev,
+      name: d.submitterName || prev.name,
+      managerName: d.managerName || prev.managerName,
+      evaluationPeriod: d.evaluationPeriod || prev.evaluationPeriod,
+      ratings: newRatings,
+      futureAssessment: d.futureAssessment || prev.futureAssessment,
+      currentSalary: d.currentSalary || prev.currentSalary,
+      recommendedAdjustment: d.recommendedAdjustment || prev.recommendedAdjustment,
+      bonusEligible: d.bonusEligible || prev.bonusEligible,
+      overallComments: d.overallComments || prev.overallComments,
+    }));
+  }, [editData]);
+
+  const finalScore = calcFinalScore(ratings);
+  const perfLevel = getPerformanceLevel(finalScore);
+
+  const handleSubmit = async () => {
+    if (!name.trim()) { toast.error("Please enter your name (evaluator)"); return; }
+    if (!managerName.trim()) { toast.error("Please enter the manager's name"); return; }
+
+    const reportData = {
+      managerName,
+      evaluationPeriod,
+      sections: MANAGER_EVAL_SECTIONS.map((s) => ({
+        title: s.title,
+        weight: s.weight,
+        items: s.items.map((item) => ({
+          key: item.key,
+          label: item.label,
+          rating: ratings[item.key]?.rating || 0,
+          comment: ratings[item.key]?.comment || "",
+        })),
+        subtotal: s.items.reduce((sum, item) => sum + (ratings[item.key]?.rating || 0), 0),
+        maxScore: s.items.length * 5,
+      })),
+      finalScore,
+      performanceLevel: perfLevel.label,
+      futureAssessment,
+      currentSalary,
+      recommendedAdjustment,
+      bonusEligible,
+      overallComments,
+      submittedVia: `Public - ${positionLabel}`,
+      submitterName: name.trim(),
+    };
+
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId!, { data: reportData, totalScore: String(finalScore), status: "submitted" });
+        setSubmitted(true);
+        toast.success("Manager Evaluation updated!");
+      } catch { toast.error("Failed to update"); }
+      setSubmitting(false);
+      return;
+    }
+
+    await submitWithDuplicateCheck(
+      {
+        submitterName: name.trim(),
+        reportType: "Manager Evaluation",
+        location: storeName,
+        reportDate: date,
+        data: reportData,
+        totalScore: String(finalScore),
+      },
+      () => { setSubmitted(true); clearDraft(); toast.success("Manager Evaluation submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
+  };
+
+  if (submitted) {
+    return (
+      <SuccessScreen
+        message={`Manager Evaluation for ${managerName} at ${storeName} ${isEdit ? "updated" : "submitted"}. Final Score: ${finalScore}/100 — ${perfLevel.label}`}
+        onNew={isEdit ? undefined : () => {
+          setSubmitted(false);
+          setDraft((d) => ({
+            ...d,
+            managerName: "",
+            evaluationPeriod: "",
+            ratings: initManagerEvalRatings(),
+            futureAssessment: "",
+            currentSalary: "",
+            recommendedAdjustment: "",
+            bonusEligible: "",
+            overallComments: "",
+          }));
+        }}
+        onBack={onBack}
+      />
+    );
+  }
+
+  return (
+    <PublicFormLayout title={isEdit ? "Edit Manager Evaluation" : "Manager Evaluation"} subtitle={`${positionLabel} — ${storeName}`} onBack={onBack}>
+      {isEdit && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+          <span className="font-medium">Editing mode</span> — Changes will update the existing report
+        </div>
+      )}
+
+      {/* Header Fields */}
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <div className="space-y-2">
+            <Label>Your Name (Evaluator) *</Label>
+            <Input placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Manager Being Evaluated *</Label>
+              <Input placeholder="Manager name" value={managerName} onChange={(e) => setManagerName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Evaluation Period</Label>
+              <Input placeholder="e.g. Jan 2026 – Jun 2026" value={evaluationPeriod} onChange={(e) => setEvaluationPeriod(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Date</Label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Final Score Badge */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Badge variant="outline" className="text-lg px-4 py-2 border-[#faa600] text-[#faa600]">
+          Final Score: {finalScore} / 100
+        </Badge>
+        <Badge variant="outline" className={cn("text-sm px-3 py-1.5 border", perfLevel.color)}>
+          {perfLevel.label}
+        </Badge>
+      </div>
+
+      {/* Performance Level Reference */}
+      <Card>
+        <CardHeader><CardTitle className="text-sm">Performance Level Guide</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+            {PERFORMANCE_LEVELS.map((pl) => (
+              <div key={pl.range} className={cn("text-center px-2 py-1.5 rounded border text-xs", pl.color, finalScore >= 0 && perfLevel.range === pl.range ? "ring-2 ring-offset-1 ring-current font-bold" : "opacity-70")}>
+                <div className="font-medium">{pl.range}</div>
+                <div>{pl.label}</div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Evaluation Sections */}
+      {MANAGER_EVAL_SECTIONS.map((section) => {
+        const sectionRaw = section.items.reduce((sum, item) => sum + (ratings[item.key]?.rating || 0), 0);
+        const sectionMax = section.items.length * 5;
+        const sectionWeighted = sectionMax > 0 ? ((sectionRaw / sectionMax) * section.weight).toFixed(1) : "0.0";
+        return (
+          <Card key={section.title}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">{section.title}</CardTitle>
+                <Badge variant="outline" className="text-xs">
+                  {sectionRaw}/{sectionMax} → {sectionWeighted}/{section.weight} pts ({section.weight}%)
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {section.items.map((item) => (
+                <div key={item.key} className="border rounded-lg p-3 space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_120px_1fr] sm:gap-3 sm:items-center">
+                  <p className="text-sm font-medium">{item.label}</p>
+                  <div className="flex justify-center">
+                    <StarRating value={ratings[item.key]?.rating || 0} onChange={(v) => setRating(item.key, "rating", v)} size="sm" />
+                  </div>
+                  <Input
+                    placeholder="Comment..."
+                    value={ratings[item.key]?.comment || ""}
+                    onChange={(e) => setRating(item.key, "comment", e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        );
+      })}
+
+      {/* 12-Month Future Assessment */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">12-Month Future Assessment</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {FUTURE_ASSESSMENT_OPTIONS.map((option) => (
+            <label key={option} className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", futureAssessment === option ? "bg-[#faa600]/10 border-[#faa600]" : "hover:bg-muted/50")}>
+              <input
+                type="radio"
+                name="futureAssessment"
+                checked={futureAssessment === option}
+                onChange={() => setFutureAssessment(option)}
+                className="accent-[#faa600]"
+              />
+              <span className="text-sm">{option}</span>
+            </label>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Compensation Review */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Compensation Review</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Current Salary</Label>
+              <Input placeholder="e.g. $55,000" value={currentSalary} onChange={(e) => setCurrentSalary(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Recommended Adjustment</Label>
+              <Input placeholder="e.g. +5% or +$3,000" value={recommendedAdjustment} onChange={(e) => setRecommendedAdjustment(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Bonus Eligible</Label>
+            <div className="flex gap-4">
+              {["Yes", "No"].map((opt) => (
+                <label key={opt} className={cn("flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors", bonusEligible === opt ? "bg-[#faa600]/10 border-[#faa600]" : "hover:bg-muted/50")}>
+                  <input type="radio" name="bonusEligible" checked={bonusEligible === opt} onChange={() => setBonusEligible(opt)} className="accent-[#faa600]" />
+                  <span className="text-sm">{opt}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Overall Comments */}
+      <Card>
+        <CardContent className="pt-6">
+          <Label>Overall Comments & Recommendations</Label>
+          <Textarea
+            value={overallComments}
+            onChange={(e) => setOverallComments(e.target.value)}
+            placeholder="Overall assessment, key strengths, areas for improvement, action items..."
+            rows={4}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Submit */}
+      <div className="flex flex-col gap-3">
+        <Button
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="w-full h-12 text-lg bg-[#faa600] hover:bg-[#e09500] text-white"
+        >
+          {submitting ? "Submitting..." : isEdit ? "Update Evaluation" : "Submit Evaluation"}
         </Button>
         {draftButton}
       </div>

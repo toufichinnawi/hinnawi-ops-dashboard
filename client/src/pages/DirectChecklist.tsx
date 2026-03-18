@@ -239,6 +239,7 @@ const SLUG_TO_CHECKLIST: Record<string, ChecklistType> = {
   "bagel-orders": "bagel-orders",
   "pastry-orders": "pastry-orders",
   "deep-clean": "deep-clean",
+  "manager-eval": "manager-evaluation",
 };
 
 const SLUG_TO_LABEL: Record<string, string> = {
@@ -252,6 +253,7 @@ const SLUG_TO_LABEL: Record<string, string> = {
   "bagel-orders": "Bagel Orders",
   "pastry-orders": "Pastry Orders",
   "deep-clean": "Weekly Deep Clean Checklist",
+  "manager-eval": "Manager Evaluation",
 };
 
 // ─── Form Components ───
@@ -2161,6 +2163,286 @@ function DeepCleanForm({ onBack, editReportId, editData, editStore }: { onBack: 
   );
 }
 
+// ─── Manager Evaluation Data (DirectChecklist version) ───
+
+const MGR_EVAL_SECTIONS = [
+  {
+    title: "Financial Performance",
+    weight: 25,
+    items: [
+      { key: "revenue_growth", label: "Revenue Growth" },
+      { key: "labour_control", label: "Labour % Control" },
+      { key: "food_cost", label: "Food Cost %" },
+      { key: "waste_control", label: "Waste Control" },
+      { key: "profit_contribution", label: "Profit Contribution" },
+    ],
+  },
+  {
+    title: "Operational Excellence",
+    weight: 20,
+    items: [
+      { key: "store_audit_avg", label: "Store Audit Average" },
+      { key: "cleanliness", label: "Cleanliness Consistency" },
+      { key: "product_quality", label: "Product Quality Consistency" },
+      { key: "systems_compliance", label: "Systems Compliance" },
+    ],
+  },
+  {
+    title: "Leadership & Team Development",
+    weight: 20,
+    items: [
+      { key: "staff_retention", label: "Staff Retention" },
+      { key: "training_new_staff", label: "Training New Staff" },
+      { key: "conflict_resolution", label: "Conflict Resolution" },
+      { key: "team_morale", label: "Team Morale" },
+    ],
+  },
+  {
+    title: "Growth & Initiative",
+    weight: 15,
+    items: [
+      { key: "sales_growth", label: "Sales Growth Efforts" },
+      { key: "local_marketing", label: "Local Marketing Actions" },
+      { key: "cost_saving", label: "Cost-Saving Initiatives" },
+    ],
+  },
+  {
+    title: "Accountability & Owner Trust",
+    weight: 20,
+    items: [
+      { key: "transparency", label: "Transparency" },
+      { key: "communication", label: "Communication" },
+      { key: "takes_ownership", label: "Takes Ownership" },
+      { key: "brings_solutions", label: "Brings Solutions" },
+      { key: "professionalism", label: "Professionalism" },
+    ],
+  },
+];
+
+const MGR_FUTURE_OPTIONS = [
+  "Can manage 2 stores",
+  "Ready for multi-unit",
+  "Strong single-store operator",
+  "Not ready for growth",
+];
+
+const MGR_PERF_LEVELS = [
+  { min: 90, label: "Promotion Track / High Bonus", color: "text-emerald-700" },
+  { min: 80, label: "Strong Performer", color: "text-blue-700" },
+  { min: 70, label: "Needs Structured Improvement", color: "text-amber-700" },
+  { min: 60, label: "Performance Plan", color: "text-orange-700" },
+  { min: 0, label: "Replacement Review", color: "text-red-700" },
+];
+
+function getMgrPerfLevel(score: number) {
+  return MGR_PERF_LEVELS.find((l) => score >= l.min) || MGR_PERF_LEVELS[MGR_PERF_LEVELS.length - 1];
+}
+
+type MgrEvalRatings = Record<string, { rating: number; comment: string }>;
+
+function initMgrRatings(): MgrEvalRatings {
+  const r: MgrEvalRatings = {};
+  MGR_EVAL_SECTIONS.forEach((s) => s.items.forEach((item) => { r[item.key] = { rating: 0, comment: "" }; }));
+  return r;
+}
+
+function calcMgrFinalScore(ratings: MgrEvalRatings): number {
+  let total = 0;
+  MGR_EVAL_SECTIONS.forEach((section) => {
+    const maxRaw = section.items.length * 5;
+    const rawSum = section.items.reduce((sum, item) => sum + (ratings[item.key]?.rating || 0), 0);
+    total += maxRaw > 0 ? (rawSum / maxRaw) * section.weight : 0;
+  });
+  return Math.round(total * 100) / 100;
+}
+
+function ManagerEvaluationForm({ onBack, editReportId, editData, editStore }: { onBack: () => void } & EditProps) {
+  const isEdit = !!editReportId;
+  const [selectedStore, setSelectedStore] = useState("");
+  const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
+  const [evaluatorName, setEvaluatorName] = useState("");
+  const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [managerName, setManagerName] = useState("");
+  const [evaluationPeriod, setEvaluationPeriod] = useState("");
+  const [ratings, setRatings] = useState<MgrEvalRatings>(initMgrRatings);
+  const [futureAssessment, setFutureAssessment] = useState("");
+  const [currentSalary, setCurrentSalary] = useState("");
+  const [recommendedAdjustment, setRecommendedAdjustment] = useState("");
+  const [bonusEligible, setBonusEligible] = useState("");
+  const [overallComments, setOverallComments] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog: mgrDuplicateDialog } = useDuplicateCheck();
+
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedStore(editStore);
+    if (d.reportDate || d.dateOfSubmission) setReportDate(d.reportDate || d.dateOfSubmission);
+    if (d.submitterName) setEvaluatorName(d.submitterName);
+    if (d.managerName) setManagerName(d.managerName);
+    if (d.evaluationPeriod) setEvaluationPeriod(d.evaluationPeriod);
+    if (d.futureAssessment) setFutureAssessment(d.futureAssessment);
+    if (d.currentSalary) setCurrentSalary(d.currentSalary);
+    if (d.recommendedAdjustment) setRecommendedAdjustment(d.recommendedAdjustment);
+    if (d.bonusEligible) setBonusEligible(d.bonusEligible);
+    if (d.overallComments) setOverallComments(d.overallComments);
+    if (d.sections) {
+      const newRatings = initMgrRatings();
+      d.sections.forEach((sec: any) => {
+        if (sec.items) sec.items.forEach((item: any) => {
+          if (newRatings[item.key] !== undefined) newRatings[item.key] = { rating: item.rating || 0, comment: item.comment || "" };
+        });
+      });
+      setRatings(newRatings);
+    }
+  }, [editData, editStore]);
+
+  const finalScore = calcMgrFinalScore(ratings);
+  const perfLevel = getMgrPerfLevel(finalScore);
+
+  const handleSubmit = async () => {
+    if (!evaluatorName.trim() || !managerName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
+    const reportData = {
+      managerName,
+      evaluationPeriod,
+      sections: MGR_EVAL_SECTIONS.map((s) => ({
+        title: s.title,
+        weight: s.weight,
+        items: s.items.map((item) => ({ key: item.key, label: item.label, rating: ratings[item.key]?.rating || 0, comment: ratings[item.key]?.comment || "" })),
+        subtotal: s.items.reduce((sum, item) => sum + (ratings[item.key]?.rating || 0), 0),
+        maxScore: s.items.length * 5,
+      })),
+      finalScore,
+      performanceLevel: perfLevel.label,
+      futureAssessment,
+      currentSalary,
+      recommendedAdjustment,
+      bonusEligible,
+      overallComments,
+      submittedVia: "Admin Dashboard",
+      submitterName: evaluatorName.trim(),
+    };
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        await updateReport(editReportId!, { data: reportData, totalScore: String(finalScore), status: "submitted" });
+        setSubmitted(true); toast.success("Manager Evaluation updated!");
+      } catch { toast.error("Failed to update"); }
+      finally { setSubmitting(false); }
+      return;
+    }
+    await submitWithDuplicateCheck(
+      {
+        submitterName: evaluatorName.trim(),
+        reportType: "Manager Evaluation",
+        location: selectedStore,
+        reportDate,
+        data: reportData,
+        totalScore: String(finalScore),
+      },
+      () => { setSubmitted(true); toast.success("Manager Evaluation submitted!"); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
+  };
+
+  if (submitted) return (
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
+      <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
+      <h3 className="text-xl font-serif">Manager Evaluation Submitted</h3>
+      <p className="text-muted-foreground">Evaluation for {managerName} at {currentStoreName} — Score: {finalScore}/100 ({perfLevel.label})</p>
+      <Button onClick={onBack} variant="outline">Back</Button>
+    </motion.div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <Card><CardContent className="pt-6 space-y-4">
+        <StoreDropdown value={selectedStore} onChange={setSelectedStore} />
+        <div className="space-y-1.5"><Label>Your Name (Evaluator) *</Label><Input value={evaluatorName} onChange={(e) => setEvaluatorName(e.target.value)} placeholder="Your name" /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5"><Label>Manager Being Evaluated *</Label><Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Manager name" /></div>
+          <div className="space-y-1.5"><Label>Evaluation Period</Label><Input value={evaluationPeriod} onChange={(e) => setEvaluationPeriod(e.target.value)} placeholder="e.g. Jan 2026 – Jun 2026" /></div>
+        </div>
+        <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} /></div>
+      </CardContent></Card>
+
+      {isEdit && <EditBanner reportId={editReportId!} />}
+
+      {/* Score Summary */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-lg font-serif font-semibold border border-[#D4A853] text-[#D4A853] rounded-md px-4 py-2">Final Score: {finalScore} / 100</span>
+        <span className={cn("text-sm font-medium px-3 py-1.5 rounded-md border", perfLevel.color)}>{perfLevel.label}</span>
+      </div>
+
+      {/* Sections */}
+      {MGR_EVAL_SECTIONS.map((section) => {
+        const sectionRaw = section.items.reduce((sum, item) => sum + (ratings[item.key]?.rating || 0), 0);
+        const sectionMax = section.items.length * 5;
+        const sectionWeighted = sectionMax > 0 ? ((sectionRaw / sectionMax) * section.weight).toFixed(1) : "0.0";
+        return (
+          <Card key={section.title}>
+            <CardContent className="pt-4 pb-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="font-medium">{section.title}</p>
+                <span className="text-xs text-muted-foreground border rounded px-2 py-0.5">{sectionRaw}/{sectionMax} → {sectionWeighted}/{section.weight} pts ({section.weight}%)</span>
+              </div>
+              {section.items.map((item) => (
+                <div key={item.key} className="flex items-center gap-3">
+                  <span className="text-sm min-w-[140px]">{item.label}</span>
+                  <StarRating value={ratings[item.key]?.rating || 0} onChange={(v) => setRatings((p) => ({ ...p, [item.key]: { ...p[item.key], rating: v } }))} />
+                  <Input placeholder="Comment..." value={ratings[item.key]?.comment || ""} onChange={(e) => setRatings((p) => ({ ...p, [item.key]: { ...p[item.key], comment: e.target.value } }))} className="flex-1 h-8" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        );
+      })}
+
+      {/* 12-Month Future Assessment */}
+      <Card><CardContent className="pt-4 pb-4 space-y-3">
+        <p className="font-medium">12-Month Future Assessment</p>
+        {MGR_FUTURE_OPTIONS.map((opt) => (
+          <label key={opt} className={cn("flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors", futureAssessment === opt ? "bg-[#D4A853]/10 border-[#D4A853]" : "hover:bg-muted/50")}>
+            <input type="radio" name="futureAssessment" checked={futureAssessment === opt} onChange={() => setFutureAssessment(opt)} className="accent-[#D4A853]" />
+            <span className="text-sm">{opt}</span>
+          </label>
+        ))}
+      </CardContent></Card>
+
+      {/* Compensation Review */}
+      <Card><CardContent className="pt-4 pb-4 space-y-4">
+        <p className="font-medium">Compensation Review</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5"><Label>Current Salary</Label><Input value={currentSalary} onChange={(e) => setCurrentSalary(e.target.value)} placeholder="e.g. $55,000" /></div>
+          <div className="space-y-1.5"><Label>Recommended Adjustment</Label><Input value={recommendedAdjustment} onChange={(e) => setRecommendedAdjustment(e.target.value)} placeholder="e.g. +5% or +$3,000" /></div>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Bonus Eligible</Label>
+          <div className="flex gap-4">
+            {["Yes", "No"].map((opt) => (
+              <label key={opt} className={cn("flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer", bonusEligible === opt ? "bg-[#D4A853]/10 border-[#D4A853]" : "hover:bg-muted/50")}>
+                <input type="radio" name="bonusEligible" checked={bonusEligible === opt} onChange={() => setBonusEligible(opt)} className="accent-[#D4A853]" />
+                <span className="text-sm">{opt}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </CardContent></Card>
+
+      {/* Overall Comments */}
+      <Card><CardContent className="pt-6 space-y-3"><Label>Overall Comments & Recommendations</Label><Textarea value={overallComments} onChange={(e) => setOverallComments(e.target.value)} placeholder="Overall assessment, key strengths, areas for improvement, action items..." rows={4} /></CardContent></Card>
+
+      <div className="flex gap-3">
+        <Button variant="outline" onClick={onBack}>Cancel</Button>
+        <Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : isEdit ? "Update Evaluation" : "Submit Evaluation"}</Button>
+      </div>
+      {mgrDuplicateDialog}
+    </div>
+  );
+}
+
 // ─── Main Component ───
 
 export default function DirectChecklist() {
@@ -2235,6 +2517,7 @@ export default function DirectChecklist() {
     "bagel-orders": <BagelOrdersForm onBack={goBack} {...editProps} />,
     "pastry-orders": <PastryOrdersForm onBack={goBack} {...editProps} />,
     "deep-clean": <DeepCleanForm onBack={goBack} {...editProps} />,
+    "manager-eval": <ManagerEvaluationForm onBack={goBack} {...editProps} />,
   };
 
   return (

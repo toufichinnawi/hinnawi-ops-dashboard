@@ -220,9 +220,9 @@ async function startServer() {
       const clientName = typeof data === "object" && data !== null ? data.clientName : undefined;
 
       // For Training/Performance Evaluations, uniqueness is per employee name (multiple employees per date)
-      const isEvaluation = normalizedReportType === "training-evaluation" || normalizedReportType === "performance-evaluation";
+      const isEvaluation = normalizedReportType === "training-evaluation" || normalizedReportType === "performance-evaluation" || normalizedReportType === "manager evaluation";
       const evaluationEmployeeName = typeof data === "object" && data !== null
-        ? (data.traineeName || data.employeeName)
+        ? (data.traineeName || data.employeeName || data.managerName)
         : undefined;
 
       if (isEvaluation && evaluationEmployeeName) {

@@ -1597,3 +1597,15 @@
 ## Add Performance Evaluation to Ops Manager Portal
 
 - [x] Add Performance Evaluation to Operations Manager portal sidebar
+
+## Manager Evaluation Form
+
+- [x] Review Manager Evaluation document (5 weighted sections, /100 scoring, performance levels)
+- [x] Add manager-evaluation checklist definition (positionChecklists.ts)
+- [x] Build Manager Evaluation form (5 sections: Financial 25%, Operational 20%, Leadership 20%, Growth 15%, Accountability 20%)
+- [x] Add ReportDetailRenderer for Manager Evaluation (sections, scores, future assessment, compensation)
+- [x] Add to Admin dashboard sidebar (/checklists/manager-eval)
+- [x] Add to Operations Manager portal sidebar
+- [x] Include in Team Evaluations Report (filter, stats, indigo color coding)
+- [x] Add managerName-based duplicate check for Manager Evaluation
+- [x] 302 tests passing (all existing tests still pass)
