@@ -42,6 +42,7 @@ import { exportReportToPdf } from "@/lib/exportReportPdf";
 import { StorePerformanceContent } from "@/pages/Stores";
 import { BagelProductionContent } from "@/pages/BagelProduction";
 import { PastryProductionContent } from "@/pages/PastryProduction";
+import { TeamEvaluationsContent } from "@/pages/TeamEvaluations";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -101,6 +102,7 @@ const POSITIONS: PositionDef[] = [
     sidebarItems: [
       si("scorecard", "Operations Scorecard", BarChart3, "info", { infoContent: "scorecard" }),
       si("store-perf", "Store Performance", TrendingUp, "info", { infoContent: "store-performance" }),
+      si("team-evals", "Team Evaluations Report", Users, "info", { infoContent: "team-evaluations" }),
       si("reports", "Reports", FileText, "info", { infoContent: "reports" }),
       si("ops-audit", "Store Weekly Audit", ClipboardCheck, "checklist", { checklistType: "ops-manager-checklist" }),
       si("training", "Training Evaluation", GraduationCap, "checklist", { checklistType: "training-evaluation" }),
@@ -124,6 +126,7 @@ const POSITIONS: PositionDef[] = [
     sidebarItems: [
       si("scorecard", "Operations Scorecard", BarChart3, "info", { infoContent: "scorecard" }),
       si("store-perf", "Store Performance", TrendingUp, "info", { infoContent: "store-performance" }),
+      si("team-evals", "Team Evaluations Report", Users, "info", { infoContent: "team-evaluations" }),
       si("reports", "Reports", FileText, "info", { infoContent: "reports" }),
       si("daily-checklist", "Store Weekly Checklist", ClipboardCheck, "checklist", { checklistType: "manager-checklist" }),
       si("weekly-scorecard", "Weekly Scorecard", BarChart3, "checklist", { checklistType: "weekly-scorecard" }),
@@ -1021,6 +1024,16 @@ function PortalInfoPage({
     return (
       <div className="max-w-[1400px]">
         <StorePerformanceContent storeFilter={storeId} />
+      </div>
+    );
+  }
+
+  if (pageId === "team-evaluations") {
+    // Store Manager sees only their store's evaluations; Ops Manager sees all
+    const evalStoreFilter = store?.storeCode || undefined;
+    return (
+      <div className="max-w-[1400px]">
+        <TeamEvaluationsContent storeFilter={evalStoreFilter} />
       </div>
     );
   }

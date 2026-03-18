@@ -214,14 +214,14 @@ function EmployeeSummaryCard({
   );
 }
 
-// ─── Main Component ─────────────────────────────────────────────
-export default function TeamEvaluations() {
+// ─── Reusable Content Component (used in Portal too) ────────────
+export function TeamEvaluationsContent({ storeFilter: externalStoreFilter }: { storeFilter?: string }) {
   const { data: allReports = [], isLoading } =
     trpc.reports.allReports.useQuery();
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [storeFilter, setStoreFilter] = useState("all");
+  const [storeFilter, setStoreFilter] = useState(externalStoreFilter || "all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [datePreset, setDatePreset] = useState(0); // index into DATE_PRESETS
   const [viewMode, setViewMode] = useState<"employees" | "list">(
@@ -368,7 +368,6 @@ export default function TeamEvaluations() {
     searchQuery.trim() !== "";
 
   return (
-    <DashboardLayout>
       <div className="p-6 lg:p-8 space-y-6 max-w-[1400px]">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -842,6 +841,14 @@ export default function TeamEvaluations() {
           </DialogContent>
         </Dialog>
       </div>
+  );
+}
+
+// ─── Main Page (wraps content in DashboardLayout) ───────────────
+export default function TeamEvaluations() {
+  return (
+    <DashboardLayout>
+      <TeamEvaluationsContent />
     </DashboardLayout>
   );
 }

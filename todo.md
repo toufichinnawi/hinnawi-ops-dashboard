@@ -1586,3 +1586,10 @@
 - [x] Quick stats: total evaluations, employees evaluated, avg scores by store
 - [x] Add sidebar navigation link and route for Team Evaluations Report
 - [x] 20 new evaluation duplicate tests passing (302 total)
+
+## Add Team Evaluations Report to Portal
+
+- [x] Add Team Evaluations Report to Operations Manager portal sidebar
+- [x] Add Team Evaluations Report to Store Manager portal sidebar
+- [x] Extracted TeamEvaluationsContent as reusable component
+- [x] Store Manager view auto-filters to their store; Ops Manager sees all
