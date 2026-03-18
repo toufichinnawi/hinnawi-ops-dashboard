@@ -1625,3 +1625,11 @@
 - [x] Update ReportDetailRenderer for new Equipment & Maintenance structure
 - [x] Add edit-mode data restoration for issue log and staff accountability
 - [x] Handle portal format (dailyChecks/weeklyChecks/monthlyChecks as Record) in detail renderer
+
+## Reorganize Equipment & Maintenance Form (Accordion Layout)
+
+- [x] Wrap Daily/Weekly/Monthly/Issue Log/Staff Accountability in collapsible accordion panels
+- [x] Add progress badges to each accordion header (e.g., "12/17 done")
+- [x] Apply accordion layout to admin dashboard (DirectChecklist.tsx)
+- [x] Apply accordion layout to portal (ChecklistViewer.tsx)
+- [x] Verify form still submits correctly with accordion layout

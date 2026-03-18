@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { StarRating } from "@/components/StarRating";
 import { CheckCircle2, Camera } from "lucide-react";
 import { toast } from "sonner";
@@ -1389,27 +1390,41 @@ function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4
     );
   };
 
-  if (submitted) return <SuccessCard message={`Equipment Maintenance submitted for ${currentStoreName}`} onNew={() => { setDailyChecks({}); setWeeklyChecks({}); setMonthlyChecks({}); setNotes(""); setSubmitted(false); }} onBack={onBack} />;
+  // Progress counts for badges
+  const dailyDone = EQUIP_DAILY.filter(item => !!dailyChecks[`${item.equipment}::${item.task}`]).length;
+  const weeklyDone = EQUIP_WEEKLY.filter(item => !!weeklyChecks[`${item.equipment}::${item.task}`]).length;
+  const monthlyDone = EQUIP_MONTHLY.filter(item => !!monthlyChecks[`${item.equipment}::${item.task}`]).length;
+  const issueCount = issueLog.filter(i => i.equipment.trim() || i.issue.trim()).length;
+  const staffFilled = [staffName, shift, supervisorName].filter(Boolean).length;
 
-  const renderEquipTable = (title: string, items: typeof EQUIP_DAILY, state: Record<string, boolean>, setState: (fn: (prev: Record<string, boolean>) => Record<string, boolean>) => void) => (
-    <div className="bg-card rounded-xl border border-border/60 p-5">
-      <h3 className="font-semibold mb-3">{title}</h3>
-      <div className="space-y-2">
-        {items.map((item, i) => {
-          const key = `${item.equipment}::${item.task}`;
-          return (
-            <div key={i} className="flex items-center justify-between gap-3 py-1.5 border-b border-border/20 last:border-0">
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium">{item.equipment}</span>
-                <span className="text-sm text-muted-foreground ml-2">— {item.task}</span>
-              </div>
-              <Checkbox checked={!!state[key]} onCheckedChange={(v) => setState((prev) => ({ ...prev, [key]: !!v }))} />
+  if (submitted) return <SuccessCard message={`Equipment Maintenance submitted for ${currentStoreName}`} onNew={() => { setDailyChecks({}); setWeeklyChecks({}); setMonthlyChecks({}); setNotes(""); setIssueLog([]); setStaffName(""); setShift(""); setSupervisorName(""); setSubmitted(false); }} onBack={onBack} />;
+
+  const renderEquipItems = (items: typeof EQUIP_DAILY, state: Record<string, boolean>, setState: (fn: (prev: Record<string, boolean>) => Record<string, boolean>) => void) => (
+    <div className="space-y-1">
+      {items.map((item, i) => {
+        const key = `${item.equipment}::${item.task}`;
+        return (
+          <div key={i} className="flex items-center justify-between gap-3 py-1.5 px-1 rounded hover:bg-muted/50 transition-colors">
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-medium">{item.equipment}</span>
+              <span className="text-sm text-muted-foreground ml-2">— {item.task}</span>
             </div>
-          );
-        })}
-      </div>
+            <Checkbox checked={!!state[key]} onCheckedChange={(v) => setState((prev) => ({ ...prev, [key]: !!v }))} />
+          </div>
+        );
+      })}
     </div>
   );
+
+  const ProgressBadge = ({ done, total }: { done: number; total: number }) => {
+    const allDone = done === total && total > 0;
+    return (
+      <Badge variant={allDone ? "default" : "outline"} className={cn("text-xs font-mono ml-2 pointer-events-none", allDone ? "bg-emerald-600 text-white" : done > 0 ? "border-amber-400 text-amber-600" : "")}>
+        {allDone ? <CheckCircle2 className="w-3 h-3 mr-1" /> : null}
+        {done}/{total}
+      </Badge>
+    );
+  };
 
   return (
     <div>
@@ -1420,58 +1435,123 @@ function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4
           <Label className="text-sm font-medium">Your Name</Label>
           <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
         </div>
-        {renderEquipTable("Daily Checks", EQUIP_DAILY, dailyChecks, setDailyChecks)}
-        {renderEquipTable("Weekly Checks", EQUIP_WEEKLY, weeklyChecks, setWeeklyChecks)}
-        {renderEquipTable("Monthly Checks", EQUIP_MONTHLY, monthlyChecks, setMonthlyChecks)}
+
+        {/* Accordion Sections */}
+        <div className="bg-card rounded-xl border border-border/60 px-5 py-2">
+          <Accordion type="multiple" defaultValue={["daily"]}>
+            {/* Daily Checks */}
+            <AccordionItem value="daily">
+              <AccordionTrigger className="py-3 hover:no-underline">
+                <div className="flex items-center">
+                  <span className="font-semibold text-sm">Daily Checks</span>
+                  <ProgressBadge done={dailyDone} total={EQUIP_DAILY.length} />
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                {renderEquipItems(EQUIP_DAILY, dailyChecks, setDailyChecks)}
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Weekly Checks */}
+            <AccordionItem value="weekly">
+              <AccordionTrigger className="py-3 hover:no-underline">
+                <div className="flex items-center">
+                  <span className="font-semibold text-sm">Weekly Checks</span>
+                  <ProgressBadge done={weeklyDone} total={EQUIP_WEEKLY.length} />
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                {renderEquipItems(EQUIP_WEEKLY, weeklyChecks, setWeeklyChecks)}
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Monthly Checks */}
+            <AccordionItem value="monthly">
+              <AccordionTrigger className="py-3 hover:no-underline">
+                <div className="flex items-center">
+                  <span className="font-semibold text-sm">Monthly Checks</span>
+                  <ProgressBadge done={monthlyDone} total={EQUIP_MONTHLY.length} />
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                {renderEquipItems(EQUIP_MONTHLY, monthlyChecks, setMonthlyChecks)}
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Maintenance Issue Log */}
+            <AccordionItem value="issues">
+              <AccordionTrigger className="py-3 hover:no-underline">
+                <div className="flex items-center">
+                  <span className="font-semibold text-sm">Maintenance Issue Log</span>
+                  <Badge variant="outline" className={cn("text-xs font-mono ml-2 pointer-events-none", issueCount > 0 ? "border-amber-400 text-amber-600" : "")}>
+                    {issueCount} {issueCount === 1 ? "issue" : "issues"}
+                  </Badge>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <div className="flex justify-end">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setIssueLog(prev => [...prev, { ...emptyIssue }])}>
+                      + Add Issue
+                    </Button>
+                  </div>
+                  {issueLog.length === 0 && <p className="text-sm text-muted-foreground">No issues to report. Click "+ Add Issue" if maintenance is needed.</p>}
+                  {issueLog.map((row, idx) => (
+                    <div key={idx} className="border border-border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Issue #{idx + 1}</span>
+                        <Button type="button" variant="ghost" size="sm" className="text-red-500 h-7 px-2" onClick={() => setIssueLog(prev => prev.filter((_, i) => i !== idx))}>Remove</Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1"><Label className="text-xs">Date</Label><Input type="date" value={row.date} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, date: e.target.value } : r))} /></div>
+                        <div className="space-y-1"><Label className="text-xs">Equipment</Label><Input value={row.equipment} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, equipment: e.target.value } : r))} placeholder="Equipment name" /></div>
+                      </div>
+                      <div className="space-y-1"><Label className="text-xs">Issue Description</Label><Input value={row.issue} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, issue: e.target.value } : r))} placeholder="Describe the issue" /></div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1"><Label className="text-xs">Action Taken</Label><Input value={row.actionTaken} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, actionTaken: e.target.value } : r))} placeholder="What was done" /></div>
+                        <div className="space-y-1"><Label className="text-xs">Reported To</Label><Input value={row.reportedTo} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, reportedTo: e.target.value } : r))} placeholder="Manager name" /></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Staff Accountability */}
+            <AccordionItem value="staff">
+              <AccordionTrigger className="py-3 hover:no-underline">
+                <div className="flex items-center">
+                  <span className="font-semibold text-sm">Staff Accountability</span>
+                  <Badge variant={staffFilled === 3 ? "default" : "outline"} className={cn("text-xs font-mono ml-2 pointer-events-none", staffFilled === 3 ? "bg-emerald-600 text-white" : staffFilled > 0 ? "border-amber-400 text-amber-600" : "")}>
+                    {staffFilled === 3 ? <><CheckCircle2 className="w-3 h-3 mr-1" /> Complete</> : `${staffFilled}/3`}
+                  </Badge>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5"><Label className="text-sm">Staff Name</Label><Input value={staffName} onChange={e => setStaffName(e.target.value)} placeholder="Staff member name" /></div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Shift</Label>
+                      <select value={shift} onChange={e => setShift(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+                        <option value="">Select shift</option>
+                        <option value="Morning">Morning</option>
+                        <option value="Mid">Mid</option>
+                        <option value="Closing">Closing</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5"><Label className="text-sm">Supervisor Name</Label><Input value={supervisorName} onChange={e => setSupervisorName(e.target.value)} placeholder="Supervisor name" /></div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+
+        {/* Notes */}
         <div className="bg-card rounded-xl border border-border/60 p-5">
           <Label className="text-sm font-medium">Notes (optional)</Label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any issues or repairs needed..." className="mt-1.5" rows={3} />
-        </div>
-
-        {/* Maintenance Issue Log */}
-        <div className="bg-card rounded-xl border border-border/60 p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Maintenance Issue Log</h3>
-            <Button type="button" variant="outline" size="sm" onClick={() => setIssueLog(prev => [...prev, { ...emptyIssue }])}>
-              + Add Issue
-            </Button>
-          </div>
-          {issueLog.length === 0 && <p className="text-sm text-muted-foreground">No issues to report. Click "Add Issue" if maintenance is needed.</p>}
-          {issueLog.map((row, idx) => (
-            <div key={idx} className="border border-border rounded-lg p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Issue #{idx + 1}</span>
-                <Button type="button" variant="ghost" size="sm" className="text-red-500 h-7 px-2" onClick={() => setIssueLog(prev => prev.filter((_, i) => i !== idx))}>Remove</Button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs">Date</Label><Input type="date" value={row.date} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, date: e.target.value } : r))} /></div>
-                <div className="space-y-1"><Label className="text-xs">Equipment</Label><Input value={row.equipment} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, equipment: e.target.value } : r))} placeholder="Equipment name" /></div>
-              </div>
-              <div className="space-y-1"><Label className="text-xs">Issue Description</Label><Input value={row.issue} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, issue: e.target.value } : r))} placeholder="Describe the issue" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs">Action Taken</Label><Input value={row.actionTaken} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, actionTaken: e.target.value } : r))} placeholder="What was done" /></div>
-                <div className="space-y-1"><Label className="text-xs">Reported To</Label><Input value={row.reportedTo} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, reportedTo: e.target.value } : r))} placeholder="Manager name" /></div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Staff Accountability */}
-        <div className="bg-card rounded-xl border border-border/60 p-5 space-y-4">
-          <h3 className="font-semibold">Staff Accountability</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5"><Label className="text-sm">Staff Name</Label><Input value={staffName} onChange={e => setStaffName(e.target.value)} placeholder="Staff member name" /></div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Shift</Label>
-              <select value={shift} onChange={e => setShift(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
-                <option value="">Select shift</option>
-                <option value="Morning">Morning</option>
-                <option value="Mid">Mid</option>
-                <option value="Closing">Closing</option>
-              </select>
-            </div>
-          </div>
-          <div className="space-y-1.5"><Label className="text-sm">Supervisor Name</Label><Input value={supervisorName} onChange={e => setSupervisorName(e.target.value)} placeholder="Supervisor name" /></div>
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any additional notes..." className="mt-1.5" rows={3} />
         </div>
 
         <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white">
