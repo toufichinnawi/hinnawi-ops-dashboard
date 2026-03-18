@@ -1565,3 +1565,11 @@
 
 - [x] DISABLED: Waste report Teams alerts turned off (were sending 3x to wrong chats)
 - [ ] Re-enable later: update TEAMS_CHAT_IDS with correct 🔥 store chat IDs when ready
+
+## Training Evaluation Feature
+
+- [x] Research existing portal structure and form patterns — already fully built
+- [x] Training Evaluation form already exists for Store Manager + Assistant Manager
+- [x] Admin dashboard already has Training Evaluation at /checklists/training
+- [x] Added Training Evaluation to Operations Manager portal sidebar
+- [x] All 282 tests passing (no new tests needed — feature was already implemented)
