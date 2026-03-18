@@ -219,7 +219,27 @@ async function startServer() {
       const isSalesBagelOrder = normalizedReportType === "bagel-orders" && normalizedLocation.toLowerCase() === "sales";
       const clientName = typeof data === "object" && data !== null ? data.clientName : undefined;
 
-      if (isSalesBagelOrder && clientName) {
+      // For Training/Performance Evaluations, uniqueness is per employee name (multiple employees per date)
+      const isEvaluation = normalizedReportType === "training-evaluation" || normalizedReportType === "performance-evaluation";
+      const evaluationEmployeeName = typeof data === "object" && data !== null
+        ? (data.traineeName || data.employeeName)
+        : undefined;
+
+      if (isEvaluation && evaluationEmployeeName) {
+        // Check for existing evaluation for the same employee + location + date
+        const { checkExistingEvaluation } = await import("../db");
+        const existingEval = await checkExistingEvaluation(normalizedLocation, normalizedReportType, reportDate, evaluationEmployeeName);
+        if (existingEval) {
+          if (!overwrite) {
+            return res.status(409).json({
+              error: "duplicate",
+              message: `A ${reportType} for ${evaluationEmployeeName} at ${location} on ${reportDate} already exists.`,
+              existing: { id: existingEval.id, submitterName: (existingEval as any).data?.submitterName || "Unknown", submittedAt: existingEval.createdAt },
+            });
+          }
+          await deleteReportSubmission(existingEval.id);
+        }
+      } else if (isSalesBagelOrder && clientName) {
         // Check for existing Sales bagel order for the same client + date
         const { checkExistingSalesOrder } = await import("../db");
         const existingSalesOrder = await checkExistingSalesOrder(normalizedLocation, normalizedReportType, reportDate, clientName);

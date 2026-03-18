@@ -93,6 +93,7 @@ const navSections: NavSection[] = [
     title: "Reports & Checklists",
     items: [
       { path: "/reports/scorecard", label: "Operations Scorecard", icon: BarChart3 },
+      { path: "/reports/team-evaluations", label: "Team Evaluations Report", icon: Users },
       { path: "/checklists/portal", label: "Hinnawi Portal", icon: Users },
       { path: "/checklists/operations", label: "Store Weekly Checklist", icon: ClipboardCheck },
       { path: "/checklists/weekly-audit", label: "Store Weekly Audit", icon: ClipboardCheck },

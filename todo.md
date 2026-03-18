@@ -1573,3 +1573,16 @@
 - [x] Admin dashboard already has Training Evaluation at /checklists/training
 - [x] Added Training Evaluation to Operations Manager portal sidebar
 - [x] All 282 tests passing (no new tests needed — feature was already implemented)
+
+## Fix Evaluation Duplicate Logic + Team Evaluations Report
+
+- [x] Fix duplicate check for Training Evaluation: include traineeName in unique key
+- [x] Fix duplicate check for Performance Evaluation: include employeeName in unique key
+- [x] Allow multiple evaluations per store per day (different employees)
+- [x] Same employee on same day = flagged as duplicate (offers overwrite)
+- [x] Build "Team Evaluations Report" page with all Training + Performance evaluations
+- [x] Filter by employee name, store, date range, evaluation type
+- [x] Employee-focused view with summary cards and avg score tracking
+- [x] Quick stats: total evaluations, employees evaluated, avg scores by store
+- [x] Add sidebar navigation link and route for Team Evaluations Report
+- [x] 20 new evaluation duplicate tests passing (302 total)

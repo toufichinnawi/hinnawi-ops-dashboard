@@ -606,6 +606,27 @@ export async function checkExistingSalesOrder(location: string, reportType: stri
   return rows[0] || null;
 }
 
+/**
+ * Check for existing Training/Performance Evaluation for the same employee + location + date.
+ * Evaluations are unique by location + reportType + reportDate + employeeName (traineeName or employeeName).
+ */
+export async function checkExistingEvaluation(location: string, reportType: string, reportDate: string, employeeName: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Training Evaluation stores employee name as "traineeName", Performance Evaluation as "employeeName"
+  const jsonField = reportType === "Training Evaluation" ? "$.traineeName" : "$.employeeName";
+  const rows = await db.select().from(reportSubmissions).where(
+    and(
+      eq(reportSubmissions.location, location),
+      eq(reportSubmissions.reportType, reportType),
+      eq(reportSubmissions.reportDate, reportDate),
+      sql`${reportSubmissions.status} != 'draft'`,
+      sql`JSON_EXTRACT(${reportSubmissions.data}, ${jsonField}) = ${employeeName}`
+    )
+  ).limit(1);
+  return rows[0] || null;
+}
+
 export async function createReportSubmission(data: InsertReportSubmission) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
