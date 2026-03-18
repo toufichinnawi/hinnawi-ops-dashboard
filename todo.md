@@ -1641,3 +1641,10 @@
 - [x] Update Overview to use Net Sales for revenue KPI and charts
 - [x] Update Store Performance to use Net Sales for revenue display
 - [x] Verify all revenue figures show Net Sales (no tax, no tips)
+
+## Remove Sidebar Tabs
+
+- [x] Remove Profit & Loss from sidebar
+- [x] Remove Expense Categories from sidebar
+- [x] Remove Inventory Items from sidebar
+- [x] Remove Inventory Count from sidebar

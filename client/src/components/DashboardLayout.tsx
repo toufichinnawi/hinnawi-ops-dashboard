@@ -67,20 +67,12 @@ const navSections: NavSection[] = [
   {
     title: "Accounting",
     items: [
-      { path: "/accounting/pnl", label: "Profit & Loss", icon: DollarSign },
       { path: "/accounting/expenses", label: "Expense Entry", icon: Receipt },
       { path: "/accounting/vendors", label: "Vendors & Suppliers", icon: Building2 },
-      { path: "/accounting/categories", label: "Expense Categories", icon: Tag },
       { path: "/accounting/cogs", label: "COGS Targets", icon: Target },
     ],
   },
-  {
-    title: "Inventory",
-    items: [
-      { path: "/inventory/items", label: "Inventory Items", icon: Package },
-      { path: "/inventory/count", label: "Inventory Count", icon: ClipboardList },
-    ],
-  },
+
   {
     title: "Production",
     items: [
