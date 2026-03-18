@@ -118,34 +118,45 @@ const ASST_MGR_SECTIONS = [
 ];
 
 const EQUIP_DAILY = [
-  { equipment: "Grill", task: "Clean surface & grease tray" },
-  { equipment: "Grill", task: "Check temperature" },
-  { equipment: "Espresso Machine", task: "Backflush (water)" },
-  { equipment: "Espresso Machine", task: "Clean steam wand" },
-  { equipment: "Espresso Machine", task: "Empty drip tray" },
-  { equipment: "Filter Coffee", task: "Clean brew basket & spray head" },
-  { equipment: "Espresso Grinder", task: "Brush grind chamber" },
-  { equipment: "Drinks Fridge", task: "Temp 2-4 C & clean glass" },
-  { equipment: "Dishwasher", task: "Clean filter & check rinse aid" },
-  { equipment: "Ice Machine", task: "Check ice quality" },
-  { equipment: "POS System", task: "Clean screen" },
+  { equipment: "Grill", task: "Clean cooking surface and grease tray" },
+  { equipment: "Grill", task: "Verify operating temperature" },
+  { equipment: "Bagel Toaster / Conveyor Toaster", task: "Remove crumbs and wipe exterior" },
+  { equipment: "Espresso Machine", task: "Backflush with water" },
+  { equipment: "Espresso Machine", task: "Clean and purge steam wand" },
+  { equipment: "Espresso Machine", task: "Empty drip tray and wipe panels" },
+  { equipment: "Espresso Grinder", task: "Brush grind chamber and wipe hopper" },
+  { equipment: "Filter Coffee Brewer", task: "Clean brew basket and spray head" },
+  { equipment: "Water Filters", task: "Wipe exterior and verify heating" },
+  { equipment: "Barista Fridge", task: "Verify 2-4\u00b0C; clean glass" },
+  { equipment: "Prep / Sandwich Fridge", task: "Verify temperature; clean rails and gaskets" },
+  { equipment: "Reach-in Fridge", task: "Verify temperature and door seal" },
+  { equipment: "Dishwasher", task: "Clean filter; check detergent and rinse aid" },
+  { equipment: "Ice Machine", task: "Check ice quality and scoop storage" },
+  { equipment: "POS System", task: "Clean screen, printer area, and card terminal" },
   { equipment: "Security Cameras", task: "Confirm recording" },
-  { equipment: "Fire Extinguisher", task: "Visible & accessible" },
+  { equipment: "Fire Extinguisher", task: "Visible, tagged, accessible" },
 ];
 
 const EQUIP_WEEKLY = [
-  { equipment: "Grill", task: "Deep clean & degrease" },
-  { equipment: "Espresso Machine", task: "Backflush with detergent & soak portafilters" },
-  { equipment: "Grinder", task: "Deep clean burrs" },
-  { equipment: "Ice Machine", task: "Sanitize interior" },
-  { equipment: "Dishwasher", task: "Run cleaning cycle" },
+  { equipment: "Grill", task: "Deep clean; degrease; clean under and behind unit" },
+  { equipment: "Bagel Toaster / Conveyor Toaster", task: "Deep clean crumb area and interior" },
+  { equipment: "Espresso Machine", task: "Backflush with detergent and soak portafilters" },
+  { equipment: "Espresso Grinder", task: "Deep clean burr area and hopper" },
+  { equipment: "Filter Coffee Brewer", task: "Deep clean spray head, baskets, and airpots" },
+  { equipment: "Barista / Prep Fridges", task: "Clean shelves, gaskets, and drains" },
+  { equipment: "Ice Machine", task: "Sanitize interior and clean filter" },
+  { equipment: "Dishwasher", task: "Run cleaning / delime cycle; clean edges and bottom" },
 ];
 
 const EQUIP_MONTHLY = [
-  { equipment: "Espresso Machine", task: "Inspect gaskets & pressure" },
-  { equipment: "Water Filtration", task: "Replace filter if required" },
-  { equipment: "Refrigeration", task: "Clean condenser coils" },
+  { equipment: "Espresso Machine", task: "Inspect gaskets, pressure, and group heads" },
+  { equipment: "Water Filtration", task: "Replace filter if required and record date" },
+  { equipment: "Refrigeration - All Fridges / Freezers", task: "Clean condenser coils and inspect door gaskets" },
   { equipment: "HVAC / Hood", task: "Replace or clean filters" },
+  { equipment: "Ice Machine", task: "Complete descaling / sanitizing cycle" },
+  { equipment: "Dishwasher", task: "Inspect spray arms, hoses, and drain line" },
+  { equipment: "Electrical Plugs / Cords", task: "Inspect visible damage and secure connections" },
+  { equipment: "Fire Safety", task: "Verify extinguisher inspection tag is current" },
 ];
 
 const BAGEL_TYPES = [
@@ -1352,6 +1363,11 @@ function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4
   const [weeklyChecks, setWeeklyChecks] = useState<Record<string, boolean>>({});
   const [monthlyChecks, setMonthlyChecks] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState("");
+  const emptyIssue = { date: new Date().toISOString().split("T")[0], equipment: "", issue: "", actionTaken: "", reportedTo: "" };
+  const [issueLog, setIssueLog] = useState<{ date: string; equipment: string; issue: string; actionTaken: string; reportedTo: string }[]>([]);
+  const [staffName, setStaffName] = useState("");
+  const [shift, setShift] = useState("");
+  const [supervisorName, setSupervisorName] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog: equipDuplicateDialog } = useDuplicateCheck();
@@ -1365,7 +1381,7 @@ function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4
         reportType: "Equipment & Maintenance",
         location: selectedStore,
         reportDate: new Date().toISOString().split("T")[0],
-        data: { dailyChecks, weeklyChecks, monthlyChecks, notes },
+        data: { dailyChecks, weeklyChecks, monthlyChecks, notes, issueLog: issueLog.filter(i => i.equipment.trim() || i.issue.trim()), staffAccountability: { staffName, shift, supervisorName } },
       },
       () => setSubmitted(true),
       (msg) => toast.error(msg),
@@ -1411,6 +1427,53 @@ function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4
           <Label className="text-sm font-medium">Notes (optional)</Label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any issues or repairs needed..." className="mt-1.5" rows={3} />
         </div>
+
+        {/* Maintenance Issue Log */}
+        <div className="bg-card rounded-xl border border-border/60 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Maintenance Issue Log</h3>
+            <Button type="button" variant="outline" size="sm" onClick={() => setIssueLog(prev => [...prev, { ...emptyIssue }])}>
+              + Add Issue
+            </Button>
+          </div>
+          {issueLog.length === 0 && <p className="text-sm text-muted-foreground">No issues to report. Click "Add Issue" if maintenance is needed.</p>}
+          {issueLog.map((row, idx) => (
+            <div key={idx} className="border border-border rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Issue #{idx + 1}</span>
+                <Button type="button" variant="ghost" size="sm" className="text-red-500 h-7 px-2" onClick={() => setIssueLog(prev => prev.filter((_, i) => i !== idx))}>Remove</Button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Date</Label><Input type="date" value={row.date} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, date: e.target.value } : r))} /></div>
+                <div className="space-y-1"><Label className="text-xs">Equipment</Label><Input value={row.equipment} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, equipment: e.target.value } : r))} placeholder="Equipment name" /></div>
+              </div>
+              <div className="space-y-1"><Label className="text-xs">Issue Description</Label><Input value={row.issue} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, issue: e.target.value } : r))} placeholder="Describe the issue" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Action Taken</Label><Input value={row.actionTaken} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, actionTaken: e.target.value } : r))} placeholder="What was done" /></div>
+                <div className="space-y-1"><Label className="text-xs">Reported To</Label><Input value={row.reportedTo} onChange={e => setIssueLog(prev => prev.map((r, i) => i === idx ? { ...r, reportedTo: e.target.value } : r))} placeholder="Manager name" /></div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Staff Accountability */}
+        <div className="bg-card rounded-xl border border-border/60 p-5 space-y-4">
+          <h3 className="font-semibold">Staff Accountability</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5"><Label className="text-sm">Staff Name</Label><Input value={staffName} onChange={e => setStaffName(e.target.value)} placeholder="Staff member name" /></div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Shift</Label>
+              <select value={shift} onChange={e => setShift(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+                <option value="">Select shift</option>
+                <option value="Morning">Morning</option>
+                <option value="Mid">Mid</option>
+                <option value="Closing">Closing</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5"><Label className="text-sm">Supervisor Name</Label><Input value={supervisorName} onChange={e => setSupervisorName(e.target.value)} placeholder="Supervisor name" /></div>
+        </div>
+
         <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white">
           {submitting ? "Submitting..." : "Submit Checklist"}
         </Button>

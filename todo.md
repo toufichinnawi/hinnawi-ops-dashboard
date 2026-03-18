@@ -1614,3 +1614,14 @@
 
 - [x] Fix ManagerEvaluationDetail to use item.label for real criteria names
 - [x] Fix score display: Manager Evaluation shows /100, Training/Performance show /5
+
+## Update Equipment & Maintenance Checklist (March 18 finalized doc)
+
+- [x] Update Daily checklist items (17 items: Grill, Toaster, Espresso Machine, Grinder, Coffee Brewer, Water Filters, Fridges, Dishwasher, Ice Machine, POS, Cameras, Fire Extinguisher)
+- [x] Update Weekly checklist items (8 items)
+- [x] Update Monthly checklist items (8 items)
+- [x] Add Maintenance Issue Log section (Date, Equipment, Issue, Action Taken, Reported To)
+- [x] Add Staff Accountability section (Staff Name, Shift, Supervisor)
+- [x] Update ReportDetailRenderer for new Equipment & Maintenance structure
+- [x] Add edit-mode data restoration for issue log and staff accountability
+- [x] Handle portal format (dailyChecks/weeklyChecks/monthlyChecks as Record) in detail renderer

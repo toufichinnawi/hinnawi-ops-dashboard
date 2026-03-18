@@ -482,11 +482,67 @@ function EquipmentMaintenanceDetail({ data }: { data: any }) {
     );
   };
 
+  const issueLog = data.issueLog || [];
+  const staff = data.staffAccountability || {};
+
+  // Handle portal format: dailyChecks/weeklyChecks/monthlyChecks as Record<string, boolean>
+  const dailyItems = data.daily || (data.dailyChecks ? Object.entries(data.dailyChecks).map(([key, val]) => {
+    const [equipment, task] = key.split("::");
+    return { equipment, task, checked: val };
+  }) : []);
+  const weeklyItems = data.weekly || (data.weeklyChecks ? Object.entries(data.weeklyChecks).map(([key, val]) => {
+    const [equipment, task] = key.split("::");
+    return { equipment, task, checked: val };
+  }) : []);
+  const monthlyItems = data.monthly || (data.monthlyChecks ? Object.entries(data.monthlyChecks).map(([key, val]) => {
+    const [equipment, task] = key.split("::");
+    return { equipment, task, checked: val };
+  }) : []);
+
   return (
     <div className="space-y-4">
-      {renderEquipSection("Daily", data.daily)}
-      {renderEquipSection("Weekly", data.weekly)}
-      {renderEquipSection("Monthly", data.monthly)}
+      {renderEquipSection("Daily", dailyItems)}
+      {renderEquipSection("Weekly", weeklyItems)}
+      {renderEquipSection("Monthly", monthlyItems)}
+
+      {/* Maintenance Issue Log */}
+      {issueLog.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Maintenance Issue Log</p>
+          <div className="space-y-2">
+            {issueLog.map((issue: any, i: number) => (
+              <div key={i} className="p-3 rounded-lg border bg-card space-y-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">{issue.equipment || "Unknown Equipment"}</p>
+                  {issue.date && <Badge variant="outline" className="text-xs">{issue.date}</Badge>}
+                </div>
+                {issue.issue && <p className="text-sm text-muted-foreground">{issue.issue}</p>}
+                {issue.actionTaken && (
+                  <p className="text-xs"><span className="text-muted-foreground">Action:</span> {issue.actionTaken}</p>
+                )}
+                {issue.reportedTo && (
+                  <p className="text-xs"><span className="text-muted-foreground">Reported to:</span> {issue.reportedTo}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Staff Accountability */}
+      {(staff.staffName || staff.shift || staff.supervisorName) && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Staff Accountability</p>
+          <div className="p-3 rounded-lg border bg-card space-y-1">
+            {staff.staffName && <p className="text-sm"><span className="text-muted-foreground">Staff:</span> {staff.staffName}</p>}
+            {staff.shift && <p className="text-sm"><span className="text-muted-foreground">Shift:</span> {staff.shift}</p>}
+            {staff.supervisorName && <p className="text-sm"><span className="text-muted-foreground">Supervisor:</span> {staff.supervisorName}</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Notes */}
+      {data.notes && <NotesBanner notes={data.notes} label="Notes" />}
     </div>
   );
 }
