@@ -162,7 +162,7 @@ export function useFilteredCloverData(dateFilter: DateFilterValue) {
       records.push({
         storeId: row.storeId,
         date: row.date,
-        totalSales: row.grossSales,
+        totalSales: row.netSales,
         orderCount: 0, // Koomi doesn't provide order count
         totalTips: 0,
         labourCost,

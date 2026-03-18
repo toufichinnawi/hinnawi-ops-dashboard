@@ -1633,3 +1633,11 @@
 - [x] Apply accordion layout to admin dashboard (DirectChecklist.tsx)
 - [x] Apply accordion layout to portal (ChecklistViewer.tsx)
 - [x] Verify form still submits correctly with accordion layout
+
+## Fix Revenue to Use Net Sales Instead of Gross Sales
+
+- [x] Trace where Gross Sales is used for revenue on Overview page
+- [x] Trace where Gross Sales is used for revenue on Store Performance page
+- [x] Update Overview to use Net Sales for revenue KPI and charts
+- [x] Update Store Performance to use Net Sales for revenue display
+- [x] Verify all revenue figures show Net Sales (no tax, no tips)
