@@ -28,9 +28,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-async function startServer() {
+// Create and configure the Express app (exported for Vercel serverless)
+export async function createApp() {
   const app = express();
-  const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -978,6 +978,13 @@ async function startServer() {
       createContext,
     })
   );
+  return app;
+}
+
+async function startServer() {
+  const app = await createApp();
+  const server = createServer(app);
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
@@ -1491,4 +1498,7 @@ async function startServer() {
   console.log("[Schedule] Daily report at 8PM + Labour alerts at 8PM. Waste alerts DISABLED.");
 }
 
-startServer().catch(console.error);
+// Only start the standalone server when not running as a Vercel serverless function
+if (!process.env.VERCEL) {
+  startServer().catch(console.error);
+}
