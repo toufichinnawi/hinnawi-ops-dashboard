@@ -67,7 +67,7 @@ const navSections: NavSection[] = [
   {
     title: "Accounting",
     items: [
-      { path: "/accounting/expenses", label: "Toufic Hinnawi", icon: Receipt },
+      { path: "/accounting/expenses", label: "Expenses", icon: Receipt },
       { path: "/accounting/vendors", label: "Vendors & Suppliers", icon: Building2 },
       { path: "/accounting/cogs", label: "COGS Targets", icon: Target },
     ],
