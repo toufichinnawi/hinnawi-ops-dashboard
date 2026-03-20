@@ -37,6 +37,7 @@ import {
   CakeSlice,
   ChefHat,
   Sparkles,
+  Factory,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useData } from "@/contexts/DataContext";
@@ -59,6 +60,7 @@ const navSections: NavSection[] = [
     title: "Analytics",
     items: [
       { path: "/", label: "Overview", icon: LayoutDashboard },
+      { path: "/production-monitor", label: "Production Monitor", icon: Factory },
       { path: "/labour", label: "Labour Monitor", icon: Users },
       { path: "/stores", label: "Store Performance", icon: Store },
       { path: "/alerts", label: "Alerts", icon: Bell },

@@ -38,6 +38,7 @@ import PastryProduction from "@/pages/PastryProduction";
 import CKPreps from "@/pages/CKPreps";
 import InvoiceManagement from "@/pages/InvoiceManagement";
 import TeamEvaluations from "@/pages/TeamEvaluations";
+import ProductionMonitor from "@/pages/ProductionMonitor";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -45,6 +46,7 @@ function Router() {
     <Switch>
       {/* Analytics */}
       <Route path="/" component={Home} />
+      <Route path="/production-monitor" component={ProductionMonitor} />
       <Route path="/labour" component={Labour} />
       <Route path="/stores" component={Stores} />
       <Route path="/alerts" component={Alerts} />

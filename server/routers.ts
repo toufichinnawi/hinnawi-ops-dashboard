@@ -2005,6 +2005,29 @@ export const appRouter = router({
       }),
   }),
 
+  // --- Production Labour (7shifts CK account) ---
+  productionLabour: router({
+    // Get production labour for a single day
+    daily: protectedProcedure
+      .input(z.object({ date: z.string() }))
+      .query(async ({ input }) => {
+        const token = process.env.SEVEN_SHIFTS_CK_ACCESS_TOKEN;
+        if (!token) throw new Error("7shifts CK access token not configured");
+        const { getProductionLabour } = await import("./productionLabour");
+        return getProductionLabour(token, input.date);
+      }),
+
+    // Get production labour for a date range (aggregated)
+    range: protectedProcedure
+      .input(z.object({ fromDate: z.string(), toDate: z.string() }))
+      .query(async ({ input }) => {
+        const token = process.env.SEVEN_SHIFTS_CK_ACCESS_TOKEN;
+        if (!token) throw new Error("7shifts CK access token not configured");
+        const { getProductionLabourRange } = await import("./productionLabour");
+        return getProductionLabourRange(token, input.fromDate, input.toDate);
+      }),
+  }),
+
   // ─── Food Cost Analysis (from Invoice Captures) ───
   foodCost: router({
     byStore: protectedProcedure
