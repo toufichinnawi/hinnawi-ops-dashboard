@@ -204,7 +204,6 @@ const POSITIONS: PositionDef[] = [
     requiresPin: true,
     requiresStore: false,
     sidebarItems: [
-      si("pastry-orders", "Pastry Orders", CakeSlice, "checklist", { checklistType: "pastry-orders" }),
       si("pastry-production", "Pastry Production", CakeSlice, "info", { infoContent: "pastry-production" }),
     ],
   },
