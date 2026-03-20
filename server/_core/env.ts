@@ -13,4 +13,5 @@ export const ENV = {
   msGraphClientId: process.env.MS_GRAPH_CLIENT_ID ?? "1fec8e78-bce4-4aaf-ab1b-5451cc387264",
   qboClientId: process.env.QBO_CLIENT_ID ?? "",
   qboClientSecret: process.env.QBO_CLIENT_SECRET ?? "",
+  sevenShiftsCkAccessToken: process.env.SEVEN_SHIFTS_CK_ACCESS_TOKEN ?? "",
 };

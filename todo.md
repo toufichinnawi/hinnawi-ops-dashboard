@@ -1648,3 +1648,15 @@
 - [x] Remove Expense Categories from sidebar
 - [x] Remove Inventory Items from sidebar
 - [x] Remove Inventory Count from sidebar
+
+## Add Production Labour Box to Overview
+
+- [x] Investigate how 7shifts data is structured for CK and Bagel Factory
+  - CK 7shifts account: Company 306595, Location 377212
+  - Departments: Central Kitchen (569422), Bagel Factory (569423), Chalet (567077), Office (567078)
+  - Token format: hex-encoded UUID, works as Bearer token
+- [x] Store CK 7shifts access token (SEVEN_SHIFTS_CK_ACCESS_TOKEN)
+- [ ] Add backend tRPC route to fetch CK/BF labour from 7shifts by department
+- [ ] Add Production Labour KPI section on Overview page
+- [ ] Show Central Kitchen, Bagel Factory, and total production labour costs
+- [ ] Write vitest tests for production labour backend
