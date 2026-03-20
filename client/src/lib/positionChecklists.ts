@@ -129,6 +129,7 @@ export interface PositionConfig {
   slug: string;
   label: string;
   checklists: ChecklistType[];
+  skipStoreSelection?: boolean;
 }
 
 /**
@@ -183,7 +184,8 @@ export const POSITION_CHECKLISTS: Record<
   "pastry-kitchen": {
     slug: "pastry-kitchen",
     label: "Pastry Kitchen",
-    checklists: [],
+    checklists: ["pastry-orders"],
+    skipStoreSelection: true,
   },
 };
 

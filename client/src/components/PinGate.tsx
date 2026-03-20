@@ -26,6 +26,7 @@ interface Store {
 interface PinGateProps {
   positionLabel: string;
   positionSlug: string;
+  skipStoreSelection?: boolean;
   onVerified: (
     storeCode: string,
     storeName: string
@@ -40,6 +41,7 @@ interface PinGateProps {
 export default function PinGate({
   positionLabel,
   positionSlug,
+  skipStoreSelection,
   onVerified,
 }: PinGateProps) {
   const [step, setStep] = useState<"pin" | "store">("pin");
@@ -105,6 +107,11 @@ export default function PinGate({
       const data = await res.json();
       if (data?.result?.data?.json?.valid) {
         toast.success("PIN verified!");
+        // Skip store selection for positions that don't need it
+        if (skipStoreSelection) {
+          onVerified("", positionLabel);
+          return;
+        }
         // Load stores for step 2
         setLoading(true);
         try {

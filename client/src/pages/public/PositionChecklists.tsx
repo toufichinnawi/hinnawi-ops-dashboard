@@ -328,6 +328,7 @@ export default function PositionChecklists() {
       <PinGate
         positionLabel={config.label}
         positionSlug={positionSlug}
+        skipStoreSelection={config.skipStoreSelection}
         onVerified={(code, name) => {
           setStoreCode(code);
           setStoreName(name);
@@ -358,15 +359,15 @@ export default function PositionChecklists() {
           </div>
           <div className="flex-1">
             <h1 className="font-bold text-lg leading-tight">Hinnawi Portal</h1>
-            <p className="text-xs text-muted-foreground">{config.label} — {storeName}</p>
+            <p className="text-xs text-muted-foreground">{config.label}{storeName ? ` — ${storeName}` : ""}</p>
           </div>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto p-4 space-y-4 pb-8">
         <div className="space-y-2">
-          <h2 className="text-xl font-bold">Your Checklists</h2>
-          <p className="text-sm text-muted-foreground">Select a checklist to fill out and submit.</p>
+          <h2 className="text-xl font-bold">{positionSlug === "pastry-kitchen" ? "Pastry Production" : "Your Checklists"}</h2>
+          <p className="text-sm text-muted-foreground">{positionSlug === "pastry-kitchen" ? "Select a form to fill out and submit." : "Select a checklist to fill out and submit."}</p>
         </div>
 
         <div className="space-y-3">
