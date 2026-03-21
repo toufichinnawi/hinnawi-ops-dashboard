@@ -25,6 +25,23 @@ export const PRODUCTION_DEPT_IDS: number[] = [
   DEPARTMENTS.BAGEL_FACTORY.id,
 ];
 
+// Role IDs within Central Kitchen that count as "Pastry Kitchen" and "Preps"
+export const ROLE_IDS = {
+  PASTRIES: 1892598,        // "Pastries" role in CK dept
+  PASTRIES_PREPS: 2740299,  // "Pastries preps" role in CK dept
+  PREPS: 1892599,           // "Preps" role in CK dept
+} as const;
+
+// Production Labour categories for the Overview KPI:
+// 1. Bagel Factory = entire BF department
+// 2. Pastry Kitchen = CK punches with role Pastries or Pastries preps
+// 3. Preps = CK punches with role Preps
+export const PRODUCTION_ROLE_IDS = [
+  ROLE_IDS.PASTRIES,
+  ROLE_IDS.PASTRIES_PREPS,
+  ROLE_IDS.PREPS,
+];
+
 export interface TimePunch {
   id: number;
   company_id: number;
@@ -290,4 +307,146 @@ export async function getProductionLabourRange(
       productionDepts.reduce((s, d) => s + d.labourCost, 0).toFixed(2)
     ),
   };
+}
+
+/**
+ * Production Labour Cost for Overview KPI
+ * Returns the combined labour cost for:
+ *   - Bagel Factory (entire department)
+ *   - Pastry Kitchen (CK roles: Pastries + Pastries preps)
+ *   - Preps (CK role: Preps)
+ */
+export interface ProductionLabourCostBreakdown {
+  bagelFactory: { hours: number; cost: number; employees: number };
+  pastryKitchen: { hours: number; cost: number; employees: number };
+  preps: { hours: number; cost: number; employees: number };
+  totalCost: number;
+  totalHours: number;
+  totalEmployees: number;
+}
+
+export async function getProductionLabourCost(
+  accessToken: string,
+  date: string,
+): Promise<ProductionLabourCostBreakdown> {
+  const punches = await fetchTimePunches(accessToken, date);
+
+  const bf = { employees: new Set<number>(), hours: 0, cost: 0 };
+  const pk = { employees: new Set<number>(), hours: 0, cost: 0 };
+  const preps = { employees: new Set<number>(), hours: 0, cost: 0 };
+
+  for (const punch of punches) {
+    if (punch.deleted) continue;
+
+    const grossHours = computeHours(punch.clocked_in, punch.clocked_out);
+    const breakHours = computeBreakHours(punch.breaks);
+    const netHours = Math.max(0, grossHours - breakHours);
+    const cost = (punch.hourly_wage / 100) * netHours;
+
+    // Bagel Factory: entire department
+    if (punch.department_id === DEPARTMENTS.BAGEL_FACTORY.id) {
+      bf.employees.add(punch.user_id);
+      bf.hours += netHours;
+      bf.cost += cost;
+    }
+    // Central Kitchen roles
+    else if (punch.department_id === DEPARTMENTS.CENTRAL_KITCHEN.id) {
+      // Pastry Kitchen = Pastries + Pastries preps roles
+      if (punch.role_id === ROLE_IDS.PASTRIES || punch.role_id === ROLE_IDS.PASTRIES_PREPS) {
+        pk.employees.add(punch.user_id);
+        pk.hours += netHours;
+        pk.cost += cost;
+      }
+      // Preps role
+      else if (punch.role_id === ROLE_IDS.PREPS) {
+        preps.employees.add(punch.user_id);
+        preps.hours += netHours;
+        preps.cost += cost;
+      }
+    }
+  }
+
+  return {
+    bagelFactory: {
+      hours: parseFloat(bf.hours.toFixed(1)),
+      cost: parseFloat(bf.cost.toFixed(2)),
+      employees: bf.employees.size,
+    },
+    pastryKitchen: {
+      hours: parseFloat(pk.hours.toFixed(1)),
+      cost: parseFloat(pk.cost.toFixed(2)),
+      employees: pk.employees.size,
+    },
+    preps: {
+      hours: parseFloat(preps.hours.toFixed(1)),
+      cost: parseFloat(preps.cost.toFixed(2)),
+      employees: preps.employees.size,
+    },
+    totalCost: parseFloat((bf.cost + pk.cost + preps.cost).toFixed(2)),
+    totalHours: parseFloat((bf.hours + pk.hours + preps.hours).toFixed(1)),
+    totalEmployees: new Set([...bf.employees, ...pk.employees, ...preps.employees]).size,
+  };
+}
+
+/**
+ * Production Labour Cost for a date range (aggregated)
+ */
+export async function getProductionLabourCostRange(
+  accessToken: string,
+  startDate: string,
+  endDate: string,
+): Promise<ProductionLabourCostBreakdown> {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const dailyResults: ProductionLabourCostBreakdown[] = [];
+
+  let current = new Date(start);
+  while (current <= end) {
+    const dateStr = current.toISOString().slice(0, 10);
+    try {
+      const result = await getProductionLabourCost(accessToken, dateStr);
+      dailyResults.push(result);
+    } catch (err: any) {
+      console.error(`[ProductionLabourCost] Failed for ${dateStr}: ${err.message}`);
+    }
+    await delay(300);
+    current.setDate(current.getDate() + 1);
+  }
+
+  // Aggregate
+  const totals = {
+    bagelFactory: { hours: 0, cost: 0, employees: 0 },
+    pastryKitchen: { hours: 0, cost: 0, employees: 0 },
+    preps: { hours: 0, cost: 0, employees: 0 },
+    totalCost: 0,
+    totalHours: 0,
+    totalEmployees: 0,
+  };
+
+  for (const r of dailyResults) {
+    totals.bagelFactory.hours += r.bagelFactory.hours;
+    totals.bagelFactory.cost += r.bagelFactory.cost;
+    totals.bagelFactory.employees = Math.max(totals.bagelFactory.employees, r.bagelFactory.employees);
+    totals.pastryKitchen.hours += r.pastryKitchen.hours;
+    totals.pastryKitchen.cost += r.pastryKitchen.cost;
+    totals.pastryKitchen.employees = Math.max(totals.pastryKitchen.employees, r.pastryKitchen.employees);
+    totals.preps.hours += r.preps.hours;
+    totals.preps.cost += r.preps.cost;
+    totals.preps.employees = Math.max(totals.preps.employees, r.preps.employees);
+    totals.totalCost += r.totalCost;
+    totals.totalHours += r.totalHours;
+    totals.totalEmployees = Math.max(totals.totalEmployees, r.totalEmployees);
+  }
+
+  // Round
+  totals.bagelFactory.hours = parseFloat(totals.bagelFactory.hours.toFixed(1));
+  totals.bagelFactory.cost = parseFloat(totals.bagelFactory.cost.toFixed(2));
+  totals.pastryKitchen.hours = parseFloat(totals.pastryKitchen.hours.toFixed(1));
+  totals.pastryKitchen.cost = parseFloat(totals.pastryKitchen.cost.toFixed(2));
+  totals.preps.hours = parseFloat(totals.preps.hours.toFixed(1));
+  totals.preps.cost = parseFloat(totals.preps.cost.toFixed(2));
+  totals.totalCost = parseFloat(totals.totalCost.toFixed(2));
+  totals.totalHours = parseFloat(totals.totalHours.toFixed(1));
+
+  return totals;
 }

@@ -1,6 +1,6 @@
 // Design: "Golden Hour Operations" — Refined Editorial
 // Overview page: Hero banner, Date filter, KPI cards, weekly sales chart, alerts, report status
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -16,9 +16,10 @@ import { DateFilter, getDefaultDateFilter, type DateFilterValue } from "@/compon
 import { useData } from "@/contexts/DataContext";
 import { useFilteredCloverData } from "@/hooks/useFilteredCloverData";
 import { trpc } from "@/lib/trpc";
-import { stores } from "@/lib/data";
+import { stores, type KPI } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -94,9 +95,48 @@ export default function Home() {
   const { kpis: contextKpis, weeklySales: contextSales, weeklyTraffic: contextTraffic } = useData();
 
   const hasLiveSource = hasKoomiData || hasCloverData;
-  const kpis = hasLiveSource ? (filteredKpis ?? contextKpis) : contextKpis;
+  const baseKpis = hasLiveSource ? (filteredKpis ?? contextKpis) : contextKpis;
   const weeklySales = hasLiveSource ? (noDataForPeriod ? [] : (filteredSales ?? contextSales)) : contextSales;
   const weeklyTraffic = hasLiveSource ? (noDataForPeriod ? [] : (filteredTraffic ?? contextTraffic)) : contextTraffic;
+
+  // ─── Production Labour Cost (BF + Pastry Kitchen + Preps) ───
+  const fromDate = format(dateFilter.from, "yyyy-MM-dd");
+  const toDate = format(dateFilter.to, "yyyy-MM-dd");
+  const isSingleDay = fromDate === toDate;
+
+  const { data: prodCostDaily } = trpc.productionLabour.cost.useQuery(
+    { date: fromDate },
+    { enabled: isSingleDay }
+  );
+  const { data: prodCostRange } = trpc.productionLabour.costRange.useQuery(
+    { fromDate, toDate },
+    { enabled: !isSingleDay }
+  );
+  const prodCost = isSingleDay ? prodCostDaily : prodCostRange;
+
+  // Insert "Production Labour" KPI between "Labour %" and "Total Orders"
+  const kpis = useMemo((): KPI[] => {
+    const prodKpi: KPI = {
+      title: "Production Labour",
+      value: prodCost?.totalCost ?? 0,
+      format: "currency",
+      trend: 0,
+      trendLabel: prodCost ? "from 7shifts CK" : "Loading...",
+      subtitle: prodCost
+        ? `BF $${prodCost.bagelFactory.cost.toLocaleString()} · PK $${prodCost.pastryKitchen.cost.toLocaleString()} · Preps $${prodCost.preps.cost.toLocaleString()}`
+        : "—",
+    };
+
+    // Find the index of "Labour %" to insert after it
+    const labourPctIdx = baseKpis.findIndex(k => k.title === "Labour %");
+    if (labourPctIdx >= 0) {
+      const result = [...baseKpis];
+      result.splice(labourPctIdx + 1, 0, prodKpi);
+      return result;
+    }
+    // Fallback: just append
+    return [...baseKpis, prodKpi];
+  }, [baseKpis, prodCost]);
 
   // ─── Live Alerts ───────────────────────────────────────────
   interface LiveAlert {
@@ -290,7 +330,7 @@ export default function Home() {
           variants={stagger}
           initial="hidden"
           animate="show"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"
         >
           {kpis.map((kpi) => (
             <motion.div key={kpi.title} variants={fadeUp}>
