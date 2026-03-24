@@ -17,7 +17,7 @@ import {
   FileText, DollarSign, Percent, Clock, CheckCircle2,
   Pencil, Receipt, CalendarIcon, Filter,
   Download, Flag, MessageSquare, Send, AlertTriangle, Loader2,
-  Sparkles,
+  Sparkles, Factory,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ import { exportReportToPdf } from "@/lib/exportReportPdf";
 import { StorePerformanceContent } from "@/pages/Stores";
 import { BagelProductionContent } from "@/pages/BagelProduction";
 import { PastryProductionContent } from "@/pages/PastryProduction";
+import { ProductionMonitorContent } from "@/pages/ProductionMonitor";
 import { TeamEvaluationsContent } from "@/pages/TeamEvaluations";
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -109,6 +110,7 @@ const POSITIONS: PositionDef[] = [
       si("performance-eval", "Performance Evaluation", Star, "checklist", { checklistType: "performance-evaluation" }),
       si("manager-eval", "Manager Evaluation", Shield, "checklist", { checklistType: "manager-evaluation" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
+      si("production-monitor", "Production Monitor", Factory, "info", { infoContent: "production-monitor" }),
       si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
       si("pastry-orders", "Pastry Orders", CakeSlice, "checklist", { checklistType: "pastry-orders" }),
       si("pastry-production", "Pastry Production", CakeSlice, "info", { infoContent: "pastry-production" }),
@@ -1119,6 +1121,14 @@ function PortalInfoPage({
     return (
       <div className="max-w-[1400px]">
         <PastryProductionContent defaultToToday storeFilter={pastryStoreFilter} />
+      </div>
+    );
+  }
+
+  if (pageId === "production-monitor") {
+    return (
+      <div className="max-w-[1400px]">
+        <ProductionMonitorContent defaultToToday />
       </div>
     );
   }
