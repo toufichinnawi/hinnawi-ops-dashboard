@@ -60,9 +60,9 @@ const navSections: NavSection[] = [
     title: "Analytics",
     items: [
       { path: "/", label: "Overview", icon: LayoutDashboard },
+      { path: "/stores", label: "Store Performance", icon: Store },
       { path: "/production-monitor", label: "Production Monitor", icon: Factory },
       { path: "/labour", label: "Labour Monitor", icon: Users },
-      { path: "/stores", label: "Store Performance", icon: Store },
       { path: "/alerts", label: "Alerts", icon: Bell },
     ],
   },
@@ -74,7 +74,6 @@ const navSections: NavSection[] = [
       { path: "/accounting/cogs", label: "COGS Targets", icon: Target },
     ],
   },
-
   {
     title: "Production",
     items: [
@@ -86,22 +85,27 @@ const navSections: NavSection[] = [
   {
     title: "Reports & Checklists",
     items: [
-      { path: "/reports/scorecard", label: "Operations Scorecard", icon: BarChart3 },
-      { path: "/reports/team-evaluations", label: "Team Evaluations Report", icon: Users },
       { path: "/checklists/portal", label: "Hinnawi Portal", icon: Users },
+      { path: "/reports/scorecard", label: "Operations Scorecard", icon: BarChart3 },
+      { path: "/checklists/weekly-scorecard", label: "Weekly Scorecard", icon: BarChart3 },
       { path: "/checklists/operations", label: "Store Weekly Checklist", icon: ClipboardCheck },
       { path: "/checklists/weekly-audit", label: "Store Weekly Audit", icon: ClipboardCheck },
-      { path: "/checklists/weekly-scorecard", label: "Weekly Scorecard", icon: BarChart3 },
       { path: "/checklists/deep-clean", label: "Weekly Deep Clean", icon: Sparkles },
-      { path: "/checklists/performance", label: "Performance Evaluation", icon: Star },
       { path: "/checklists/waste", label: "Leftovers & Waste", icon: Trash2 },
       { path: "/checklists/equipment", label: "Equipment & Maintenance", icon: Wrench },
-      { path: "/checklists/training", label: "Training Evaluation", icon: GraduationCap },
-      { path: "/checklists/manager-eval", label: "Manager Evaluation", icon: Shield },
       { path: "/checklists/bagel-orders", label: "Bagel Orders", icon: CircleDot },
       { path: "/checklists/pastry-orders", label: "Pastry Orders", icon: CakeSlice },
-      { path: "/reports/history", label: "Reports", icon: History },
       { path: "/invoices", label: "Invoice Management", icon: Receipt },
+      { path: "/reports/history", label: "Reports", icon: History },
+    ],
+  },
+  {
+    title: "Evaluations",
+    items: [
+      { path: "/reports/team-evaluations", label: "Team Evaluations Report", icon: Users },
+      { path: "/checklists/training", label: "Training Evaluation", icon: GraduationCap },
+      { path: "/checklists/manager-eval", label: "Manager Evaluation", icon: Shield },
+      { path: "/checklists/performance", label: "Performance Evaluation", icon: Star },
     ],
   },
   {
