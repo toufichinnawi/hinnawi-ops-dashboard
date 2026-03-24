@@ -101,20 +101,23 @@ const POSITIONS: PositionDef[] = [
     requiresPin: true,
     requiresStore: false, // Ops Manager sees all stores
     sidebarItems: [
+      // Analytics
       si("scorecard", "Operations Scorecard", BarChart3, "info", { infoContent: "scorecard" }),
       si("store-perf", "Store Performance", TrendingUp, "info", { infoContent: "store-performance" }),
-      si("team-evals", "Team Evaluations Report", Users, "info", { infoContent: "team-evaluations" }),
+      si("production-monitor", "Production Monitor", Factory, "info", { infoContent: "production-monitor" }),
+      // Reports & Checklists
       si("reports", "Reports", FileText, "info", { infoContent: "reports" }),
       si("ops-audit", "Store Weekly Audit", ClipboardCheck, "checklist", { checklistType: "ops-manager-checklist" }),
-      si("training", "Training Evaluation", GraduationCap, "checklist", { checklistType: "training-evaluation" }),
-      si("performance-eval", "Performance Evaluation", Star, "checklist", { checklistType: "performance-evaluation" }),
-      si("manager-eval", "Manager Evaluation", Shield, "checklist", { checklistType: "manager-evaluation" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
-      si("production-monitor", "Production Monitor", Factory, "info", { infoContent: "production-monitor" }),
-      si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
       si("pastry-orders", "Pastry Orders", CakeSlice, "checklist", { checklistType: "pastry-orders" }),
+      si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
       si("pastry-production", "Pastry Production", CakeSlice, "info", { infoContent: "pastry-production" }),
       si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
+      // Evaluations
+      si("team-evals", "Team Evaluations Report", Users, "info", { infoContent: "team-evaluations" }),
+      si("training", "Training Evaluation", GraduationCap, "checklist", { checklistType: "training-evaluation" }),
+      si("manager-eval", "Manager Evaluation", Shield, "checklist", { checklistType: "manager-evaluation" }),
+      si("performance-eval", "Performance Evaluation", Star, "checklist", { checklistType: "performance-evaluation" }),
     ],
   },
   {
@@ -128,22 +131,25 @@ const POSITIONS: PositionDef[] = [
     requiresPin: true,
     requiresStore: true,
     sidebarItems: [
+      // Analytics
       si("scorecard", "Operations Scorecard", BarChart3, "info", { infoContent: "scorecard" }),
       si("store-perf", "Store Performance", TrendingUp, "info", { infoContent: "store-performance" }),
-      si("team-evals", "Team Evaluations Report", Users, "info", { infoContent: "team-evaluations" }),
+      // Reports & Checklists
       si("reports", "Reports", FileText, "info", { infoContent: "reports" }),
-      si("daily-checklist", "Store Weekly Checklist", ClipboardCheck, "checklist", { checklistType: "manager-checklist" }),
       si("weekly-scorecard", "Weekly Scorecard", BarChart3, "checklist", { checklistType: "weekly-scorecard" }),
+      si("daily-checklist", "Store Weekly Checklist", ClipboardCheck, "checklist", { checklistType: "manager-checklist" }),
       si("deep-clean", "Weekly Deep Clean", Sparkles, "checklist", { checklistType: "deep-clean" }),
-      si("performance-eval", "Performance Evaluation", Star, "checklist", { checklistType: "performance-evaluation" }),
       si("waste-report", "Leftovers & Waste", Trash2, "checklist", { checklistType: "waste-report" }),
       si("equipment", "Equipment & Maintenance", Wrench, "checklist", { checklistType: "equipment-maintenance" }),
-      si("training", "Training Evaluation", GraduationCap, "checklist", { checklistType: "training-evaluation" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
-      si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
       si("pastry-orders", "Pastry Orders", CakeSlice, "checklist", { checklistType: "pastry-orders" }),
+      si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
       si("pastry-production", "Pastry Production", CakeSlice, "info", { infoContent: "pastry-production" }),
       si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
+      // Evaluations
+      si("team-evals", "Team Evaluations Report", Users, "info", { infoContent: "team-evaluations" }),
+      si("training", "Training Evaluation", GraduationCap, "checklist", { checklistType: "training-evaluation" }),
+      si("performance-eval", "Performance Evaluation", Star, "checklist", { checklistType: "performance-evaluation" }),
     ],
   },
   {
