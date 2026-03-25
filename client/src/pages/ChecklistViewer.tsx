@@ -1443,7 +1443,7 @@ function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4
                             <div className="flex-1 min-w-0">
                               <span className="text-sm font-medium">{item.machine}</span>
                               <span className="text-sm text-muted-foreground ml-1">&mdash; {item.task}</span>
-                              <p className="text-xs text-muted-foreground/70 mt-0.5">{item.explanation}</p>
+                              {item.explanation && <p className="text-xs text-muted-foreground/70 mt-0.5">{item.explanation}</p>}
                             </div>
                           </div>
                         );
