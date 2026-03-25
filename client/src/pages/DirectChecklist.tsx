@@ -142,45 +142,8 @@ const SECTION_TASKS = {
   closing: ["Lock doors & flip sign", "Clean all equipment", "Mop floors", "Count registers", "Set alarm", "Final walkthrough"],
 };
 
-const EQUIP_DAILY = [
-  { equipment: "Grill", task: "Clean cooking surface and grease tray" },
-  { equipment: "Grill", task: "Verify operating temperature" },
-  { equipment: "Bagel Toaster / Conveyor Toaster", task: "Remove crumbs and wipe exterior" },
-  { equipment: "Espresso Machine", task: "Backflush with water" },
-  { equipment: "Espresso Machine", task: "Clean and purge steam wand" },
-  { equipment: "Espresso Machine", task: "Empty drip tray and wipe panels" },
-  { equipment: "Espresso Grinder", task: "Brush grind chamber and wipe hopper" },
-  { equipment: "Filter Coffee Brewer", task: "Clean brew basket and spray head" },
-  { equipment: "Water Filters", task: "Wipe exterior and verify heating" },
-  { equipment: "Barista Fridge", task: "Verify 2-4°C; clean glass" },
-  { equipment: "Prep / Sandwich Fridge", task: "Verify temperature; clean rails and gaskets" },
-  { equipment: "Reach-in Fridge", task: "Verify temperature and door seal" },
-  { equipment: "Dishwasher", task: "Clean filter; check detergent and rinse aid" },
-  { equipment: "Ice Machine", task: "Check ice quality and scoop storage" },
-  { equipment: "POS System", task: "Clean screen, printer area, and card terminal" },
-  { equipment: "Security Cameras", task: "Confirm recording" },
-  { equipment: "Fire Extinguisher", task: "Visible, tagged, accessible" },
-];
-const EQUIP_WEEKLY = [
-  { equipment: "Grill", task: "Deep clean; degrease; clean under and behind unit" },
-  { equipment: "Bagel Toaster / Conveyor Toaster", task: "Deep clean crumb area and interior" },
-  { equipment: "Espresso Machine", task: "Backflush with detergent and soak portafilters" },
-  { equipment: "Espresso Grinder", task: "Deep clean burr area and hopper" },
-  { equipment: "Filter Coffee Brewer", task: "Deep clean spray head, baskets, and airpots" },
-  { equipment: "Barista / Prep Fridges", task: "Clean shelves, gaskets, and drains" },
-  { equipment: "Ice Machine", task: "Sanitize interior and clean filter" },
-  { equipment: "Dishwasher", task: "Run cleaning / delime cycle; clean edges and bottom" },
-];
-const EQUIP_MONTHLY = [
-  { equipment: "Espresso Machine", task: "Inspect gaskets, pressure, and group heads" },
-  { equipment: "Water Filtration", task: "Replace filter if required and record date" },
-  { equipment: "Refrigeration - All Fridges / Freezers", task: "Clean condenser coils and inspect door gaskets" },
-  { equipment: "HVAC / Hood", task: "Replace or clean filters" },
-  { equipment: "Ice Machine", task: "Complete descaling / sanitizing cycle" },
-  { equipment: "Dishwasher", task: "Inspect spray arms, hoses, and drain line" },
-  { equipment: "Electrical Plugs / Cords", task: "Inspect visible damage and secure connections" },
-  { equipment: "Fire Safety", task: "Verify extinguisher inspection tag is current" },
-];
+// Equipment data is now imported from @/lib/equipmentData
+import { EQUIPMENT_SECTIONS, TOTAL_EQUIPMENT_ITEMS, type EquipmentSection } from "@/lib/equipmentData";
 
 const BAGEL_TYPES = [
   "Sesame Bagel", "Everything Bagel", "Plain Bagel", "Mini-Bagel Plain",
@@ -1394,31 +1357,9 @@ function EquipmentMaintenanceForm({ onBack, editReportId, editData, editStore }:
   const currentStoreName = stores.find(s => s.id === selectedStore)?.shortName || "";
   const [techName, setTechName] = useState("");
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
-
-  // Pre-fill from editData
-  useEffect(() => {
-    if (!editData) return;
-    const d = editData;
-    if (editStore) setSelectedStore(editStore);
-    if (d.reportDate || d.dateOfSubmission) setReportDate(d.reportDate || d.dateOfSubmission);
-    if (d.techName) setTechName(d.techName);
-    if (d.submitterName) setTechName(d.submitterName);
-    // Restore checklist data
-    if (d.daily && Array.isArray(d.daily)) setDaily(d.daily.map((item: any) => ({ checked: !!item.checked, initial: item.initial || "" })));
-    if (d.weekly && Array.isArray(d.weekly)) setWeekly(d.weekly.map((item: any) => ({ checked: !!item.checked, initial: item.initial || "" })));
-    if (d.monthly && Array.isArray(d.monthly)) setMonthly(d.monthly.map((item: any) => ({ checked: !!item.checked, initial: item.initial || "" })));
-    // Restore issue log
-    if (d.issueLog && Array.isArray(d.issueLog)) setIssueLog(d.issueLog);
-    // Restore staff accountability
-    if (d.staffAccountability) {
-      if (d.staffAccountability.staffName) setStaffName(d.staffAccountability.staffName);
-      if (d.staffAccountability.shift) setShift(d.staffAccountability.shift);
-      if (d.staffAccountability.supervisorName) setSupervisorName(d.staffAccountability.supervisorName);
-    }
-  }, [editData, editStore]);
-  const [daily, setDaily] = useState(() => EQUIP_DAILY.map(() => ({ checked: false, initial: "" })));
-  const [weekly, setWeekly] = useState(() => EQUIP_WEEKLY.map(() => ({ checked: false, initial: "" })));
-  const [monthly, setMonthly] = useState(() => EQUIP_MONTHLY.map(() => ({ checked: false, initial: "" })));
+  // State: Record<sectionId, Record<"machine::task", boolean>>
+  const [sectionChecks, setSectionChecks] = useState<Record<string, Record<string, boolean>>>({});
+  const [activeSection, setActiveSection] = useState<string | null>(null);
   const emptyIssue = { date: "", equipment: "", issue: "", actionTaken: "", reportedTo: "" };
   const [issueLog, setIssueLog] = useState<{ date: string; equipment: string; issue: string; actionTaken: string; reportedTo: string }[]>([]);
   const [staffName, setStaffName] = useState("");
@@ -1428,22 +1369,84 @@ function EquipmentMaintenanceForm({ onBack, editReportId, editData, editStore }:
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog: equipDuplicateDialog } = useDuplicateCheck();
 
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedStore(editStore);
+    if (d.reportDate || d.dateOfSubmission) setReportDate(d.reportDate || d.dateOfSubmission);
+    if (d.techName) setTechName(d.techName);
+    if (d.submitterName) setTechName(d.submitterName);
+    // Restore new section-based data
+    if (d.sections && typeof d.sections === "object") {
+      const restored: Record<string, Record<string, boolean>> = {};
+      for (const [sectionId, items] of Object.entries(d.sections)) {
+        if (Array.isArray(items)) {
+          restored[sectionId] = {};
+          (items as any[]).forEach((item: any) => {
+            if (item.machine && item.task) restored[sectionId][`${item.machine}::${item.task}`] = !!item.checked;
+          });
+        }
+      }
+      setSectionChecks(restored);
+    }
+    // Legacy: restore old daily/weekly/monthly format
+    if (d.daily && Array.isArray(d.daily) && !d.sections) {
+      const restored: Record<string, Record<string, boolean>> = {};
+      restored["daily"] = {};
+      (d.daily as any[]).forEach((item: any) => {
+        const key = item.equipment ? `${item.equipment}::${item.task}` : `${item.machine}::${item.task}`;
+        restored["daily"][key] = !!item.checked;
+      });
+      if (d.weekly && Array.isArray(d.weekly)) {
+        restored["weekly"] = {};
+        (d.weekly as any[]).forEach((item: any) => {
+          const key = item.equipment ? `${item.equipment}::${item.task}` : `${item.machine}::${item.task}`;
+          restored["weekly"][key] = !!item.checked;
+        });
+      }
+      if (d.monthly && Array.isArray(d.monthly)) {
+        restored["monthly"] = {};
+        (d.monthly as any[]).forEach((item: any) => {
+          const key = item.equipment ? `${item.equipment}::${item.task}` : `${item.machine}::${item.task}`;
+          restored["monthly"][key] = !!item.checked;
+        });
+      }
+      setSectionChecks(restored);
+    }
+    if (d.issueLog && Array.isArray(d.issueLog)) setIssueLog(d.issueLog);
+    if (d.staffAccountability) {
+      if (d.staffAccountability.staffName) setStaffName(d.staffAccountability.staffName);
+      if (d.staffAccountability.shift) setShift(d.staffAccountability.shift);
+      if (d.staffAccountability.supervisorName) setSupervisorName(d.staffAccountability.supervisorName);
+    }
+  }, [editData, editStore]);
+
+  const getSectionDone = (section: EquipmentSection) => {
+    const checks = sectionChecks[section.id] || {};
+    return section.items.filter(item => !!checks[`${item.machine}::${item.task}`]).length;
+  };
+  const totalDone = EQUIPMENT_SECTIONS.reduce((sum, s) => sum + getSectionDone(s), 0);
+  const issueCount = issueLog.filter(i => i.equipment.trim() || i.issue.trim()).length;
+  const staffFilled = [staffName, shift, supervisorName].filter(Boolean).length;
+
   const handleSubmit = async () => {
     if (!techName.trim() || !selectedStore) { toast.error("Please fill required fields"); return; }
-    const total = daily.length + weekly.length + monthly.length;
-    const checked = [...daily, ...weekly, ...monthly].filter((i) => i.checked).length;
-    const filteredIssues = issueLog.filter(i => i.equipment.trim() || i.issue.trim());
-    const formData = {
-      daily: EQUIP_DAILY.map((e, i) => ({ ...e, ...daily[i] })),
-      weekly: EQUIP_WEEKLY.map((e, i) => ({ ...e, ...weekly[i] })),
-      monthly: EQUIP_MONTHLY.map((e, i) => ({ ...e, ...monthly[i] })),
-      issueLog: filteredIssues,
-      staffAccountability: { staffName, shift, supervisorName },
-    };
+    const checklistData: Record<string, any[]> = {};
+    EQUIPMENT_SECTIONS.forEach(section => {
+      const checks = sectionChecks[section.id] || {};
+      checklistData[section.id] = section.items.map(item => ({
+        machine: item.machine,
+        task: item.task,
+        checked: !!checks[`${item.machine}::${item.task}`],
+      }));
+    });
+    const total = TOTAL_EQUIPMENT_ITEMS;
+    const checked = totalDone;
     if (isEdit) {
       setSubmitting(true);
       try {
-        await updateReport(editReportId, { data: formData, totalScore: `${checked}/${total}`, status: "submitted" });
+        await updateReport(editReportId, { data: { sections: checklistData, issueLog: issueLog.filter(i => i.equipment.trim() || i.issue.trim()), staffAccountability: { staffName, shift, supervisorName } }, totalScore: `${checked}/${total}`, status: "submitted" });
         setSubmitted(true); toast.success("Report updated!");
       } catch { toast.error("Failed to update report"); }
       finally { setSubmitting(false); }
@@ -1452,7 +1455,7 @@ function EquipmentMaintenanceForm({ onBack, editReportId, editData, editStore }:
     await submitWithDuplicateCheck(
       {
         reportType: "equipment-maintenance", location: selectedStore, submitterName: techName, reportDate,
-        data: formData,
+        data: { sections: checklistData, issueLog: issueLog.filter(i => i.equipment.trim() || i.issue.trim()), staffAccountability: { staffName, shift, supervisorName } },
         totalScore: `${checked}/${total}`,
       },
       () => { setSubmitted(true); toast.success("Maintenance checklist submitted!"); },
@@ -1460,27 +1463,6 @@ function EquipmentMaintenanceForm({ onBack, editReportId, editData, editStore }:
       setSubmitting,
     );
   };
-
-  // Progress counts for badges
-  const dailyDone = daily.filter(d => d.checked).length;
-  const weeklyDone = weekly.filter(d => d.checked).length;
-  const monthlyDone = monthly.filter(d => d.checked).length;
-  const issueCount = issueLog.filter(i => i.equipment.trim() || i.issue.trim()).length;
-  const staffFilled = [staffName, shift, supervisorName].filter(Boolean).length;
-
-  const renderEquipItems = (items: { equipment: string; task: string }[], data: { checked: boolean; initial: string }[], setData: React.Dispatch<React.SetStateAction<{ checked: boolean; initial: string }[]>>) => (
-    <div className="space-y-1">
-      {items.map((item, i) => (
-        <div key={i} className="flex items-center gap-3 py-1.5 px-1 rounded hover:bg-muted/50 transition-colors">
-          <Checkbox checked={data[i].checked} onCheckedChange={(c) => setData((p) => p.map((d, j) => j === i ? { ...d, checked: !!c } : d))} />
-          <div className="flex-1">
-            <span className="text-sm font-medium">{item.equipment}</span>
-            <span className="text-sm text-muted-foreground"> — {item.task}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 
   const ProgressBadge = ({ done, total }: { done: number; total: number }) => {
     const allDone = done === total && total > 0;
@@ -1500,6 +1482,55 @@ function EquipmentMaintenanceForm({ onBack, editReportId, editData, editStore }:
     </motion.div>
   );
 
+  // Section detail view
+  if (activeSection) {
+    const section = EQUIPMENT_SECTIONS.find(s => s.id === activeSection)!;
+    const checks = sectionChecks[section.id] || {};
+    const done = getSectionDone(section);
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => setActiveSection(null)}><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
+          <h3 className="font-serif text-lg">{section.label}</h3>
+        </div>
+        <div className={cn("rounded-xl border p-4", section.borderColor, section.bgColor)}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">{section.icon}</span>
+              <span className={cn("font-semibold", section.color)}>{section.label}</span>
+            </div>
+            <ProgressBadge done={done} total={section.items.length} />
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+            <div className="bg-emerald-500 h-2 rounded-full transition-all" style={{ width: `${section.items.length > 0 ? (done / section.items.length) * 100 : 0}%` }} />
+          </div>
+          <div className="space-y-1">
+            {section.items.map((item, i) => {
+              const key = `${item.machine}::${item.task}`;
+              return (
+                <div key={i} className="flex items-start gap-3 py-2 px-2 rounded-lg hover:bg-white/60 transition-colors">
+                  <Checkbox
+                    checked={!!checks[key]}
+                    onCheckedChange={(v) => setSectionChecks(prev => ({
+                      ...prev,
+                      [section.id]: { ...(prev[section.id] || {}), [key]: !!v }
+                    }))}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium">{item.machine}</span>
+                    <span className="text-sm text-muted-foreground ml-1">&mdash; {item.task}</span>
+                    <p className="text-xs text-muted-foreground/70 mt-0.5">{item.explanation}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card><CardContent className="pt-6 space-y-4">
@@ -1509,49 +1540,49 @@ function EquipmentMaintenanceForm({ onBack, editReportId, editData, editStore }:
       </CardContent></Card>
       {isEdit && <EditBanner reportId={editReportId!} />}
 
-      {/* Accordion Sections */}
+      {/* Overall Progress */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-serif text-base">Overall Progress</span>
+            <ProgressBadge done={totalDone} total={TOTAL_EQUIPMENT_ITEMS} />
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div className="bg-emerald-500 h-2.5 rounded-full transition-all" style={{ width: `${TOTAL_EQUIPMENT_ITEMS > 0 ? (totalDone / TOTAL_EQUIPMENT_ITEMS) * 100 : 0}%` }} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Section Boxes Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {EQUIPMENT_SECTIONS.map(section => {
+          const done = getSectionDone(section);
+          const allDone = done === section.items.length && section.items.length > 0;
+          return (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={cn(
+                "rounded-xl border-2 p-4 text-left transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
+                allDone ? "border-emerald-400 bg-emerald-50" : section.borderColor + " " + section.bgColor
+              )}
+            >
+              <div className="text-2xl mb-2">{section.icon}</div>
+              <div className={cn("font-semibold text-sm", allDone ? "text-emerald-700" : section.color)}>{section.shortLabel}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{section.items.length} items</div>
+              <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                <div className={cn("h-1.5 rounded-full transition-all", allDone ? "bg-emerald-500" : "bg-amber-400")} style={{ width: `${section.items.length > 0 ? (done / section.items.length) * 100 : 0}%` }} />
+              </div>
+              <div className="text-xs font-mono mt-1 text-muted-foreground">{done}/{section.items.length}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Accordion for Issue Log and Staff */}
       <Card>
         <CardContent className="pt-4 pb-2">
-          <Accordion type="multiple" defaultValue={["daily"]}>
-            {/* Daily Checks */}
-            <AccordionItem value="daily">
-              <AccordionTrigger className="py-3 hover:no-underline">
-                <div className="flex items-center">
-                  <span className="font-serif text-base">Daily Checks</span>
-                  <ProgressBadge done={dailyDone} total={EQUIP_DAILY.length} />
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                {renderEquipItems(EQUIP_DAILY, daily, setDaily)}
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* Weekly Checks */}
-            <AccordionItem value="weekly">
-              <AccordionTrigger className="py-3 hover:no-underline">
-                <div className="flex items-center">
-                  <span className="font-serif text-base">Weekly Checks</span>
-                  <ProgressBadge done={weeklyDone} total={EQUIP_WEEKLY.length} />
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                {renderEquipItems(EQUIP_WEEKLY, weekly, setWeekly)}
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* Monthly Checks */}
-            <AccordionItem value="monthly">
-              <AccordionTrigger className="py-3 hover:no-underline">
-                <div className="flex items-center">
-                  <span className="font-serif text-base">Monthly Checks</span>
-                  <ProgressBadge done={monthlyDone} total={EQUIP_MONTHLY.length} />
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                {renderEquipItems(EQUIP_MONTHLY, monthly, setMonthly)}
-              </AccordionContent>
-            </AccordionItem>
-
+          <Accordion type="multiple">
             {/* Maintenance Issue Log */}
             <AccordionItem value="issues">
               <AccordionTrigger className="py-3 hover:no-underline">

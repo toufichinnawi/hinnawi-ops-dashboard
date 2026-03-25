@@ -118,47 +118,8 @@ const ASST_MGR_SECTIONS = [
   { title: "Leadership", items: ["Provide feedback to team members", "Address any staff issues or concerns", "Communicate with store manager about the day", "Follow up on previous day's action items", "Ensure staff are following dress code"] },
 ];
 
-const EQUIP_DAILY = [
-  { equipment: "Grill", task: "Clean cooking surface and grease tray" },
-  { equipment: "Grill", task: "Verify operating temperature" },
-  { equipment: "Bagel Toaster / Conveyor Toaster", task: "Remove crumbs and wipe exterior" },
-  { equipment: "Espresso Machine", task: "Backflush with water" },
-  { equipment: "Espresso Machine", task: "Clean and purge steam wand" },
-  { equipment: "Espresso Machine", task: "Empty drip tray and wipe panels" },
-  { equipment: "Espresso Grinder", task: "Brush grind chamber and wipe hopper" },
-  { equipment: "Filter Coffee Brewer", task: "Clean brew basket and spray head" },
-  { equipment: "Water Filters", task: "Wipe exterior and verify heating" },
-  { equipment: "Barista Fridge", task: "Verify 2-4\u00b0C; clean glass" },
-  { equipment: "Prep / Sandwich Fridge", task: "Verify temperature; clean rails and gaskets" },
-  { equipment: "Reach-in Fridge", task: "Verify temperature and door seal" },
-  { equipment: "Dishwasher", task: "Clean filter; check detergent and rinse aid" },
-  { equipment: "Ice Machine", task: "Check ice quality and scoop storage" },
-  { equipment: "POS System", task: "Clean screen, printer area, and card terminal" },
-  { equipment: "Security Cameras", task: "Confirm recording" },
-  { equipment: "Fire Extinguisher", task: "Visible, tagged, accessible" },
-];
-
-const EQUIP_WEEKLY = [
-  { equipment: "Grill", task: "Deep clean; degrease; clean under and behind unit" },
-  { equipment: "Bagel Toaster / Conveyor Toaster", task: "Deep clean crumb area and interior" },
-  { equipment: "Espresso Machine", task: "Backflush with detergent and soak portafilters" },
-  { equipment: "Espresso Grinder", task: "Deep clean burr area and hopper" },
-  { equipment: "Filter Coffee Brewer", task: "Deep clean spray head, baskets, and airpots" },
-  { equipment: "Barista / Prep Fridges", task: "Clean shelves, gaskets, and drains" },
-  { equipment: "Ice Machine", task: "Sanitize interior and clean filter" },
-  { equipment: "Dishwasher", task: "Run cleaning / delime cycle; clean edges and bottom" },
-];
-
-const EQUIP_MONTHLY = [
-  { equipment: "Espresso Machine", task: "Inspect gaskets, pressure, and group heads" },
-  { equipment: "Water Filtration", task: "Replace filter if required and record date" },
-  { equipment: "Refrigeration - All Fridges / Freezers", task: "Clean condenser coils and inspect door gaskets" },
-  { equipment: "HVAC / Hood", task: "Replace or clean filters" },
-  { equipment: "Ice Machine", task: "Complete descaling / sanitizing cycle" },
-  { equipment: "Dishwasher", task: "Inspect spray arms, hoses, and drain line" },
-  { equipment: "Electrical Plugs / Cords", task: "Inspect visible damage and secure connections" },
-  { equipment: "Fire Safety", task: "Verify extinguisher inspection tag is current" },
-];
+// Equipment data is now imported from @/lib/equipmentData
+import { EQUIPMENT_SECTIONS, TOTAL_EQUIPMENT_ITEMS, type EquipmentSection } from "@/lib/equipmentData";
 
 const BAGEL_TYPES = [
   "Sesame Bagel", "Everything Bagel", "Plain Bagel", "Mini-Bagel Plain",
@@ -1360,9 +1321,9 @@ function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4
   const [selectedStore, setSelectedStore] = useState(initialStoreCode || "");
   const currentStoreName = stores.find((s) => s.shortName === selectedStore)?.name || selectedStore;
   const [submitterName, setSubmitterName] = useState("");
-  const [dailyChecks, setDailyChecks] = useState<Record<string, boolean>>({});
-  const [weeklyChecks, setWeeklyChecks] = useState<Record<string, boolean>>({});
-  const [monthlyChecks, setMonthlyChecks] = useState<Record<string, boolean>>({});
+  // State: Record<sectionId, Record<"machine::task", boolean>>
+  const [sectionChecks, setSectionChecks] = useState<Record<string, Record<string, boolean>>>({});
+  const [activeSection, setActiveSection] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const emptyIssue = { date: new Date().toISOString().split("T")[0], equipment: "", issue: "", actionTaken: "", reportedTo: "" };
   const [issueLog, setIssueLog] = useState<{ date: string; equipment: string; issue: string; actionTaken: string; reportedTo: string }[]>([]);
@@ -1373,16 +1334,34 @@ function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4
   const [submitting, setSubmitting] = useState(false);
   const { submitWithDuplicateCheck, duplicateDialog: equipDuplicateDialog } = useDuplicateCheck();
 
+  const getSectionDone = (section: EquipmentSection) => {
+    const checks = sectionChecks[section.id] || {};
+    return section.items.filter(item => !!checks[`${item.machine}::${item.task}`]).length;
+  };
+  const totalDone = EQUIPMENT_SECTIONS.reduce((sum, s) => sum + getSectionDone(s), 0);
+  const issueCount = issueLog.filter(i => i.equipment.trim() || i.issue.trim()).length;
+  const staffFilled = [staffName, shift, supervisorName].filter(Boolean).length;
+
   const handleSubmit = async () => {
     if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
     if (!selectedStore) { toast.error("Please select a store"); return; }
+    // Build data in a structured format
+    const checklistData: Record<string, any[]> = {};
+    EQUIPMENT_SECTIONS.forEach(section => {
+      const checks = sectionChecks[section.id] || {};
+      checklistData[section.id] = section.items.map(item => ({
+        machine: item.machine,
+        task: item.task,
+        checked: !!checks[`${item.machine}::${item.task}`],
+      }));
+    });
     await submitWithDuplicateCheck(
       {
         submitterName,
         reportType: "Equipment & Maintenance",
         location: selectedStore,
         reportDate: new Date().toISOString().split("T")[0],
-        data: { dailyChecks, weeklyChecks, monthlyChecks, notes, issueLog: issueLog.filter(i => i.equipment.trim() || i.issue.trim()), staffAccountability: { staffName, shift, supervisorName } },
+        data: { sections: checklistData, notes, issueLog: issueLog.filter(i => i.equipment.trim() || i.issue.trim()), staffAccountability: { staffName, shift, supervisorName } },
       },
       () => setSubmitted(true),
       (msg) => toast.error(msg),
@@ -1390,31 +1369,7 @@ function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4
     );
   };
 
-  // Progress counts for badges
-  const dailyDone = EQUIP_DAILY.filter(item => !!dailyChecks[`${item.equipment}::${item.task}`]).length;
-  const weeklyDone = EQUIP_WEEKLY.filter(item => !!weeklyChecks[`${item.equipment}::${item.task}`]).length;
-  const monthlyDone = EQUIP_MONTHLY.filter(item => !!monthlyChecks[`${item.equipment}::${item.task}`]).length;
-  const issueCount = issueLog.filter(i => i.equipment.trim() || i.issue.trim()).length;
-  const staffFilled = [staffName, shift, supervisorName].filter(Boolean).length;
-
-  if (submitted) return <SuccessCard message={`Equipment Maintenance submitted for ${currentStoreName}`} onNew={() => { setDailyChecks({}); setWeeklyChecks({}); setMonthlyChecks({}); setNotes(""); setIssueLog([]); setStaffName(""); setShift(""); setSupervisorName(""); setSubmitted(false); }} onBack={onBack} />;
-
-  const renderEquipItems = (items: typeof EQUIP_DAILY, state: Record<string, boolean>, setState: (fn: (prev: Record<string, boolean>) => Record<string, boolean>) => void) => (
-    <div className="space-y-1">
-      {items.map((item, i) => {
-        const key = `${item.equipment}::${item.task}`;
-        return (
-          <div key={i} className="flex items-center justify-between gap-3 py-1.5 px-1 rounded hover:bg-muted/50 transition-colors">
-            <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium">{item.equipment}</span>
-              <span className="text-sm text-muted-foreground ml-2">— {item.task}</span>
-            </div>
-            <Checkbox checked={!!state[key]} onCheckedChange={(v) => setState((prev) => ({ ...prev, [key]: !!v }))} />
-          </div>
-        );
-      })}
-    </div>
-  );
+  if (submitted) return <SuccessCard message={`Equipment Maintenance submitted for ${currentStoreName}`} onNew={() => { setSectionChecks({}); setNotes(""); setIssueLog([]); setStaffName(""); setShift(""); setSupervisorName(""); setActiveSection(null); setSubmitted(false); }} onBack={onBack} />;
 
   const ProgressBadge = ({ done, total }: { done: number; total: number }) => {
     const allDone = done === total && total > 0;
@@ -1426,6 +1381,54 @@ function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4
     );
   };
 
+  // Section detail view
+  if (activeSection) {
+    const section = EQUIPMENT_SECTIONS.find(s => s.id === activeSection)!;
+    const checks = sectionChecks[section.id] || {};
+    const done = getSectionDone(section);
+    return (
+      <div>
+        <FormHeader title={section.label} subtitle="Equipment & Maintenance" onBack={() => setActiveSection(null)} />
+        <div className="space-y-4">
+          <div className={cn("rounded-xl border p-4", section.borderColor, section.bgColor)}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{section.icon}</span>
+                <span className={cn("font-semibold", section.color)}>{section.label}</span>
+              </div>
+              <ProgressBadge done={done} total={section.items.length} />
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+              <div className="bg-emerald-500 h-2 rounded-full transition-all" style={{ width: `${section.items.length > 0 ? (done / section.items.length) * 100 : 0}%` }} />
+            </div>
+            <div className="space-y-1">
+              {section.items.map((item, i) => {
+                const key = `${item.machine}::${item.task}`;
+                return (
+                  <div key={i} className="flex items-start gap-3 py-2 px-2 rounded-lg hover:bg-white/60 transition-colors">
+                    <Checkbox
+                      checked={!!checks[key]}
+                      onCheckedChange={(v) => setSectionChecks(prev => ({
+                        ...prev,
+                        [section.id]: { ...(prev[section.id] || {}), [key]: !!v }
+                      }))}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium">{item.machine}</span>
+                      <span className="text-sm text-muted-foreground ml-1">&mdash; {item.task}</span>
+                      <p className="text-xs text-muted-foreground/70 mt-0.5">{item.explanation}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <FormHeader title="Equipment & Maintenance" subtitle={`${positionLabel}`} onBack={onBack} />
@@ -1436,48 +1439,46 @@ function EquipmentMaintenanceForm({ storeCode: initialStoreCode, storeName: _sn4
           <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
         </div>
 
-        {/* Accordion Sections */}
+        {/* Overall Progress */}
+        <div className="bg-card rounded-xl border border-border/60 p-5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold">Overall Progress</span>
+            <ProgressBadge done={totalDone} total={TOTAL_EQUIPMENT_ITEMS} />
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div className="bg-emerald-500 h-2.5 rounded-full transition-all" style={{ width: `${TOTAL_EQUIPMENT_ITEMS > 0 ? (totalDone / TOTAL_EQUIPMENT_ITEMS) * 100 : 0}%` }} />
+          </div>
+        </div>
+
+        {/* Section Boxes Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {EQUIPMENT_SECTIONS.map(section => {
+            const done = getSectionDone(section);
+            const allDone = done === section.items.length && section.items.length > 0;
+            return (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={cn(
+                  "rounded-xl border-2 p-4 text-left transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
+                  allDone ? "border-emerald-400 bg-emerald-50" : section.borderColor + " " + section.bgColor
+                )}
+              >
+                <div className="text-2xl mb-2">{section.icon}</div>
+                <div className={cn("font-semibold text-sm", allDone ? "text-emerald-700" : section.color)}>{section.shortLabel}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{section.items.length} items</div>
+                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                  <div className={cn("h-1.5 rounded-full transition-all", allDone ? "bg-emerald-500" : "bg-amber-400")} style={{ width: `${section.items.length > 0 ? (done / section.items.length) * 100 : 0}%` }} />
+                </div>
+                <div className="text-xs font-mono mt-1 text-muted-foreground">{done}/{section.items.length}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Accordion for Issue Log, Staff, Notes */}
         <div className="bg-card rounded-xl border border-border/60 px-5 py-2">
-          <Accordion type="multiple" defaultValue={["daily"]}>
-            {/* Daily Checks */}
-            <AccordionItem value="daily">
-              <AccordionTrigger className="py-3 hover:no-underline">
-                <div className="flex items-center">
-                  <span className="font-semibold text-sm">Daily Checks</span>
-                  <ProgressBadge done={dailyDone} total={EQUIP_DAILY.length} />
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                {renderEquipItems(EQUIP_DAILY, dailyChecks, setDailyChecks)}
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* Weekly Checks */}
-            <AccordionItem value="weekly">
-              <AccordionTrigger className="py-3 hover:no-underline">
-                <div className="flex items-center">
-                  <span className="font-semibold text-sm">Weekly Checks</span>
-                  <ProgressBadge done={weeklyDone} total={EQUIP_WEEKLY.length} />
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                {renderEquipItems(EQUIP_WEEKLY, weeklyChecks, setWeeklyChecks)}
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* Monthly Checks */}
-            <AccordionItem value="monthly">
-              <AccordionTrigger className="py-3 hover:no-underline">
-                <div className="flex items-center">
-                  <span className="font-semibold text-sm">Monthly Checks</span>
-                  <ProgressBadge done={monthlyDone} total={EQUIP_MONTHLY.length} />
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                {renderEquipItems(EQUIP_MONTHLY, monthlyChecks, setMonthlyChecks)}
-              </AccordionContent>
-            </AccordionItem>
-
+          <Accordion type="multiple">
             {/* Maintenance Issue Log */}
             <AccordionItem value="issues">
               <AccordionTrigger className="py-3 hover:no-underline">
