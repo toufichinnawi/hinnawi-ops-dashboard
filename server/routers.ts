@@ -2003,6 +2003,23 @@ export const appRouter = router({
             r.reportType === "Pastry Orders"
         );
       }),
+    dailyOrders: protectedProcedure
+      .input(
+        z.object({
+          fromDate: z.string(),
+          toDate: z.string(),
+        })
+      )
+      .query(async ({ input }) => {
+        const { getReportsByDateRange } = await import("./db");
+        const reports = await getReportsByDateRange(input.fromDate, input.toDate);
+        // Filter to only daily order reports (handle both report type formats)
+        return reports.filter(
+          (r: any) =>
+            r.reportType === "daily-orders" ||
+            r.reportType === "Daily Orders"
+        );
+      }),
   }),
 
   // --- Production Labour (7shifts CK account) ---

@@ -17,7 +17,7 @@ import {
   FileText, DollarSign, Percent, Clock, CheckCircle2,
   Pencil, Receipt, CalendarIcon, Filter,
   Download, Flag, MessageSquare, Send, AlertTriangle, Loader2,
-  Sparkles, Factory, ClipboardList,
+  Sparkles, Factory, ClipboardList, ChefHat,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,7 @@ import { BagelProductionContent } from "@/pages/BagelProduction";
 import { PastryProductionContent } from "@/pages/PastryProduction";
 import { ProductionMonitorContent } from "@/pages/ProductionMonitor";
 import { TeamEvaluationsContent } from "@/pages/TeamEvaluations";
+import { CKPrepsContent } from "@/pages/CKPreps";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -113,6 +114,7 @@ const POSITIONS: PositionDef[] = [
       si("daily-orders", "Daily Orders", ClipboardList, "checklist", { checklistType: "daily-orders" }),
       si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
       si("pastry-production", "Pastry Production", CakeSlice, "info", { infoContent: "pastry-production" }),
+      si("ck-preps", "CK Preps", ChefHat, "info", { infoContent: "ck-preps" }),
       si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
       // Evaluations
       si("team-evals", "Team Evaluations Report", Users, "info", { infoContent: "team-evaluations" }),
@@ -147,6 +149,7 @@ const POSITIONS: PositionDef[] = [
       si("daily-orders", "Daily Orders", ClipboardList, "checklist", { checklistType: "daily-orders" }),
       si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
       si("pastry-production", "Pastry Production", CakeSlice, "info", { infoContent: "pastry-production" }),
+      si("ck-preps", "CK Preps", ChefHat, "info", { infoContent: "ck-preps" }),
       si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
       // Evaluations
       si("team-evals", "Team Evaluations Report", Users, "info", { infoContent: "team-evaluations" }),
@@ -172,6 +175,7 @@ const POSITIONS: PositionDef[] = [
       si("training", "Training Evaluation", GraduationCap, "checklist", { checklistType: "training-evaluation" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
       si("daily-orders", "Daily Orders", ClipboardList, "checklist", { checklistType: "daily-orders" }),
+      si("ck-preps", "CK Preps", ChefHat, "info", { infoContent: "ck-preps" }),
       si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
     ],
   },
@@ -188,6 +192,7 @@ const POSITIONS: PositionDef[] = [
     sidebarItems: [
       si("waste-report", "Leftovers & Waste", Trash2, "checklist", { checklistType: "waste-report" }),
       si("daily-orders", "Daily Orders", ClipboardList, "checklist", { checklistType: "daily-orders" }),
+      si("ck-preps", "CK Preps", ChefHat, "info", { infoContent: "ck-preps" }),
       si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
     ],
   },
@@ -1131,6 +1136,15 @@ function PortalInfoPage({
     return (
       <div className="max-w-[1400px]">
         <PastryProductionContent defaultToToday storeFilter={pastryStoreFilter} />
+      </div>
+    );
+  }
+
+  if (pageId === "ck-preps") {
+    const ckStoreFilter = store?.storeCode || undefined;
+    return (
+      <div className="max-w-[1400px]">
+        <CKPrepsContent defaultToToday storeFilter={ckStoreFilter} />
       </div>
     );
   }
