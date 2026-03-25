@@ -1975,6 +1975,258 @@ function PastryOrdersForm({ onBack, editReportId, editData, editStore }: { onBac
   );
 }
 
+// ─── Daily Orders Form (Admin) ───
+
+const DAILY_ORDER_SECTIONS_ADMIN = [
+  {
+    id: "proteins",
+    label: "Proteins / Deli",
+    icon: "\ud83e\udd69",
+    items: [
+      { name: "Chicken", unit: "bags" },
+      { name: "Turkey", unit: "bags / slicing pieces" },
+      { name: "Sliced ham packs", unit: "packs" },
+      { name: "Smoked meat (90g)", unit: "packs" },
+      { name: "Bacon jam", unit: "jars" },
+    ],
+  },
+  {
+    id: "dairy",
+    label: "Dairy & Cheese",
+    icon: "\ud83e\uddc0",
+    items: [
+      { name: "Sliced cheddar packs", unit: "packs" },
+      { name: "Block cheddar (for slicing)", unit: "blocks" },
+      { name: "Sliced mozzarella packs", unit: "packs" },
+      { name: "Hinnawi cream cheese", unit: "tubs" },
+    ],
+  },
+  {
+    id: "vegetables",
+    label: "Vegetables",
+    icon: "\ud83e\udd2c",
+    items: [
+      { name: "Lettuce", unit: "heads" },
+      { name: "Tomatoes", unit: "units" },
+      { name: "Cucumber", unit: "units" },
+      { name: "Onions", unit: "units" },
+      { name: "Pepper", unit: "units" },
+      { name: "Avocadoes", unit: "units" },
+      { name: "Lemon", unit: "units" },
+    ],
+  },
+  {
+    id: "sauces",
+    label: "Sauces & Spreads",
+    icon: "\ud83e\uded9",
+    items: [
+      { name: "Spicy mayo", unit: "bottles" },
+      { name: "Honey mustard", unit: "bottles" },
+    ],
+  },
+  {
+    id: "pickles",
+    label: "Pickles",
+    icon: "\ud83e\udd52",
+    items: [
+      { name: "Pickles", unit: "jars" },
+    ],
+  },
+  {
+    id: "coffee",
+    label: "Coffee & Beverages",
+    icon: "\u2615",
+    items: [
+      { name: "Amelia Espresso Coffee Beans (large bags)", unit: "bags" },
+      { name: "Filter coffee bags", unit: "bags" },
+      { name: "Small bags (espresso / filter)", unit: "bags" },
+      { name: "Orange juice", unit: "units" },
+      { name: "Coffee containers", unit: "units" },
+    ],
+  },
+  {
+    id: "food-items",
+    label: "Food Items (Ready / Other)",
+    icon: "\ud83e\udd50",
+    items: [
+      { name: "Granola yogurt", unit: "units" },
+      { name: "Chia pudding", unit: "units" },
+    ],
+  },
+  {
+    id: "packaging",
+    label: "Packaging & Supplies",
+    icon: "\ud83d\udce6",
+    items: [
+      { name: "Coffee cups (medium & large)", unit: "sleeves" },
+      { name: "Coffee cup lids", unit: "sleeves" },
+      { name: "Wax paper", unit: "rolls" },
+      { name: "Sandwich bags (large)", unit: "packs" },
+      { name: "Custom boxes", unit: "units" },
+      { name: "Coffee bags", unit: "packs" },
+      { name: "Delivery bins", unit: "units" },
+    ],
+  },
+];
+
+function DailyOrdersForm({ onBack, editReportId, editData, editStore }: { onBack: () => void } & EditProps) {
+  const isEdit = !!editReportId;
+  const [selectedLocation, setSelectedLocation] = useState(stores[0]?.shortName || "");
+
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (editStore) setSelectedLocation(editStore);
+    if (d.location) setSelectedLocation(d.location);
+  }, [editData, editStore]);
+
+  const [ordererName, setOrdererName] = useState("");
+  const [orderForDate, setOrderForDate] = useState("");
+  const [quantities, setQuantities] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    DAILY_ORDER_SECTIONS_ADMIN.forEach(s => s.items.forEach(item => { init[item.name] = ""; }));
+    return init;
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog: dailyDuplicateDialog } = useDuplicateCheck();
+
+  // Pre-fill from editData
+  useEffect(() => {
+    if (!editData) return;
+    const d = editData;
+    if (d.submitterName) setOrdererName(d.submitterName);
+    if (d.orderForDate) setOrderForDate(d.orderForDate);
+    if (d.sections && Array.isArray(d.sections)) {
+      const restored: Record<string, string> = {};
+      d.sections.forEach((sec: any) => {
+        if (sec.items && Array.isArray(sec.items)) {
+          sec.items.forEach((item: any) => { if (item.name) restored[item.name] = item.quantity || ""; });
+        }
+      });
+      setQuantities(prev => ({ ...prev, ...restored }));
+    }
+  }, [editData]);
+
+  const locationLabel = stores.find(s => s.shortName === selectedLocation)?.name || selectedLocation;
+  const filledCount = Object.values(quantities).filter(v => v && parseFloat(v) > 0).length;
+  const totalItems = DAILY_ORDER_SECTIONS_ADMIN.reduce((sum, s) => sum + s.items.length, 0);
+
+  const buildPayload = () => ({
+    reportType: "Daily Orders", location: selectedLocation, submitterName: ordererName, reportDate: orderForDate,
+    data: {
+      orderForDate,
+      sections: DAILY_ORDER_SECTIONS_ADMIN.map(section => ({
+        section: section.label,
+        items: section.items.map(item => ({ name: item.name, quantity: quantities[item.name] || "0", unit: item.unit })),
+      })),
+    },
+  });
+
+  const handleSubmit = async () => {
+    if (!selectedLocation) { toast.error("Please select a location"); return; }
+    if (!ordererName.trim()) { toast.error("Please enter your name"); return; }
+    if (!orderForDate) { toast.error("Please select the order date"); return; }
+    if (isEdit) {
+      setSubmitting(true);
+      try {
+        const payload = buildPayload();
+        await updateReport(editReportId!, { data: payload.data, status: "submitted" });
+        setSubmitted(true); toast.success("Report updated!");
+      } catch { toast.error("Failed to update report"); }
+      finally { setSubmitting(false); }
+      return;
+    }
+    await submitWithDuplicateCheck(
+      buildPayload(),
+      () => { setSubmitted(true); toast.success(`Daily order submitted for ${locationLabel}!`); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
+  };
+
+  if (submitted) return (
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 space-y-4">
+      <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" /><h3 className="text-xl font-serif">Order Submitted</h3>
+      <p className="text-muted-foreground">Daily Order for {locationLabel}</p>
+      <Button onClick={onBack} variant="outline">Back</Button>
+    </motion.div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {isEdit && <EditBanner reportId={editReportId!} />}
+
+      <Card><CardContent className="pt-6">
+        <Label className="text-sm font-medium">Location</Label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+          {stores.map((store) => (
+            <button
+              key={store.id}
+              type="button"
+              onClick={() => setSelectedLocation(store.shortName)}
+              className={cn(
+                "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+                selectedLocation === store.shortName
+                  ? "border-amber-500 bg-amber-50 text-amber-700"
+                  : "border-border/60 bg-background hover:border-amber-400 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
+                <span>{store.shortName}</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{store.name}</p>
+            </button>
+          ))}
+        </div>
+      </CardContent></Card>
+
+      <Card><CardContent className="pt-6 space-y-4">
+        <div className="space-y-1.5"><Label>Your Name <span className="text-red-500">*</span></Label><Input value={ordererName} onChange={(e) => setOrdererName(e.target.value)} placeholder="Enter your name" /></div>
+        <div className="space-y-1.5"><Label>Order for Date <span className="text-red-500">*</span></Label><Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} /></div>
+      </CardContent></Card>
+
+      {/* Progress */}
+      <Card><CardContent className="pt-6">
+        <div className="flex items-center justify-between">
+          <span className="font-serif text-base">Items filled</span>
+          <Badge variant={filledCount > 0 ? "default" : "outline"} className={cn("text-xs font-mono", filledCount > 0 ? "bg-amber-600 text-white" : "")}>{filledCount}/{totalItems}</Badge>
+        </div>
+      </CardContent></Card>
+
+      {/* Sections */}
+      {DAILY_ORDER_SECTIONS_ADMIN.map(section => {
+        const sectionFilled = section.items.filter(item => quantities[item.name] && parseFloat(quantities[item.name]) > 0).length;
+        return (
+          <Card key={section.id}><CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-serif text-lg flex items-center gap-2">
+                <span>{section.icon}</span> {section.label}
+              </h3>
+              <Badge variant={sectionFilled === section.items.length ? "default" : "outline"} className={cn("text-xs font-mono", sectionFilled === section.items.length && sectionFilled > 0 ? "bg-emerald-600 text-white" : sectionFilled > 0 ? "border-amber-400 text-amber-600" : "")}>{sectionFilled}/{section.items.length}</Badge>
+            </div>
+            <div className="space-y-2">
+              {section.items.map((item) => (
+                <div key={item.name} className="flex items-center justify-between gap-4 py-1.5 border-b last:border-0">
+                  <span className="text-sm">{item.name}</span>
+                  <div className="flex items-center gap-2">
+                    <Input type="number" min="0" step="1" placeholder="0" value={quantities[item.name]} onChange={(e) => setQuantities(prev => ({ ...prev, [item.name]: e.target.value }))} className="h-8 w-20 text-center text-sm" />
+                    <span className="text-xs text-muted-foreground w-20 truncate">{item.unit}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent></Card>
+        );
+      })}
+
+      <div className="flex gap-3"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#D4A853] text-[#1C1210] hover:bg-[#C49A48]">{submitting ? "Submitting..." : isEdit ? "Update Order" : "Submit Order"}</Button></div>
+      {dailyDuplicateDialog}
+    </div>
+  );
+}
+
 // ─── Copy Link Helper ───
 
 function CopyChecklistLink({ slug, label }: { slug: string; label: string }) {
@@ -2673,6 +2925,7 @@ export default function DirectChecklist() {
     "training": <TrainingEvaluationForm onBack={goBack} {...editProps} />,
     "bagel-orders": <BagelOrdersForm onBack={goBack} {...editProps} />,
     "pastry-orders": <PastryOrdersForm onBack={goBack} {...editProps} />,
+    "daily-orders": <DailyOrdersForm onBack={goBack} {...editProps} />,
     "deep-clean": <DeepCleanForm onBack={goBack} {...editProps} />,
     "manager-eval": <ManagerEvaluationForm onBack={goBack} {...editProps} />,
   };

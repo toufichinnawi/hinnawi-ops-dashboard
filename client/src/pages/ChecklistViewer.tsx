@@ -410,6 +410,15 @@ function DashboardChecklistForm({
           onBack={onBack}
         />
       );
+    case "daily-orders":
+      return (
+        <DailyOrdersForm
+          storeCode={storeCode}
+          storeName={storeName}
+          positionLabel={positionLabel}
+          onBack={onBack}
+        />
+      );
     case "performance-evaluation":
       return (
         <PerformanceEvaluationForm
@@ -2231,6 +2240,245 @@ function PastryOrdersForm({ storeCode: initialStoreCode, storeName: _sn9, positi
     </div>
   );
 }
+// ─── Daily Orders ───
+
+const DAILY_ORDER_SECTIONS = [
+  {
+    id: "proteins",
+    label: "Proteins / Deli",
+    icon: "\ud83e\udd69",
+    items: [
+      { name: "Chicken", unit: "bags" },
+      { name: "Turkey", unit: "bags / slicing pieces" },
+      { name: "Sliced ham packs", unit: "packs" },
+      { name: "Smoked meat (90g)", unit: "packs" },
+      { name: "Bacon jam", unit: "jars" },
+    ],
+  },
+  {
+    id: "dairy",
+    label: "Dairy & Cheese",
+    icon: "\ud83e\uddc0",
+    items: [
+      { name: "Sliced cheddar packs", unit: "packs" },
+      { name: "Block cheddar (for slicing)", unit: "blocks" },
+      { name: "Sliced mozzarella packs", unit: "packs" },
+      { name: "Hinnawi cream cheese", unit: "tubs" },
+    ],
+  },
+  {
+    id: "vegetables",
+    label: "Vegetables",
+    icon: "\ud83e\udd2c",
+    items: [
+      { name: "Lettuce", unit: "heads" },
+      { name: "Tomatoes", unit: "units" },
+      { name: "Cucumber", unit: "units" },
+      { name: "Onions", unit: "units" },
+      { name: "Pepper", unit: "units" },
+      { name: "Avocadoes", unit: "units" },
+      { name: "Lemon", unit: "units" },
+    ],
+  },
+  {
+    id: "sauces",
+    label: "Sauces & Spreads",
+    icon: "\ud83e\uded9",
+    items: [
+      { name: "Spicy mayo", unit: "bottles" },
+      { name: "Honey mustard", unit: "bottles" },
+    ],
+  },
+  {
+    id: "pickles",
+    label: "Pickles",
+    icon: "\ud83e\udd52",
+    items: [
+      { name: "Pickles", unit: "jars" },
+    ],
+  },
+  {
+    id: "coffee",
+    label: "Coffee & Beverages",
+    icon: "\u2615",
+    items: [
+      { name: "Amelia Espresso Coffee Beans (large bags)", unit: "bags" },
+      { name: "Filter coffee bags", unit: "bags" },
+      { name: "Small bags (espresso / filter)", unit: "bags" },
+      { name: "Orange juice", unit: "units" },
+      { name: "Coffee containers", unit: "units" },
+    ],
+  },
+  {
+    id: "food-items",
+    label: "Food Items (Ready / Other)",
+    icon: "\ud83e\udd50",
+    items: [
+      { name: "Granola yogurt", unit: "units" },
+      { name: "Chia pudding", unit: "units" },
+    ],
+  },
+  {
+    id: "packaging",
+    label: "Packaging & Supplies",
+    icon: "\ud83d\udce6",
+    items: [
+      { name: "Coffee cups (medium & large)", unit: "sleeves" },
+      { name: "Coffee cup lids", unit: "sleeves" },
+      { name: "Wax paper", unit: "rolls" },
+      { name: "Sandwich bags (large)", unit: "packs" },
+      { name: "Custom boxes", unit: "units" },
+      { name: "Coffee bags", unit: "packs" },
+      { name: "Delivery bins", unit: "units" },
+    ],
+  },
+];
+
+function DailyOrdersForm({ storeCode: initialStoreCode, storeName: _snDO, positionLabel, onBack }: FormProps) {
+  const isStoreLocked = !!initialStoreCode && initialStoreCode !== "" && stores.some(s => s.shortName === initialStoreCode);
+  const [selectedLocation, setSelectedLocation] = useState(initialStoreCode || stores[0]?.shortName || "");
+  const [submitterName, setSubmitterName] = useState("");
+  const [orderForDate, setOrderForDate] = useState("");
+  const [quantities, setQuantities] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    DAILY_ORDER_SECTIONS.forEach(s => s.items.forEach(item => { init[item.name] = ""; }));
+    return init;
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { submitWithDuplicateCheck, duplicateDialog: dailyDuplicateDialog } = useDuplicateCheck();
+
+  const locationLabel = stores.find(s => s.shortName === selectedLocation)?.name || selectedLocation;
+
+  const filledCount = Object.values(quantities).filter(v => v && parseFloat(v) > 0).length;
+  const totalItems = DAILY_ORDER_SECTIONS.reduce((sum, s) => sum + s.items.length, 0);
+
+  const buildPayload = () => ({
+    submitterName,
+    reportType: "Daily Orders",
+    location: selectedLocation,
+    reportDate: orderForDate,
+    data: {
+      orderForDate,
+      sections: DAILY_ORDER_SECTIONS.map(section => ({
+        section: section.label,
+        items: section.items.map(item => ({ name: item.name, quantity: quantities[item.name] || "0", unit: item.unit })),
+      })),
+    },
+  });
+
+  const handleSubmit = async () => {
+    if (!selectedLocation) { toast.error("Please select a location"); return; }
+    if (!submitterName.trim()) { toast.error("Please enter your name"); return; }
+    if (!orderForDate) { toast.error("Please select the order date"); return; }
+    await submitWithDuplicateCheck(
+      buildPayload(),
+      () => { setSubmitted(true); toast.success(`Daily order submitted for ${locationLabel}!`); },
+      (msg) => toast.error(msg),
+      setSubmitting,
+    );
+  };
+
+  if (submitted) return <SuccessCard message={`Daily order submitted for ${locationLabel}`} onNew={() => { const init: Record<string, string> = {}; DAILY_ORDER_SECTIONS.forEach(s => s.items.forEach(item => { init[item.name] = ""; })); setQuantities(init); setSubmitted(false); }} onBack={onBack} />;
+
+  return (
+    <div>
+      <FormHeader title="Daily Orders" subtitle={`${positionLabel}`} onBack={onBack} />
+      <div className="space-y-4">
+        {/* Location Selector */}
+        {isStoreLocked ? (
+          <div className="bg-card rounded-xl border border-amber-300/30 p-5">
+            <Label className="text-sm font-medium">Location</Label>
+            <div className="mt-1.5 flex items-center gap-3 px-4 py-3 rounded-lg border border-amber-500 bg-amber-50">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: stores.find(s => s.shortName === initialStoreCode)?.color }} />
+              <div>
+                <span className="text-sm font-semibold text-amber-700">{initialStoreCode}</span>
+                <span className="text-sm text-muted-foreground ml-2">{stores.find(s => s.shortName === initialStoreCode)?.name}</span>
+              </div>
+              <span className="ml-auto text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded">Auto-assigned</span>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-card rounded-xl border border-border/60 p-5">
+            <Label className="text-sm font-medium">Location</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5">
+              {stores.map((store) => (
+                <button
+                  key={store.id}
+                  type="button"
+                  onClick={() => setSelectedLocation(store.shortName)}
+                  className={cn(
+                    "px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200 text-left",
+                    selectedLocation === store.shortName
+                      ? "border-amber-500 bg-amber-50 text-amber-700"
+                      : "border-border/60 bg-background hover:border-amber-400 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ background: store.color }} />
+                    <span>{store.shortName}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{store.name}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="bg-card rounded-xl border border-border/60 p-5 space-y-3">
+          <div>
+            <Label className="text-sm font-medium">Your Name <span className="text-red-500">*</span></Label>
+            <Input value={submitterName} onChange={(e) => setSubmitterName(e.target.value)} placeholder="Enter your name" className="mt-1.5" />
+          </div>
+          <div>
+            <Label className="text-sm font-medium">Order for Date <span className="text-red-500">*</span></Label>
+            <Input type="date" value={orderForDate} onChange={(e) => setOrderForDate(e.target.value)} className="mt-1.5" />
+          </div>
+        </div>
+
+        {/* Progress */}
+        <div className="bg-card rounded-xl border border-border/60 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Items filled</span>
+            <Badge variant={filledCount > 0 ? "default" : "outline"} className={cn("text-xs font-mono", filledCount > 0 ? "bg-amber-600 text-white" : "")}>{filledCount}/{totalItems}</Badge>
+          </div>
+        </div>
+
+        {/* Sections */}
+        {DAILY_ORDER_SECTIONS.map(section => {
+          const sectionFilled = section.items.filter(item => quantities[item.name] && parseFloat(quantities[item.name]) > 0).length;
+          return (
+            <div key={section.id} className="bg-card rounded-xl border border-border/60 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <span>{section.icon}</span> {section.label}
+                </h3>
+                <Badge variant={sectionFilled === section.items.length ? "default" : "outline"} className={cn("text-xs font-mono", sectionFilled === section.items.length && sectionFilled > 0 ? "bg-emerald-600 text-white" : sectionFilled > 0 ? "border-amber-400 text-amber-600" : "")}>{sectionFilled}/{section.items.length}</Badge>
+              </div>
+              <div className="space-y-2">
+                {section.items.map((item) => (
+                  <div key={item.name} className="flex items-center justify-between gap-4 py-1.5 border-b last:border-0">
+                    <span className="text-sm">{item.name}</span>
+                    <div className="flex items-center gap-2">
+                      <Input type="number" min="0" step="1" placeholder="0" value={quantities[item.name]} onChange={(e) => setQuantities(prev => ({ ...prev, [item.name]: e.target.value }))} className="h-8 w-20 text-center text-sm" />
+                      <span className="text-xs text-muted-foreground w-20 truncate">{item.unit}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#D4A853] hover:bg-[#c49843] text-white">
+          {submitting ? "Submitting..." : "Submit Order"}
+        </Button>
+        {dailyDuplicateDialog}
+      </div>
+    </div>
+  );
+}
+
 // ─── Performance Evaluation ───
 
 function PerformanceEvaluationForm({ storeCode: initialStoreCode, storeName: _sn8, positionLabel, onBack }: FormProps) {

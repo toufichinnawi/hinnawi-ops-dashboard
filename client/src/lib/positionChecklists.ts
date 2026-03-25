@@ -14,6 +14,7 @@ export type ChecklistType =
   | "training-evaluation"
   | "bagel-orders"
   | "pastry-orders"
+  | "daily-orders"
   | "performance-evaluation"
   | "manager-evaluation"
   | "deep-clean";
@@ -96,6 +97,12 @@ export const ALL_CHECKLISTS: Record<ChecklistType, ChecklistInfo> = {
     description: "Enter daily pastry order quantities by type",
     icon: "🥐",
   },
+  "daily-orders": {
+    type: "daily-orders",
+    label: "Daily Orders",
+    description: "Daily store supply orders: proteins, dairy, vegetables, sauces, coffee, food items, and packaging",
+    icon: "📦",
+  },
   "performance-evaluation": {
     type: "performance-evaluation",
     label: "Performance Evaluation",
@@ -149,6 +156,7 @@ export const POSITION_CHECKLISTS: Record<
     label: "Operations Manager",
     checklists: [
       "ops-manager-checklist",
+      "daily-orders",
     ],
   },
   "store-manager": {
@@ -161,6 +169,7 @@ export const POSITION_CHECKLISTS: Record<
       "weekly-scorecard",
       "performance-evaluation",
       "bagel-orders",
+      "daily-orders",
     ],
   },
   "assistant-manager": {
@@ -169,12 +178,13 @@ export const POSITION_CHECKLISTS: Record<
     checklists: [
       "equipment-maintenance",
       "training-evaluation",
+      "daily-orders",
     ],
   },
   "staff": {
     slug: "staff",
     label: "Staff",
-    checklists: ["waste-report"],
+    checklists: ["waste-report", "daily-orders"],
   },
   "bagel-factory": {
     slug: "bagel-factory",

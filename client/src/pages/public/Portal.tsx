@@ -17,7 +17,7 @@ import {
   FileText, DollarSign, Percent, Clock, CheckCircle2,
   Pencil, Receipt, CalendarIcon, Filter,
   Download, Flag, MessageSquare, Send, AlertTriangle, Loader2,
-  Sparkles, Factory,
+  Sparkles, Factory, ClipboardList,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,6 +110,7 @@ const POSITIONS: PositionDef[] = [
       si("ops-audit", "Store Weekly Audit", ClipboardCheck, "checklist", { checklistType: "ops-manager-checklist" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
       si("pastry-orders", "Pastry Orders", CakeSlice, "checklist", { checklistType: "pastry-orders" }),
+      si("daily-orders", "Daily Orders", ClipboardList, "checklist", { checklistType: "daily-orders" }),
       si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
       si("pastry-production", "Pastry Production", CakeSlice, "info", { infoContent: "pastry-production" }),
       si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
@@ -143,6 +144,7 @@ const POSITIONS: PositionDef[] = [
       si("equipment", "Equipment & Maintenance", Wrench, "checklist", { checklistType: "equipment-maintenance" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
       si("pastry-orders", "Pastry Orders", CakeSlice, "checklist", { checklistType: "pastry-orders" }),
+      si("daily-orders", "Daily Orders", ClipboardList, "checklist", { checklistType: "daily-orders" }),
       si("bagel-production", "Bagel Production", CircleDot, "info", { infoContent: "bagel-production" }),
       si("pastry-production", "Pastry Production", CakeSlice, "info", { infoContent: "pastry-production" }),
       si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
@@ -169,6 +171,7 @@ const POSITIONS: PositionDef[] = [
       si("equipment", "Equipment & Maintenance", Wrench, "checklist", { checklistType: "equipment-maintenance" }),
       si("training", "Training Evaluation", GraduationCap, "checklist", { checklistType: "training-evaluation" }),
       si("bagel-orders", "Bagel Orders", CircleDot, "checklist", { checklistType: "bagel-orders" }),
+      si("daily-orders", "Daily Orders", ClipboardList, "checklist", { checklistType: "daily-orders" }),
       si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
     ],
   },
@@ -184,6 +187,7 @@ const POSITIONS: PositionDef[] = [
     requiresStore: true,
     sidebarItems: [
       si("waste-report", "Leftovers & Waste", Trash2, "checklist", { checklistType: "waste-report" }),
+      si("daily-orders", "Daily Orders", ClipboardList, "checklist", { checklistType: "daily-orders" }),
       si("invoice-capture", "Invoice Capture", Receipt, "invoice"),
     ],
   },
