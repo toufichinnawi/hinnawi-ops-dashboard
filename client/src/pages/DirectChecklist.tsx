@@ -213,6 +213,7 @@ const SLUG_TO_CHECKLIST: Record<string, ChecklistType> = {
   "training": "training-evaluation",
   "bagel-orders": "bagel-orders",
   "pastry-orders": "pastry-orders",
+  "daily-orders": "daily-orders",
   "deep-clean": "deep-clean",
   "manager-eval": "manager-evaluation",
 };
@@ -227,6 +228,7 @@ const SLUG_TO_LABEL: Record<string, string> = {
   "training": "Training Evaluation",
   "bagel-orders": "Bagel Orders",
   "pastry-orders": "Pastry Orders",
+  "daily-orders": "Daily Orders",
   "deep-clean": "Weekly Deep Clean Checklist",
   "manager-eval": "Manager Evaluation",
 };
