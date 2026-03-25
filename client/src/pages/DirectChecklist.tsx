@@ -1359,7 +1359,6 @@ function EquipmentMaintenanceForm({ onBack, editReportId, editData, editStore }:
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().split("T")[0]);
   // State: Record<sectionId, Record<"machine::task", boolean>>
   const [sectionChecks, setSectionChecks] = useState<Record<string, Record<string, boolean>>>({});
-  const [activeSection, setActiveSection] = useState<string | null>(null);
   const emptyIssue = { date: "", equipment: "", issue: "", actionTaken: "", reportedTo: "" };
   const [issueLog, setIssueLog] = useState<{ date: string; equipment: string; issue: string; actionTaken: string; reportedTo: string }[]>([]);
   const [staffName, setStaffName] = useState("");
@@ -1482,55 +1481,6 @@ function EquipmentMaintenanceForm({ onBack, editReportId, editData, editStore }:
     </motion.div>
   );
 
-  // Section detail view
-  if (activeSection) {
-    const section = EQUIPMENT_SECTIONS.find(s => s.id === activeSection)!;
-    const checks = sectionChecks[section.id] || {};
-    const done = getSectionDone(section);
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => setActiveSection(null)}><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
-          <h3 className="font-serif text-lg">{section.label}</h3>
-        </div>
-        <div className={cn("rounded-xl border p-4", section.borderColor, section.bgColor)}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">{section.icon}</span>
-              <span className={cn("font-semibold", section.color)}>{section.label}</span>
-            </div>
-            <ProgressBadge done={done} total={section.items.length} />
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-            <div className="bg-emerald-500 h-2 rounded-full transition-all" style={{ width: `${section.items.length > 0 ? (done / section.items.length) * 100 : 0}%` }} />
-          </div>
-          <div className="space-y-1">
-            {section.items.map((item, i) => {
-              const key = `${item.machine}::${item.task}`;
-              return (
-                <div key={i} className="flex items-start gap-3 py-2 px-2 rounded-lg hover:bg-white/60 transition-colors">
-                  <Checkbox
-                    checked={!!checks[key]}
-                    onCheckedChange={(v) => setSectionChecks(prev => ({
-                      ...prev,
-                      [section.id]: { ...(prev[section.id] || {}), [key]: !!v }
-                    }))}
-                    className="mt-0.5"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium">{item.machine}</span>
-                    <span className="text-sm text-muted-foreground ml-1">&mdash; {item.task}</span>
-                    <p className="text-xs text-muted-foreground/70 mt-0.5">{item.explanation}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <Card><CardContent className="pt-6 space-y-4">
@@ -1553,36 +1503,49 @@ function EquipmentMaintenanceForm({ onBack, editReportId, editData, editStore }:
         </CardContent>
       </Card>
 
-      {/* Section Boxes Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {EQUIPMENT_SECTIONS.map(section => {
-          const done = getSectionDone(section);
-          const allDone = done === section.items.length && section.items.length > 0;
-          return (
-            <button
-              key={section.id}
-              onClick={() => setActiveSection(section.id)}
-              className={cn(
-                "rounded-xl border-2 p-4 text-left transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
-                allDone ? "border-emerald-400 bg-emerald-50" : section.borderColor + " " + section.bgColor
-              )}
-            >
-              <div className="text-2xl mb-2">{section.icon}</div>
-              <div className={cn("font-semibold text-sm", allDone ? "text-emerald-700" : section.color)}>{section.shortLabel}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{section.items.length} items</div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                <div className={cn("h-1.5 rounded-full transition-all", allDone ? "bg-emerald-500" : "bg-amber-400")} style={{ width: `${section.items.length > 0 ? (done / section.items.length) * 100 : 0}%` }} />
-              </div>
-              <div className="text-xs font-mono mt-1 text-muted-foreground">{done}/{section.items.length}</div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Accordion for Issue Log and Staff */}
+      {/* All Sections as Accordion */}
       <Card>
         <CardContent className="pt-4 pb-2">
-          <Accordion type="multiple">
+          <Accordion type="multiple" defaultValue={["daily"]}>
+            {EQUIPMENT_SECTIONS.map(section => {
+              const checks = sectionChecks[section.id] || {};
+              const done = getSectionDone(section);
+              return (
+                <AccordionItem key={section.id} value={section.id}>
+                  <AccordionTrigger className="py-3 hover:no-underline">
+                    <div className="flex items-center">
+                      <span className="mr-2">{section.icon}</span>
+                      <span className="font-serif text-base">{section.label}</span>
+                      <ProgressBadge done={done} total={section.items.length} />
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-1">
+                      {section.items.map((item, i) => {
+                        const key = `${item.machine}::${item.task}`;
+                        return (
+                          <div key={i} className="flex items-start gap-3 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors">
+                            <Checkbox
+                              checked={!!checks[key]}
+                              onCheckedChange={(v) => setSectionChecks(prev => ({
+                                ...prev,
+                                [section.id]: { ...(prev[section.id] || {}), [key]: !!v }
+                              }))}
+                              className="mt-0.5"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm font-medium">{item.machine}</span>
+                              <span className="text-sm text-muted-foreground ml-1">&mdash; {item.task}</span>
+                              <p className="text-xs text-muted-foreground/70 mt-0.5">{item.explanation}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
             {/* Maintenance Issue Log */}
             <AccordionItem value="issues">
               <AccordionTrigger className="py-3 hover:no-underline">
