@@ -1,7 +1,6 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { trpc } from "@/lib/trpc";
 import { stores } from "@/lib/data";
 import { ClipboardList, Package, Store } from "lucide-react";
 import { DateFilter, getDefaultDateFilter, type DateFilterValue } from "@/components/DateFilter";
@@ -14,8 +13,13 @@ const DAILY_ORDER_SECTIONS = [
     label: "Proteins / Deli",
     icon: "\ud83e\udd69",
     items: [
+      { name: "Bacon", unit: "containers" },
+      { name: "Eggs", unit: "containers" },
       { name: "Chicken", unit: "bags" },
       { name: "Turkey", unit: "bags / slicing pieces" },
+      { name: "Salmon", unit: "containers" },
+      { name: "Veggie patty", unit: "containers" },
+      { name: "Tofu", unit: "containers" },
       { name: "Sliced ham packs", unit: "packs" },
       { name: "Smoked meat (90g)", unit: "packs" },
       { name: "Bacon jam", unit: "jars" },
@@ -30,6 +34,8 @@ const DAILY_ORDER_SECTIONS = [
       { name: "Block cheddar (for slicing)", unit: "blocks" },
       { name: "Sliced mozzarella packs", unit: "packs" },
       { name: "Hinnawi cream cheese", unit: "tubs" },
+      { name: "Philadelphia Cream Cheese", unit: "units" },
+      { name: "Rivera Cream cheese", unit: "containers" },
     ],
   },
   {
@@ -42,8 +48,10 @@ const DAILY_ORDER_SECTIONS = [
       { name: "Cucumber", unit: "units" },
       { name: "Onions", unit: "units" },
       { name: "Pepper", unit: "units" },
+      { name: "Mix vege", unit: "units" },
       { name: "Avocadoes", unit: "units" },
       { name: "Lemon", unit: "units" },
+      { name: "Lemon squeezed", unit: "bottles" },
     ],
   },
   {
@@ -51,8 +59,12 @@ const DAILY_ORDER_SECTIONS = [
     label: "Sauces & Spreads",
     icon: "\ud83e\uded9",
     items: [
+      { name: "Mayo", unit: "litres" },
       { name: "Spicy mayo", unit: "bottles" },
+      { name: "Djon Mustard", unit: "litre containers" },
       { name: "Honey mustard", unit: "bottles" },
+      { name: "Canola oil", unit: "units" },
+      { name: "Olive oil", unit: "units" },
     ],
   },
   {
@@ -114,16 +126,19 @@ function normalizeLocation(loc: string): string {
 }
 
 function getStoreName(storeId: string): string {
+  if (storeId === "sales") return "Sales";
   const store = stores.find(s => s.id === storeId);
   return store ? store.name : storeId;
 }
 
 function getStoreShortName(storeId: string): string {
+  if (storeId === "sales") return "Sales";
   const store = stores.find(s => s.id === storeId);
   return store ? store.shortName : storeId;
 }
 
 function getStoreColor(storeId: string): string {
+  if (storeId === "sales") return "#8B5CF6";
   const store = stores.find(s => s.id === storeId);
   return store?.color || "#6B7280";
 }
@@ -135,6 +150,28 @@ interface DailyOrderRow {
   submittedBy: string;
   items: { name: string; quantity: number; unit: string }[];
 }
+
+interface ExternalCKReportItem {
+  item_name: string;
+  quantity_var?: string;
+  pk_total?: number;
+  mk_total?: number;
+  tun_total?: number;
+  ont_total?: number;
+  sales_total?: number;
+}
+
+interface ExternalCKReport {
+  results?: Record<string, ExternalCKReportItem>;
+}
+
+const CK_ITEM_ALIASES: Record<string, string> = {
+  "Chicken (100g)": "Chicken",
+  "Turkey (60g)": "Turkey",
+  "Turkey (70g)": "Turkey",
+  "Salmon (70g)": "Salmon",
+  "Sliced ham pack": "Sliced ham packs",
+};
 
 /**
  * Reusable CK Preps content — used in both admin dashboard and portal.
@@ -155,40 +192,77 @@ export function CKPrepsContent({ defaultToToday, storeFilter }: { defaultToToday
   const fromDate = format(dateFilter.from, "yyyy-MM-dd");
   const toDate = format(dateFilter.to, "yyyy-MM-dd");
 
-  const { data: rawOrders, isLoading } = trpc.production.dailyOrders.useQuery(
-    { fromDate, toDate },
-    { enabled: !!fromDate && !!toDate }
-  );
+  const [rawReport, setRawReport] = useState<ExternalCKReport | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Parse raw report submissions into structured daily orders
+  useEffect(() => {
+    if (!fromDate || !toDate) return;
+
+    const controller = new AbortController();
+    setIsLoading(true);
+    setLoadError(null);
+
+    fetch(`/api/public/ck-preps-report?fromDate=${fromDate}&toDate=${toDate}`, {
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`CK preps report request failed (${res.status})`);
+        return res.json();
+      })
+      .then((data: ExternalCKReport) => setRawReport(data))
+      .catch((err) => {
+        if (err.name === "AbortError") return;
+        setRawReport(null);
+        setLoadError(err.message || "Failed to load CK preps report");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [fromDate, toDate]);
+
+  // Convert the external report-index totals into the same row shape used by the page.
   const orders: DailyOrderRow[] = useMemo(() => {
-    if (!rawOrders) return [];
-    return rawOrders.map((r: any) => {
-      const data = typeof r.data === "string" ? JSON.parse(r.data) : r.data;
-      const storeId = normalizeLocation(r.location);
-      // Daily Orders store items in data.sections[].items[]
-      const items: { name: string; quantity: number; unit: string }[] = [];
-      if (data?.sections && Array.isArray(data.sections)) {
-        data.sections.forEach((section: any) => {
-          if (section.items && Array.isArray(section.items)) {
-            section.items.forEach((item: any) => {
-              const qty = parseFloat(item.quantity) || 0;
-              if (qty > 0) {
-                items.push({ name: item.name, quantity: qty, unit: item.unit || "units" });
-              }
-            });
-          }
-        });
-      }
-      return {
-        storeId,
-        storeName: getStoreName(storeId),
-        orderDate: data?.orderForDate || r.reportDate,
-        submittedBy: r.submitterName || "Unknown",
-        items,
+    const results = rawReport?.results;
+    if (!results || Array.isArray(results)) return [];
+
+    const branchMap = [
+      { key: "pk_total", storeId: "pk" },
+      { key: "mk_total", storeId: "mk" },
+      { key: "tun_total", storeId: "tunnel" },
+      { key: "ont_total", storeId: "ontario" },
+      { key: "sales_total", storeId: "sales" },
+    ] as const;
+
+    const totalsByItem = Object.values(results).reduce<Record<string, ExternalCKReportItem>>((acc, item) => {
+      const itemName = CK_ITEM_ALIASES[item.item_name] || item.item_name;
+      const existing = acc[itemName] || { item_name: itemName, quantity_var: item.quantity_var };
+      acc[itemName] = {
+        item_name: itemName,
+        quantity_var: existing.quantity_var || item.quantity_var,
+        pk_total: (existing.pk_total || 0) + (item.pk_total || 0),
+        mk_total: (existing.mk_total || 0) + (item.mk_total || 0),
+        tun_total: (existing.tun_total || 0) + (item.tun_total || 0),
+        ont_total: (existing.ont_total || 0) + (item.ont_total || 0),
+        sales_total: (existing.sales_total || 0) + (item.sales_total || 0),
       };
-    });
-  }, [rawOrders]);
+      return acc;
+    }, {});
+
+    return branchMap.map(({ key, storeId }) => ({
+      storeId,
+      storeName: getStoreName(storeId),
+      orderDate: fromDate,
+      submittedBy: "External daily orders report",
+      items: ALL_ITEMS.map(name => ({
+        name,
+        quantity: totalsByItem[name]?.[key] || 0,
+        unit: totalsByItem[name]?.quantity_var || "units",
+      })).filter(item => item.quantity > 0),
+    })).filter(order => order.items.length > 0);
+  }, [rawReport, fromDate]);
 
   // Filter by selected store
   const filteredOrders = useMemo(() => {
@@ -293,7 +367,15 @@ export function CKPrepsContent({ defaultToToday, storeFilter }: { defaultToToday
         </Card>
       </div>
 
-      {isLoading ? (
+      {loadError ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Package className="w-12 h-12 text-destructive/40 mx-auto mb-3" />
+            <p className="text-destructive font-medium">Unable to load CK preps data.</p>
+            <p className="text-xs text-muted-foreground mt-1">{loadError}</p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             Loading daily orders...
