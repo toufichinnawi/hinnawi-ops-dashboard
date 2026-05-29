@@ -1,7 +1,6 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { trpc } from "@/lib/trpc";
 import { stores } from "@/lib/data";
 import { CakeSlice, Package, Users2, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -48,6 +47,23 @@ interface PastryOrderRow {
   orders: { type: string; quantity: string; unit?: string }[];
 }
 
+interface ExternalPastryReportItem {
+  item_name: string;
+  pk_total?: number;
+  mk_total?: number;
+  tun_total?: number;
+  ont_total?: number;
+  sales_total?: number;
+}
+
+interface ExternalPastryReport {
+  results?: Record<string, ExternalPastryReportItem>;
+}
+
+const PASTRY_ITEM_ALIASES: Record<string, string> = {
+  "Muffin a L`Erabe": "Muffin a L'Erable",
+};
+
 /**
  * Reusable Pastry Production content — used in both admin dashboard and portal.
  * @param defaultToToday - If true, defaults the date filter to "Today" instead of "Last 7 Days"
@@ -69,30 +85,76 @@ export function PastryProductionContent({ defaultToToday, storeFilter }: { defau
   const fromDate = format(dateFilter.from, "yyyy-MM-dd");
   const toDate = format(dateFilter.to, "yyyy-MM-dd");
 
-  const { data: rawOrders, isLoading } = trpc.production.pastryOrders.useQuery(
-    { fromDate, toDate },
-    { enabled: !!fromDate && !!toDate }
-  );
+  const [rawReport, setRawReport] = useState<ExternalPastryReport | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Parse raw report submissions into structured pastry orders
+  useEffect(() => {
+    if (!fromDate || !toDate) return;
+
+    const controller = new AbortController();
+    setIsLoading(true);
+    setLoadError(null);
+
+    fetch(`/api/public/pastry-production-report?fromDate=${fromDate}&toDate=${toDate}`, {
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Pastry report request failed (${res.status})`);
+        return res.json();
+      })
+      .then((data: ExternalPastryReport) => setRawReport(data))
+      .catch((err) => {
+        if (err.name === "AbortError") return;
+        setRawReport(null);
+        setLoadError(err.message || "Failed to load pastry production report");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [fromDate, toDate]);
+
+  // Convert the external report-index totals into the same row shape used by the page.
   const orders: PastryOrderRow[] = useMemo(() => {
-    if (!rawOrders) return [];
-    return rawOrders.map((r: any) => {
-      const data = typeof r.data === "string" ? JSON.parse(r.data) : r.data;
-      const storeId = normalizeLocation(r.location);
-      return {
-        storeId,
-        storeName: getStoreName(storeId),
-        orderDate: data?.orderForDate || r.reportDate,
-        submittedBy: data?.submittedVia || "Dashboard",
-        orders: (data?.orders || []).map((o: any) => ({
-          type: o.type,
-          quantity: o.quantity,
-          unit: o.unit || "unit",
-        })),
+    const results = rawReport?.results;
+    if (!results || Array.isArray(results)) return [];
+
+    const branchMap = [
+      { key: "pk_total", storeId: "pk" },
+      { key: "mk_total", storeId: "mk" },
+      { key: "tun_total", storeId: "tunnel" },
+      { key: "ont_total", storeId: "ontario" },
+      { key: "sales_total", storeId: "sales" },
+    ] as const;
+
+    const totalsByItem = Object.values(results).reduce<Record<string, ExternalPastryReportItem>>((acc, item) => {
+      const itemName = PASTRY_ITEM_ALIASES[item.item_name] || item.item_name;
+      const existing = acc[itemName] || { item_name: itemName };
+      acc[itemName] = {
+        item_name: itemName,
+        pk_total: (existing.pk_total || 0) + (item.pk_total || 0),
+        mk_total: (existing.mk_total || 0) + (item.mk_total || 0),
+        tun_total: (existing.tun_total || 0) + (item.tun_total || 0),
+        ont_total: (existing.ont_total || 0) + (item.ont_total || 0),
+        sales_total: (existing.sales_total || 0) + (item.sales_total || 0),
       };
-    });
-  }, [rawOrders]);
+      return acc;
+    }, {});
+
+    return branchMap.map(({ key, storeId }) => ({
+      storeId,
+      storeName: getStoreName(storeId),
+      orderDate: fromDate,
+      submittedBy: "External daily orders report",
+      orders: PASTRY_ITEMS.map(type => ({
+        type,
+        quantity: String(totalsByItem[type]?.[key] || 0),
+        unit: "unit",
+      })),
+    })).filter(order => order.orders.some(item => Number(item.quantity) > 0));
+  }, [rawReport, fromDate]);
 
   // Filter by selected store
   const filteredOrders = useMemo(() => {
@@ -192,7 +254,15 @@ export function PastryProductionContent({ defaultToToday, storeFilter }: { defau
         </Card>
       </div>
 
-      {isLoading ? (
+      {loadError ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Package className="w-12 h-12 text-destructive/40 mx-auto mb-3" />
+            <p className="text-destructive font-medium">Unable to load pastry production data.</p>
+            <p className="text-xs text-muted-foreground mt-1">{loadError}</p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             Loading pastry orders...
