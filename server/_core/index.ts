@@ -970,6 +970,29 @@ export async function createApp() {
     }
   });
 
+  app.get("/api/public/bagel-production-report", async (req, res) => {
+    try {
+      const fromDate = String(req.query.fromDate || "");
+      const toDate = String(req.query.toDate || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate) || !/^\d{4}-\d{2}-\d{2}$/.test(toDate)) {
+        return res.status(400).json({ error: "fromDate and toDate must be YYYY-MM-DD" });
+      }
+
+      const upstreamUrl = `https://operation.hjacobo.com/public/daily-orders-report-index/${fromDate}/${toDate}/pk/%20/bagel`;
+      const upstream = await fetch(upstreamUrl, {
+        headers: { Accept: "application/json" },
+      });
+      const text = await upstream.text();
+
+      res.status(upstream.status);
+      res.type(upstream.headers.get("content-type") || "application/json");
+      res.send(text);
+    } catch (err) {
+      console.error("[BagelProductionReport] Failed to fetch upstream report:", err);
+      res.status(502).json({ error: "Failed to fetch bagel production report" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

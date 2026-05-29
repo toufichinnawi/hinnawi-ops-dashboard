@@ -1,7 +1,6 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { trpc } from "@/lib/trpc";
 import { stores } from "@/lib/data";
 import { CircleDot, Package, Users2, Store, BoxIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -94,6 +93,19 @@ interface BagelOrderRow {
   globalUnit: string; // legacy fallback
 }
 
+interface ExternalBagelReportItem {
+  item_name: string;
+  pk_total?: number;
+  mk_total?: number;
+  tun_total?: number;
+  ont_total?: number;
+  sales_total?: number;
+}
+
+interface ExternalBagelReport {
+  results?: Record<string, ExternalBagelReportItem>;
+}
+
 /**
  * Reusable Bagel Production content — used in both admin dashboard and portal.
  * @param defaultToToday - If true, defaults the date filter to "Today" instead of "Last 7 Days"
@@ -115,32 +127,64 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
   const fromDate = format(dateFilter.from, "yyyy-MM-dd");
   const toDate = format(dateFilter.to, "yyyy-MM-dd");
 
-  const { data: rawOrders, isLoading } = trpc.production.bagelOrders.useQuery(
-    { fromDate, toDate },
-    { enabled: !!fromDate && !!toDate }
-  );
+  const [rawReport, setRawReport] = useState<ExternalBagelReport | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Parse raw report submissions into structured bagel orders
+  useEffect(() => {
+    if (!fromDate || !toDate) return;
+
+    const controller = new AbortController();
+    setIsLoading(true);
+    setLoadError(null);
+
+    fetch(`/api/public/bagel-production-report?fromDate=${fromDate}&toDate=${toDate}`, {
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Bagel report request failed (${res.status})`);
+        return res.json();
+      })
+      .then((data: ExternalBagelReport) => setRawReport(data))
+      .catch((err) => {
+        if (err.name === "AbortError") return;
+        setRawReport(null);
+        setLoadError(err.message || "Failed to load bagel production report");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [fromDate, toDate]);
+
+  // Convert the external report-index totals into the same row shape used by the page.
   const orders: BagelOrderRow[] = useMemo(() => {
-    if (!rawOrders) return [];
-    return rawOrders.map((r: any) => {
-      const data = typeof r.data === "string" ? JSON.parse(r.data) : r.data;
-      const storeId = normalizeLocation(r.location);
-      return {
-        storeId,
-        storeName: getStoreName(storeId),
-        orderDate: data?.orderForDate || r.reportDate,
-        submittedBy: data?.submittedVia || "Dashboard",
-        clientName: data?.clientName || undefined,
-        orders: (data?.orders || []).map((o: any) => ({
-          type: o.type,
-          quantity: o.quantity,
-          unit: o.unit || data?.unit || "dozen",
-        })),
-        globalUnit: data?.unit || "dozen",
-      };
-    });
-  }, [rawOrders]);
+    const results = rawReport?.results;
+    if (!results || Array.isArray(results)) return [];
+
+    const branchMap = [
+      { key: "pk_total", storeId: "pk" },
+      { key: "mk_total", storeId: "mk" },
+      { key: "tun_total", storeId: "tunnel" },
+      { key: "ont_total", storeId: "ontario" },
+      { key: "sales_total", storeId: "sales" },
+    ] as const;
+
+    return branchMap.map(({ key, storeId }) => ({
+      storeId,
+      storeName: getStoreName(storeId),
+      orderDate: fromDate,
+      submittedBy: "External daily orders report",
+      clientName: storeId === "sales" ? "Sales" : undefined,
+      orders: BAGEL_TYPES.map(type => ({
+        type,
+        quantity: String(Object.values(results).find(item => item.item_name === type)?.[key] || 0),
+        unit: "unit",
+      })),
+      globalUnit: "unit",
+    })).filter(order => order.orders.some(item => Number(item.quantity) > 0));
+  }, [rawReport, fromDate]);
 
   // Separate Sales orders from Store orders
   const salesOrders = useMemo(() => orders.filter(o => o.storeId === "sales"), [orders]);
@@ -393,7 +437,15 @@ export function BagelProductionContent({ defaultToToday, storeFilter }: { defaul
         )}
       </div>
 
-      {isLoading ? (
+      {loadError ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Package className="w-12 h-12 text-destructive/40 mx-auto mb-3" />
+            <p className="text-destructive font-medium">Unable to load bagel production data.</p>
+            <p className="text-xs text-muted-foreground mt-1">{loadError}</p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             Loading bagel orders...
