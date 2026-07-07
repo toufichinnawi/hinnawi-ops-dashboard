@@ -49,6 +49,7 @@ import {
 import {
   refreshAccessToken, syncQboCogs,
 } from "./quickbooks";
+import { getWhosWorking } from "./whosWorking";
 
 export const appRouter = router({
   system: systemRouter,
@@ -2177,6 +2178,12 @@ export const appRouter = router({
           totalInvoices,
         };
       }),
+  }),
+  // ─── Who's Working ─────────────────────────────────────────────────
+  whosWorking: router({
+    active: publicProcedure.query(async () => {
+      return getWhosWorking();
+    }),
   }),
 });
 

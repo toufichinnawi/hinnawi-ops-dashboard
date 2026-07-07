@@ -7,7 +7,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell, ReferenceLine,
 } from "recharts";
-import { Users, DollarSign, Clock, Database, Upload, CheckCircle2, Loader2, FileSpreadsheet } from "lucide-react";
+import { Users, DollarSign, Clock, Database, Upload, CheckCircle2, Loader2, FileSpreadsheet, Activity } from "lucide-react";
 import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { DateFilter, getDefaultDateFilter, type DateFilterValue } from "@/components/DateFilter";
@@ -265,6 +265,9 @@ export default function Labour() {
           ))}
         </motion.div>
 
+        {/* ─── Who's Working Right Now ─────────────────────────────── */}
+        <WhosWorkingSection />
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Labour % by Store Bar Chart */}
           <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
@@ -414,5 +417,110 @@ export default function Labour() {
         </motion.div>
       </div>
     </DashboardLayout>
+  );
+}
+
+// ─── Who's Working Section ──────────────────────────────────────────────────
+
+function WhosWorkingSection() {
+  const { data, isLoading, error } = trpc.whosWorking.active.useQuery(undefined, {
+    refetchInterval: 60000, // Auto-refresh every 60 seconds
+    staleTime: 30000,
+  });
+
+  if (isLoading) {
+    return (
+      <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <h3 className="font-serif text-lg text-foreground">Who's Working Right Now</h3>
+        </div>
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-sm text-muted-foreground">Loading live data...</span>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-2 h-2 rounded-full bg-red-500" />
+          <h3 className="font-serif text-lg text-foreground">Who's Working Right Now</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">Unable to load live data. Please try again later.</p>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div variants={fadeUp} initial="hidden" animate="show" className="bg-card rounded-xl border border-border/60 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <h3 className="font-serif text-lg text-foreground">Who's Working Right Now</h3>
+          <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+            {data.totalActive} active
+          </span>
+        </div>
+        <span className="text-[10px] text-muted-foreground">
+          Auto-refreshes every 60s
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {data.locations.map((loc) => (
+          <div
+            key={loc.name}
+            className={cn(
+              "rounded-lg border p-3 transition-all",
+              loc.totalActive > 0
+                ? "border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800"
+                : "border-border/60 bg-muted/30"
+            )}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs font-semibold text-foreground">{loc.shortName}</span>
+              </div>
+              <span className={cn(
+                "text-[10px] font-medium px-1.5 py-0.5 rounded-full",
+                loc.totalActive > 0
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+                  : "bg-muted text-muted-foreground"
+              )}>
+                {loc.totalActive > 0 ? `${loc.totalActive} on` : "None"}
+              </span>
+            </div>
+
+            {loc.source === "7shifts" && loc.employees.length > 0 ? (
+              <div className="space-y-1.5">
+                {loc.employees.map((emp) => (
+                  <div key={emp.userId} className="flex items-center justify-between text-[11px]">
+                    <span className="text-foreground font-medium truncate max-w-[60%]">{emp.name}</span>
+                    <span className="text-muted-foreground font-mono">
+                      {emp.hoursWorked.toFixed(1)}h
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : loc.source === "koomi" ? (
+              <div className="text-[11px] text-muted-foreground">
+                {loc.aggregateLabourCost != null && loc.aggregateLabourCost > 0 ? (
+                  <span>Labour: ${loc.aggregateLabourCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                ) : (
+                  <span className="italic">Aggregate data only</span>
+                )}
+              </div>
+            ) : loc.totalActive === 0 ? (
+              <p className="text-[11px] text-muted-foreground italic">No one clocked in</p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </motion.div>
   );
 }
